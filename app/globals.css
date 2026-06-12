@@ -1,0 +1,124 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* -----------------------------
+   BRAND COLORS
+------------------------------ */
+:root {
+  --background: #F0F7FF;
+  --foreground: #0F172A;
+
+  --royal: #1D4ED8;
+  --navy: #0F172A;
+  --sky: #3B82F6;
+
+  --border: #CBD5E1;
+  --ring: #1D4ED8;
+
+  /* shadcn base tokens */
+  --card: #ffffff;
+  --card-foreground: #0F172A;
+
+  --popover: #ffffff;
+  --popover-foreground: #0F172A;
+
+  --primary: #1D4ED8;
+  --primary-foreground: #ffffff;
+
+  --secondary: #3B82F6;
+  --secondary-foreground: #ffffff;
+
+  --muted: #CBD5E1;
+  --muted-foreground: #475569;
+
+  --accent: #3B82F6;
+  --accent-foreground: #ffffff;
+
+  --destructive: #ef4444;
+}
+
+/* -----------------------------
+    DARK MODE (optional)
+------------------------------ */
+.dark {
+  --background: #0F172A;
+  --foreground: #F0F7FF;
+
+  --card: #111827;
+  --card-foreground: #F0F7FF;
+
+  --popover: #111827;
+  --popover-foreground: #F0F7FF;
+
+  --primary: #3B82F6;
+  --primary-foreground: #ffffff;
+
+  --secondary: #1D4ED8;
+  --secondary-foreground: #ffffff;
+
+  --muted: #1F2937;
+  --muted-foreground: #94A3B8;
+
+  --accent: #2563EB;
+  --accent-foreground: #ffffff;
+
+  --border: #1F2937;
+  --ring: #3B82F6;
+}
+
+/* -----------------------------
+   TAILWIND THEME MAPPING
+------------------------------ */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-royal: var(--royal);
+  --color-navy: var(--navy);
+  --color-sky: var(--sky);
+}
+
+/* -----------------------------
+    BASE STYLES
+------------------------------ */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    margin: 0;
+    padding:0;
+    box-sizing: border-box
+  }
+
+  html {
+    @apply font-sans;
+  }
+}
