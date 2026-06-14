@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
+import { Users, BookOpen, Clock, Ban } from "lucide-react"; 
 
 type Student = {
   id?: string;
-  status?: "active" | "inactive" | "suspended";
-  department?: string;
-  year?: number;
+  banned?: boolean;
+  borrowRecords?: any[];
+  reservations?: any[];
 };
 
 interface Props {
@@ -16,74 +17,72 @@ interface Props {
 export function StudentMetrics({ data }: Props) {
   const stats = useMemo(() => {
     const total = data.length;
+    // Count students where banned is explicitly true
+    const bannedCount = data.filter((s) => s.banned === true).length;
 
-    const active = data.filter((s) => s.status === "active").length;
-    const inactive = data.filter((s) => s.status === "inactive").length;
-    const suspended = data.filter((s) => s.status === "suspended").length;
+    const totalBorrowed = data.reduce(
+      (acc, s) => acc + (s.borrowRecords?.length || 0),
+      0,
+    );
+    const totalReservations = data.reduce(
+      (acc, s) => acc + (s.reservations?.length || 0),
+      0,
+    );
 
-    const departments = new Set(data.map((s) => s.department).filter(Boolean));
-
-    const avgYear =
-      data.length > 0
-        ? (
-            data.reduce((acc, s) => acc + (s.year || 0), 0) / data.length
-          ).toFixed(1)
-        : "0";
-
-    return {
-      total,
-      active,
-      inactive,
-      suspended,
-      departmentCount: departments.size,
-      avgYear,
-    };
+    return { total, bannedCount, totalBorrowed, totalReservations };
   }, [data]);
 
   const cards = [
     {
       label: "Total Students",
       value: stats.total,
-      color: "text-slate-900 dark:text-white",
+      icon: Users,
+      color: "text-slate-600",
+      bg: "bg-slate-100",
     },
     {
-      label: "Active",
-      value: stats.active,
-      color: "text-green-600",
+      label: "Banned Users",
+      value: stats.bannedCount,
+      icon: Ban,
+      color: "text-rose-600",
+      bg: "bg-rose-50",
     },
     {
-      label: "Inactive",
-      value: stats.inactive,
-      color: "text-yellow-600",
+      label: "Active Loans",
+      value: stats.totalBorrowed,
+      icon: BookOpen,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
     },
     {
-      label: "Suspended",
-      value: stats.suspended,
-      color: "text-red-600",
-    },
-    {
-      label: "Departments",
-      value: stats.departmentCount,
-      color: "text-blue-600",
-    },
-    {
-      label: "Avg Year",
-      value: stats.avgYear,
-      color: "text-purple-600",
+      label: "Reservations",
+      value: stats.totalReservations,
+      icon: Clock,
+      color: "text-amber-600",
+      bg: "bg-amber-50",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
       {cards.map((card) => (
         <div
           key={card.label}
-          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm hover:shadow-md transition"
+          className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm"
         >
-          <p className="text-sm text-slate-500">{card.label}</p>
-          <h2 className={`text-2xl font-bold mt-2 ${card.color}`}>
-            {card.value}
-          </h2>
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-xl ${card.bg} ${card.color}`}>
+              <card.icon size={22} />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                {card.label}
+              </p>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                {card.value}
+              </h3>
+            </div>
+          </div>
         </div>
       ))}
     </div>

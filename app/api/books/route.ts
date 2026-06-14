@@ -70,6 +70,17 @@ async function getOrCreateCategory(name: string) {
 }
 
 /* -----------------------------
+   Helper: generate barcode
+----------------------------- */
+
+function generateBarcode(isbn: string, index: number): string {
+  // Clean ISBN (remove hyphens)
+  const cleanIsbn = isbn.replace(/-/g, "");
+  // Generate barcode: ISBN-COPYYYY
+  return `${cleanIsbn}-${String(index + 1).padStart(4, "0")}`;
+}
+
+/* -----------------------------
    POST /api/books
 ----------------------------- */
 
@@ -81,6 +92,7 @@ export async function POST(req: NextRequest) {
     const isbn = formData.get("isbn") as string;
     const authorName = formData.get("author") as string;
     const categoryName = formData.get("category") as string;
+    const shelfLocation = formData.get("shelfLocation") as string | null;
 
     const cover = formData.get("cover") as File;
     const ebook = formData.get("ebook") as File | null;
@@ -163,15 +175,19 @@ export async function POST(req: NextRequest) {
         data: {
           bookId: book.id,
           filePath: ebookDbPath,
+          format: "PDF", // Default format
+          accessType: "OPEN", // Default access type
         },
       });
     }
 
+    // Create book copies with shelf location if provided
     await prisma.bookCopy.createMany({
       data: Array.from({ length: copies }).map((_, i) => ({
         bookId: book.id,
-        barcode: `${isbn}-${String(i + 1).padStart(3, "0")}`,
+        barcode: generateBarcode(isbn, i),
         status: "AVAILABLE",
+        shelfLocation: shelfLocation || null,
       })),
     });
 

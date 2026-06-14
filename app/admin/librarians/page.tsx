@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { LibrarianMetrics } from "@/components/admin/librarians/librarian-metrics";
-import { LibrarianTableWrapper } from "@/components/admin/librarians/librarian-table-wrapper";
-import Loading from "@/components/animations/Loading";
+import { LibrarianMetrics } from "@/components/admin/library/librarian-metrics";
+import { LibrarianTableWrapper } from "@/components/admin/library/LibrarianTableWrapper";
+
 
 export default function LibrarianManagementPage() {
   const [librarians, setLibrarians] = useState<any[] | null>(null);

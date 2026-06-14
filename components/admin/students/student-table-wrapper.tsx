@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -22,7 +21,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   Loader2Icon,
-  KeyIcon, // Added for visual clarity in the table
+  Ban,
+  ShieldCheck,
 } from "lucide-react";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
 import {
@@ -41,7 +41,7 @@ import { AlertTriangle, Trash2, X } from "lucide-react";
 import { User } from "@/types/UserType";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
-import { CreateStudentForm } from "./student-create-form";
+import CreateStudentForm from "./student-create-form";
 
 type EditableImportRow = {
   _localKey: string;
@@ -50,7 +50,7 @@ type EditableImportRow = {
   studentId: string;
   faculty: string;
   phone: string;
-  password?: string; 
+  password?: string;
 };
 
 export function StudentTableWrapper() {
@@ -212,7 +212,7 @@ export function StudentTableWrapper() {
             studentId: String(row.StudentID || row.studentId || ""),
             faculty: String(row.Faculty || row.faculty || ""),
             phone: String(row.Phone || row.phone || ""),
-            password: String(row.Password || row.password || ""), //  Extracts  data from Excel mapping matches
+            password: String(row.Password || row.password || ""),
           })),
         );
       } catch (error) {
@@ -279,7 +279,7 @@ export function StudentTableWrapper() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Search index metadata fields..."
+            placeholder="Search by name, email, or student ID..."
             className="w-full pl-9 pr-4 py-2 text-sm bg-white/40 dark:bg-slate-950/40 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 dark:border-slate-800"
           />
         </div>
@@ -386,7 +386,6 @@ export function StudentTableWrapper() {
                       <th className="p-2">Faculty</th>
                       <th className="p-2">Phone</th>
                       <th className="p-2">Password</th>
-                      {/*  Added Password column to preview header */}
                     </tr>
                   </thead>
                   <tbody>
@@ -462,7 +461,6 @@ export function StudentTableWrapper() {
                             className="w-full p-1 bg-transparent border rounded"
                           />
                         </td>
-                        {/*  editable Password input field to staging workspace */}
                         <td className="p-1">
                           <input
                             type="text"
@@ -528,7 +526,7 @@ export function StudentTableWrapper() {
               <th className="p-4">Academic Identifiers</th>
               <th className="p-4">Contact Info</th>
               <th className="p-4 text-center">Library Logs</th>
-              <th className="p-4">Verification</th>
+              <th className="p-4">Account Status</th>
               <th className="p-4 text-center">Actions</th>
             </tr>
           </thead>
@@ -574,15 +572,15 @@ export function StudentTableWrapper() {
                     />
                   </td>
                   <td className="p-4 flex items-center gap-3">
-                    <div className="size-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-500">
-                      {student.name.charAt(0)}
+                    <div className="size-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                      {student.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col">
                       <span className="font-semibold text-slate-800 dark:text-slate-200">
                         {student.name}
                       </span>
                       <span className="text-[11px] font-mono text-slate-400 truncate max-w-25">
-                        id: {student.id.substring(0, 8)}
+                        ID: {student.id.substring(0, 8)}
                       </span>
                     </div>
                   </td>
@@ -620,18 +618,20 @@ export function StudentTableWrapper() {
                       </div>
                     </div>
                   </td>
-                  <td className="p-4 space-y-1">
-                    {student.emailVerified ? (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded">
-                        <CheckCircle2Icon className="size-3" /> Verified
+                  <td className="p-4">
+                    {student.banned ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400 rounded-full">
+                        <Ban className="size-3.5" />
+                        Banned
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-1.5 py-0.5 rounded">
-                        <XCircleIcon className="size-3" /> Unverified
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-full">
+                        <ShieldCheck className="size-3.5" />
+                        Active
                       </span>
                     )}
-                    <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                      <CalendarIcon className="size-3" />{" "}
+                    <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-1">
+                      <CalendarIcon className="size-3" /> Joined:{" "}
                       {new Date(student.createdAt).toLocaleDateString()}
                     </div>
                   </td>
@@ -801,7 +801,6 @@ export function StudentTableWrapper() {
               </p>
             </div>
 
-            {/* --- RESPONSIVE INTERACTION FOOTER BUTTONS --- */}
             <AlertDialogFooter className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
               <AlertDialogCancel
                 disabled={isBulkDeleting}
@@ -834,4 +833,3 @@ export function StudentTableWrapper() {
     </div>
   );
 }
-

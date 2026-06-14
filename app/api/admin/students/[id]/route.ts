@@ -3,11 +3,9 @@ import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-
-
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const reqHeaders = await headers();
@@ -22,7 +20,9 @@ export async function PATCH(
   }
 
   try {
-    const { name, phone, studentId, faculty, password } = await req.json();
+    // Added 'banned' to the destructuring
+    const { name, phone, studentId, faculty, password, banned } =
+      await req.json();
 
     // -------------------------
     // 1. UPDATE PROFILE (DB ONLY)
@@ -34,6 +34,8 @@ export async function PATCH(
         ...(phone !== undefined && { phone }),
         ...(studentId !== undefined && { studentId }),
         ...(faculty !== undefined && { faculty }),
+        // Include 'banned' if it's provided in the request body
+        ...(banned !== undefined && { banned }),
       },
     });
 
@@ -56,17 +58,13 @@ export async function PATCH(
   } catch (error: any) {
     console.error("[STUDENTS_SERVER_PATCH]", error);
 
-    return NextResponse.json(
-      { message: "Update failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Update failed" }, { status: 500 });
   }
 }
 
-
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({
@@ -76,10 +74,7 @@ export async function DELETE(
   const { id } = await params;
 
   if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json(
-      { message: "Unauthorized" },
-      { status: 403 }
-    );
+    return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
   }
 
   try {
@@ -103,9 +98,6 @@ export async function DELETE(
   } catch (error) {
     console.error("[STUDENTS_SERVER_DELETE]", error);
 
-    return NextResponse.json(
-      { message: "Delete failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Delete failed" }, { status: 500 });
   }
 }

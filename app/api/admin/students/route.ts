@@ -1,8 +1,7 @@
-import { auth } from "@/lib/auth"; 
+import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-
 
 // 1. GET: Handles Server-Side Pagination, Debounced searching and relationship counts
 export async function GET(req: Request) {
@@ -10,8 +9,14 @@ export async function GET(req: Request) {
   const session = await auth.api.getSession({ headers: reqHeaders });
 
   // Security Gate: Ensure user is authenticated and holds administrative privileges
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "LIBRARIAN")) {
-    return Response.json({ message: "Unauthorized Administrative Access" }, { status: 401 });
+  if (
+    !session?.user ||
+    (session.user.role !== "ADMIN" && session.user.role !== "LIBRARIAN")
+  ) {
+    return Response.json(
+      { message: "Unauthorized Administrative Access" },
+      { status: 401 },
+    );
   }
 
   try {
@@ -53,6 +58,7 @@ export async function GET(req: Request) {
           studentId: true,
           role: true,
           faculty: true,
+          banned:true,
           phone: true,
           _count: {
             select: {
@@ -76,7 +82,10 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("[STUDENTS_SERVER_GET]", error);
-    return Response.json({ message: "Internal server registry fault" }, { status: 500 });
+    return Response.json(
+      { message: "Internal server registry fault" },
+      { status: 500 },
+    );
   }
 }
 
@@ -84,28 +93,30 @@ export async function POST(req: Request) {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
 
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "LIBRARIAN")) {
+  if (
+    !session?.user ||
+    (session.user.role !== "ADMIN" && session.user.role !== "LIBRARIAN")
+  ) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const body = await req.json();
-    const { name, email, password, phone, studentId, faculty } = body;
+    // Destructure 'banned' from the body
+    const { name, email, password, phone, studentId, faculty, banned } = body;
 
-    // 1. Create the user through Better Auth (handles hashing automatically)
+    // 1. Create the user through Better Auth
     const result = await auth.api.signUpEmail({
       body: {
         email,
         password,
         name,
-      
       },
     });
 
-    // 2. Update the additional fields
-    // Ensure the ID exists in the result
     if (!result.user?.id) throw new Error("User creation failed");
 
+    // 2. Update the additional fields
     await prisma.user.update({
       where: { id: result.user.id },
       data: {
@@ -113,7 +124,9 @@ export async function POST(req: Request) {
         studentId,
         faculty,
         role: "STUDENT",
-        emailVerified: true, // Auto-verify admin-created accounts
+        emailVerified: true,
+        // Set the banned status (defaulting to false if undefined)
+        banned: !!banned,
       },
     });
 

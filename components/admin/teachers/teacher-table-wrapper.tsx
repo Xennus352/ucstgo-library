@@ -5,6 +5,7 @@ import {
   SearchIcon,
   PlusIcon,
   MailIcon,
+  SchoolIcon,
   CalendarIcon,
   PhoneIcon,
   FileSpreadsheetIcon,
@@ -18,6 +19,8 @@ import {
   Ban,
   ShieldCheck,
   ShieldAlert,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
 import {
@@ -34,17 +37,18 @@ import { Trash2, X } from "lucide-react";
 import { User } from "@/types/UserType";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
-import CreateLibrarianForm from "../library/librarian-create-librarian-form";
+import CreateTeacherForm from "./teacher-create-teacher-form";
 
 type EditableImportRow = {
   _localKey: string;
   name: string;
   email: string;
+  faculty: string;
   phone: string;
   password?: string;
 };
 
-type LibrariansResponse = {
+type TeachersResponse = {
   data?: User[];
   meta?: {
     total?: number;
@@ -57,19 +61,15 @@ const getErrorMessage = (error: unknown, fallback: string) =>
 const stringValue = (value: unknown) =>
   typeof value === "string" ? value : value == null ? "" : String(value);
 
-export function LibrarianTableWrapper() {
-  const [librarians, setLibrarians] = React.useState<User[]>([]);
+export function TeacherTableWrapper() {
+  const [teachers, setTeachers] = React.useState<User[]>([]);
   const [totalRecords, setTotalRecords] = React.useState(0);
   const [isLoading, setIsLoading] = React.useState(false);
 
-  const [deleteLibrarian, setDeleteLibrarian] = React.useState<User | null>(
-    null,
-  );
+  const [deleteTeacher, setDeleteTeacher] = React.useState<User | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const [selectedLibrarians, setSelectedLibrarians] = React.useState<User[]>(
-    [],
-  );
+  const [selectedTeachers, setSelectedTeachers] = React.useState<User[]>([]);
   const [showBulkDeleteAlert, setShowBulkDeleteAlert] = React.useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = React.useState(false);
 
@@ -80,9 +80,7 @@ export function LibrarianTableWrapper() {
 
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isImportOpen, setIsImportOpen] = React.useState(false);
-  const [editingLibrarian, setEditingLibrarian] = React.useState<User | null>(
-    null,
-  );
+  const [editingTeacher, setEditingTeacher] = React.useState<User | null>(null);
 
   const [previewRows, setPreviewRows] = React.useState<EditableImportRow[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -92,22 +90,20 @@ export function LibrarianTableWrapper() {
     return () => clearTimeout(handler);
   }, [search]);
 
-  const fetchLibrarians = React.useCallback(async () => {
+  const fetchTeachers = React.useCallback(async () => {
     setIsLoading(true);
     try {
       const queryParams = new URLSearchParams({
         page: String(page),
         limit: String(pageSize),
         search: debouncedSearch,
-        role: "LIBRARIAN",
+        role: "LECTURER",
       });
-      const res = await fetch(
-        `/api/admin/librarians?${queryParams.toString()}`,
-      );
-      if (!res.ok) throw new Error("Failed to pull librarian records.");
-      const payload = (await res.json()) as LibrariansResponse;
+      const res = await fetch(`/api/admin/teachers?${queryParams.toString()}`);
+      if (!res.ok) throw new Error("Failed to pull teacher records.");
+      const payload = (await res.json()) as TeachersResponse;
 
-      setLibrarians(payload.data ?? []);
+      setTeachers(payload.data ?? []);
       setTotalRecords(payload.meta?.total ?? 0);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Network read failure."));
@@ -118,63 +114,90 @@ export function LibrarianTableWrapper() {
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
-      fetchLibrarians();
+      fetchTeachers();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [fetchLibrarians]);
+  }, [fetchTeachers]);
 
   const handleCreateSuccess = () => {
     setIsCreateOpen(false);
-    fetchLibrarians();
-    toast.success("Librarian profile instantiated into directory.");
+    fetchTeachers();
+    toast.success("Teacher profile created successfully.");
   };
 
   const handleUpdateSuccess = () => {
-    setEditingLibrarian(null);
-    fetchLibrarians();
-    toast.success("Librarian record properties updated successfully.");
+    setEditingTeacher(null);
+    fetchTeachers();
+    toast.success("Teacher record updated successfully.");
   };
 
   const handleDeleteRecord = async () => {
-    if (!deleteLibrarian) return;
+    if (!deleteTeacher) return;
 
     try {
       setIsDeleting(true);
 
-      const res = await fetch(`/api/admin/librarians/${deleteLibrarian.id}`, {
+      const res = await fetch(`/api/admin/teachers/${deleteTeacher.id}`, {
         method: "DELETE",
       });
 
       if (!res.ok) {
-        throw new Error("Failed to delete librarian.");
+        throw new Error("Failed to delete teacher.");
       }
 
-      toast.success(`${deleteLibrarian.name} removed successfully.`);
-      setDeleteLibrarian(null);
-
-      setSelectedLibrarians((prev) =>
-        prev.filter((s) => s.id !== deleteLibrarian.id),
+      toast.success(`${deleteTeacher.name} removed successfully.`);
+      setDeleteTeacher(null);
+      setSelectedTeachers((prev) =>
+        prev.filter((teacher) => teacher.id !== deleteTeacher.id),
       );
 
-      fetchLibrarians();
+      fetchTeachers();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err, "Failed to delete librarian."));
+      toast.error(getErrorMessage(err, "Failed to delete teacher."));
     } finally {
       setIsDeleting(false);
     }
   };
 
+  // const handleToggleBan = async (teacher: User) => {
+  //   try {
+  //     const res = await fetch(`/api/admin/teachers/${teacher.id}/ban`, {
+  //       method: "PATCH",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         banned: !teacher.banned,
+  //       }),
+  //     });
+
+  //     if (!res.ok) {
+  //       throw new Error("Failed to update access status");
+  //     }
+
+  //     toast.success(
+  //       teacher.banned
+  //         ? "Teacher access restored successfully"
+  //         : "Teacher account banned successfully",
+  //     );
+
+  //     fetchTeachers();
+  //   } catch (error) {
+  //     toast.error(getErrorMessage(error, "Failed to update access status"));
+  //   }
+  // };
+
   const handleBulkDeleteRecords = async () => {
-    if (selectedLibrarians.length === 0) return;
+    if (selectedTeachers.length === 0) return;
 
     try {
       setIsBulkDeleting(true);
 
-      const res = await fetch("/api/admin/librarians/bulk-delete", {
+      const res = await fetch("/api/admin/teachers/bulk-delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ids: selectedLibrarians.map((librarian) => librarian.id),
+          ids: selectedTeachers.map((teacher) => teacher.id),
         }),
       });
 
@@ -183,11 +206,11 @@ export function LibrarianTableWrapper() {
       }
 
       toast.success(
-        `Successfully removed ${selectedLibrarians.length} librarian records.`,
+        `Successfully removed ${selectedTeachers.length} teacher records.`,
       );
-      setSelectedLibrarians([]);
+      setSelectedTeachers([]);
       setShowBulkDeleteAlert(false);
-      fetchLibrarians();
+      fetchTeachers();
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Bulk deletion failed."));
     } finally {
@@ -211,6 +234,7 @@ export function LibrarianTableWrapper() {
             _localKey: `draft-${Date.now()}-${idx}`,
             name: stringValue(row.Name ?? row.name),
             email: stringValue(row.Email ?? row.email),
+            faculty: stringValue(row.Faculty ?? row.faculty),
             phone: stringValue(row.Phone ?? row.phone),
             password: stringValue(row.Password ?? row.password),
           })),
@@ -238,19 +262,17 @@ export function LibrarianTableWrapper() {
     const validRows = previewRows.filter(
       (row) => row.name.trim().length > 0 && row.email.includes("@"),
     );
-
     if (validRows.length === 0) {
-      toast.error("Staging is empty or contains invalid librarian rows.");
+      toast.error("Staging is empty or contains invalid teacher rows.");
       return;
     }
 
     try {
-      const res = await fetch("/api/admin/librarians/bulk", {
+      const res = await fetch("/api/admin/teachers/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ librarians: validRows }),
+        body: JSON.stringify({ teachers: validRows }),
       });
-
       if (!res.ok) throw new Error("Bulk ingestion transaction refused.");
 
       toast.success(
@@ -258,7 +280,7 @@ export function LibrarianTableWrapper() {
       );
       setPreviewRows([]);
       setIsImportOpen(false);
-      fetchLibrarians();
+      fetchTeachers();
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Batch commit fault."));
     }
@@ -278,19 +300,19 @@ export function LibrarianTableWrapper() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Search librarian records..."
+            placeholder="Search teacher records..."
             className="w-full pl-9 pr-4 py-2 text-sm bg-white/40 dark:bg-slate-950/40 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 dark:border-slate-800"
           />
         </div>
 
         <div className="flex w-full lg:w-auto items-center gap-2 justify-end">
-          {selectedLibrarians.length > 0 && (
+          {selectedTeachers.length > 0 && (
             <button
               onClick={() => setShowBulkDeleteAlert(true)}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-200/40 px-3.5 py-2 text-sm font-medium transition-colors cursor-pointer animate-in fade-in slide-in-from-top-1 duration-200"
             >
               <Trash2Icon className="size-4" />
-              <span>Delete Selected ({selectedLibrarians.length})</span>
+              <span>Delete Selected ({selectedTeachers.length})</span>
             </button>
           )}
 
@@ -307,7 +329,7 @@ export function LibrarianTableWrapper() {
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium shadow-sm transition-all cursor-pointer"
           >
             <PlusIcon className="size-4" />
-            <span>Add Librarian</span>
+            <span>Add Teacher</span>
           </button>
         </div>
       </div>
@@ -315,20 +337,20 @@ export function LibrarianTableWrapper() {
       <ResponsiveDrawer
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        title="Register Librarian Account"
+        title="Register Teacher Account"
       >
-        <CreateLibrarianForm onLibrarianCreated={handleCreateSuccess} />
+        <CreateTeacherForm onTeacherCreated={handleCreateSuccess} />
       </ResponsiveDrawer>
 
       <ResponsiveDrawer
-        open={editingLibrarian !== null}
-        onOpenChange={(val) => !val && setEditingLibrarian(null)}
-        title="Modify Librarian Record"
+        open={editingTeacher !== null}
+        onOpenChange={(val) => !val && setEditingTeacher(null)}
+        title="Modify Teacher Record"
       >
-        {editingLibrarian && (
-          <CreateLibrarianForm
-            librarianToEdit={editingLibrarian}
-            onLibrarianCreated={handleUpdateSuccess}
+        {editingTeacher && (
+          <CreateTeacherForm
+            teacherToEdit={editingTeacher}
+            onTeacherCreated={handleUpdateSuccess}
           />
         )}
       </ResponsiveDrawer>
@@ -379,6 +401,7 @@ export function LibrarianTableWrapper() {
                     <tr>
                       <th className="p-2">Full Name</th>
                       <th className="p-2">Email</th>
+                      <th className="p-2">Faculty</th>
                       <th className="p-2">Phone</th>
                       <th className="p-2">Password</th>
                     </tr>
@@ -408,6 +431,20 @@ export function LibrarianTableWrapper() {
                               handleCellEdit(
                                 row._localKey,
                                 "email",
+                                e.target.value,
+                              )
+                            }
+                            className="w-full p-1 bg-transparent border rounded"
+                          />
+                        </td>
+                        <td className="p-1">
+                          <input
+                            type="text"
+                            value={row.faculty}
+                            onChange={(e) =>
+                              handleCellEdit(
+                                row._localKey,
+                                "faculty",
                                 e.target.value,
                               )
                             }
@@ -476,19 +513,20 @@ export function LibrarianTableWrapper() {
                   type="checkbox"
                   className="cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   checked={
-                    librarians.length > 0 &&
-                    selectedLibrarians.length === librarians.length
+                    teachers.length > 0 &&
+                    selectedTeachers.length === teachers.length
                   }
                   onChange={(e) => {
                     if (e.target.checked) {
-                      setSelectedLibrarians(librarians);
+                      setSelectedTeachers(teachers);
                     } else {
-                      setSelectedLibrarians([]);
+                      setSelectedTeachers([]);
                     }
                   }}
                 />
               </th>
-              <th className="p-4">Librarian Profile</th>
+              <th className="p-4">Teacher Profile</th>
+              <th className="p-4">Academic Assignment</th>
               <th className="p-4">Contact Info</th>
               <th className="p-4">Access Status</th>
               <th className="p-4 text-center">Actions</th>
@@ -497,22 +535,22 @@ export function LibrarianTableWrapper() {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="p-12 text-center">
+                <td colSpan={6} className="p-12 text-center">
                   <Loader2Icon className="size-6 animate-spin text-blue-500 mx-auto" />
                 </td>
               </tr>
-            ) : librarians.length === 0 ? (
+            ) : teachers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-12 text-center text-slate-400">
-                  No active librarian records located.
+                <td colSpan={6} className="p-12 text-center text-slate-400">
+                  No active teacher records located.
                 </td>
               </tr>
             ) : (
-              librarians.map((librarian) => (
+              teachers.map((teacher) => (
                 <tr
-                  key={librarian.id}
+                  key={teacher.id}
                   className={`hover:bg-white/50 dark:hover:bg-slate-900/30 transition-colors group ${
-                    selectedLibrarians.some((s) => s.id === librarian.id)
+                    selectedTeachers.some((s) => s.id === teacher.id)
                       ? "bg-slate-50/60 dark:bg-slate-900/20"
                       : ""
                   }`}
@@ -521,68 +559,90 @@ export function LibrarianTableWrapper() {
                     <input
                       type="checkbox"
                       className="cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      checked={selectedLibrarians.some(
-                        (s) => s.id === librarian.id,
+                      checked={selectedTeachers.some(
+                        (s) => s.id === teacher.id,
                       )}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedLibrarians((prev) => [...prev, librarian]);
+                          setSelectedTeachers((prev) => [...prev, teacher]);
                         } else {
-                          setSelectedLibrarians((prev) =>
-                            prev.filter((s) => s.id !== librarian.id),
+                          setSelectedTeachers((prev) =>
+                            prev.filter((s) => s.id !== teacher.id),
                           );
                         }
                       }}
                     />
                   </td>
                   <td className="p-4 flex items-center gap-3">
-                    <div className="size-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-500">
-                      {librarian.name.charAt(0)}
+                    <div className="size-9 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                      {teacher.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col">
                       <span className="font-semibold text-slate-800 dark:text-slate-200">
-                        {librarian.name}
+                        {teacher.name}
                       </span>
                       <span className="text-[11px] font-mono text-slate-400 truncate max-w-25">
-                        id: {librarian.id.substring(0, 8)}
+                        ID: {teacher.id.substring(0, 8)}
                       </span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 font-mono text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-400">
+                      <SchoolIcon className="size-3" />{" "}
+                      {teacher.faculty || "Unassigned"}
                     </div>
                   </td>
                   <td className="p-4 text-xs space-y-0.5 text-slate-500">
                     <span className="flex items-center gap-1">
-                      <MailIcon className="size-3" /> {librarian.email}
+                      <MailIcon className="size-3" /> {teacher.email}
                     </span>
                     <span className="flex items-center gap-1">
-                      <PhoneIcon className="size-3" />{" "}
-                      {librarian.phone || "N/A"}
+                      <PhoneIcon className="size-3" /> {teacher.phone || "N/A"}
                     </span>
                     <span className="flex items-center gap-1 text-[10px] text-slate-400">
                       <CalendarIcon className="size-3" /> Joined:{" "}
-                      {new Date(librarian.createdAt).toLocaleDateString()}
+                      {new Date(teacher.createdAt).toLocaleDateString()}
                     </span>
                   </td>
                   <td className="p-4">
-                    {librarian.banned ? (
+                    {teacher.banned ? (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-full">
-                        <Ban className="size-3.5" /> Banned
+                        <UserX className="size-3.5" /> Banned
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-full">
-                        <ShieldCheck className="size-3.5" /> Admin Access
+                        <UserCheck className="size-3.5" /> Active
                       </span>
                     )}
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-1.5">
+                      {/* <button
+                        onClick={() => handleToggleBan(teacher)}
+                        className={`p-1.5 rounded-lg transition-all duration-200 ${
+                          teacher.banned
+                            ? "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                            : "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                        }`}
+                        title={
+                          teacher.banned ? "Restore Access" : "Ban Teacher"
+                        }
+                      >
+                        {teacher.banned ? (
+                          <ShieldCheck className="size-4" />
+                        ) : (
+                          <Ban className="size-4" />
+                        )}
+                      </button> */}
                       <button
-                        onClick={() => setEditingLibrarian(librarian)}
+                        onClick={() => setEditingTeacher(teacher)}
                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer"
                         title="Edit Properties"
                       >
                         <Edit2Icon className="size-3.5" />
                       </button>
                       <button
-                        onClick={() => setDeleteLibrarian(librarian)}
+                        onClick={() => setDeleteTeacher(teacher)}
                         className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                         title="Delete Profile"
                       >
@@ -601,7 +661,7 @@ export function LibrarianTableWrapper() {
         <span>
           Showing records{" "}
           <span className="font-bold text-slate-700 dark:text-slate-300">
-            {librarians.length}
+            {teachers.length}
           </span>{" "}
           of <span className="font-mono">{totalRecords}</span> values
         </span>
@@ -627,9 +687,9 @@ export function LibrarianTableWrapper() {
       </div>
 
       <AlertDialog
-        open={!!deleteLibrarian}
+        open={!!deleteTeacher}
         onOpenChange={(open) => {
-          if (!open) setDeleteLibrarian(null);
+          if (!open) setDeleteTeacher(null);
         }}
       >
         <AlertDialogContent className="max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-white p-0 shadow-2xl transition-all">
@@ -645,12 +705,12 @@ export function LibrarianTableWrapper() {
               </div>
               <div className="space-y-1.5 text-center">
                 <AlertDialogTitle className="text-2xl font-extrabold tracking-tight text-slate-900">
-                  Permanently delete librarian?
+                  Permanently delete teacher?
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-sm leading-relaxed text-slate-500 px-4">
                   You are initiating a destructive action to remove{" "}
                   <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 font-semibold text-slate-800 border border-slate-200">
-                    {deleteLibrarian?.name}
+                    {deleteTeacher?.name}
                   </span>{" "}
                   from the database.
                 </AlertDialogDescription>
@@ -663,14 +723,14 @@ export function LibrarianTableWrapper() {
               </div>
               <p className="flex-1 leading-normal">
                 This action is completely{" "}
-                <strong className="font-bold">irreversible</strong>. The The
-                librarian access logs and profile will be wiped instantly.
+                <strong className="font-bold">irreversible</strong>. The
+                teacher's access privileges and profile will be wiped instantly.
               </p>
             </div>
 
             <AlertDialogFooter className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-100 pt-4">
               <AlertDialogCancel className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 cursor-pointer transition-all duration-200 active:scale-95">
-                Keep Librarian
+                Keep Teacher
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteRecord}
@@ -711,11 +771,11 @@ export function LibrarianTableWrapper() {
               </div>
               <div className="space-y-1.5 text-center">
                 <AlertDialogTitle className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-                  Delete {selectedLibrarians.length} Profiles?
+                  Delete {selectedTeachers.length} Profiles?
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-sm leading-relaxed text-slate-500 dark:text-slate-400 px-4">
                   You are preparing to wipe a batch of chosen directory rows
-                  simultaneously. This will impact multiple librarian accounts.
+                  simultaneously. This will impact multiple teacher accounts.
                 </AlertDialogDescription>
               </div>
             </AlertDialogHeader>
@@ -728,7 +788,7 @@ export function LibrarianTableWrapper() {
                 This will completely remove access privileges and clear database
                 indices for all{" "}
                 <strong className="font-bold">
-                  {selectedLibrarians.length} selected records
+                  {selectedTeachers.length} selected records
                 </strong>
                 . This process cannot be undone.
               </p>
