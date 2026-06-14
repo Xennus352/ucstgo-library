@@ -163,9 +163,9 @@ function Sidebar({
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
-  // 1. Define your exact gradient string to avoid code repetition
+  //  Define your exact gradient string to avoid code repetition
   const gradientClasses =
-    "bg-linear-to-br from-[#bfd7f3] via-[#E0EEFF] to-[#84b5ed] text-slate-900";
+    "bg-linear-to-br from-[#dce7f5] via-[#e8f1fc] to-[#f4f8fe]";
 
   if (collapsible === "none") {
     return (
@@ -191,7 +191,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          // 2. FIXED MOBILE VIEW: Swapped 'bg-sidebar text-sidebar-foreground' with your gradient
+          //  MOBILE VIEW: Swapped 'bg-sidebar text-sidebar-foreground' with your gradient
           className={cn(
             "w-(--sidebar-width) p-0 [&>button]:hidden",
             gradientClasses,
@@ -250,7 +250,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          // 3. FIXED DESKTOP VIEW: Swapped 'bg-sidebar' with your gradient variables and fixed text color
+          //  FIXED DESKTOP VIEW: Swapped 'bg-sidebar' with your gradient variables and fixed text color
           className={cn(
             "flex size-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border",
             gradientClasses,

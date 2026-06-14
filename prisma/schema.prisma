@@ -20,7 +20,7 @@ model User {
   id            String   @id @default(uuid())
   name          String
   email         String   @unique
-  emailVerified Boolean  @default(true) 
+  emailVerified Boolean  @default(true)
   image         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -28,6 +28,7 @@ model User {
   // Your Custom University Library Fields
   studentId String? @unique
   role      Role    @default(STUDENT)
+  banned    Boolean @default(false)
   faculty   String?
   phone     String?
 
@@ -148,9 +149,8 @@ model Category {
 }
 
 model Author {
-  id   String  @id @default(uuid())
-  name String
-  bio  String?
+  id   String @id @default(uuid())
+  name String @unique
 
   books Book[]
 

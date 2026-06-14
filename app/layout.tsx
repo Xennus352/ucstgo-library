@@ -31,7 +31,7 @@ export default function RootLayout({
     >
       <body className="min-h-screen">
         <TooltipProvider>
-          <div className="min-h-screen bg-linear-to-br from-[#bfd7f3] via-[#E0EEFF] to-[#84b5ed]">
+          <div className="min-h-screen bg-linear-to-br from-[#a5bad3] via-[#b7ceeb] to-[#bfd6f0]">
             {children}
           </div>
           <Toaster richColors position="top-right" />

@@ -1,23 +1,37 @@
 import { auth } from "@/lib/auth";
-import  prisma  from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 
 export async function GET() {
+  const reqHeaders = await headers();
+
   const session = await auth.api.getSession({
-    headers: await headers(),
+    headers: reqHeaders,
   });
 
   if (!session?.user) {
-    return Response.json(null, { status: 401 });
+    return Response.json({ message: "Unauthorized" }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: {
+      id: session.user.id,
+    },
     select: {
       id: true,
+      name: true,
+      email: true,
       role: true,
+      studentId: true,
+      faculty: true,
+      phone: true,
+      createdAt: true,
     },
   });
+
+  if (!user) {
+    return Response.json({ message: "User not found" }, { status: 404 });
+  }
 
   return Response.json(user);
 }

@@ -1,37 +1,46 @@
-import { AppSidebar } from "@/components/app-sidebar"
-import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable } from "@/components/data-table"
-import { SectionCards } from "@/components/section-cards"
-import { SiteHeader } from "@/components/site-header"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { ChartAreaInteractive } from "@/components/chart-area-interactive";
+import { DataTable } from "@/components/data-table";
+import { SectionCards } from "@/components/section-cards";
 
-import data from "./data.json"
+// Structured to log library book circulation data
+const liveLibraryData = [
+  {
+    id: "TX-9021",
+    borrower: "Soe Moe Kyaw",
+    role: "Student",
+    bookTitle: "Introduction to Algorithms, 4th Edition",
+    status: "Borrowed",
+    date: "2026-06-10",
+    dueDate: "2026-06-24",
+  },
+  {
+    id: "TX-9022",
+    borrower: "Mg Thura Aung Htet",
+    role: "Student",
+    bookTitle: "Computer Vision: Algorithms and Applications",
+    status: "Overdue",
+    date: "2026-05-15",
+    dueDate: "2026-05-29",
+  },
+  {
+    id: "TX-9023",
+    borrower: "Ma Hla",
+    role: "Faculty",
+    bookTitle: "Operations Research: An Introduction",
+    status: "Returned",
+    date: "2026-06-01",
+    dueDate: "2026-06-15",
+  },
+];
 
-export default function Page() {
+export default function DashboardPage() {
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="floating"  />
-      <SidebarInset>
-        <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <SectionCards />
-              <div className="px-4 lg:px-6">
-                <ChartAreaInteractive />
-              </div>
-              <DataTable data={data} />
-            </div>
-          </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
-  )
+    <>
+      <SectionCards />
+      <div className="px-4 lg:px-6">
+        <ChartAreaInteractive />
+      </div>
+      <DataTable data={liveLibraryData} />
+    </>
+  );
 }

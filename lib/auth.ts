@@ -1,11 +1,15 @@
 import { betterAuth } from "better-auth";
 import prisma from "@/lib/prisma";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
+import { admin } from "better-auth/plugins";
 
 export const auth = betterAuth({
+  plugins:[admin()],
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
+
+  
 
   emailAndPassword: {
     enabled: true,
@@ -19,6 +23,7 @@ export const auth = betterAuth({
           return {
             data: {
               ...user,
+              role: "STUDENT",
               emailVerified: true, // Forces every record to save as true instantly
             },
           };

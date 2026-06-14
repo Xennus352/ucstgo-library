@@ -12,6 +12,7 @@ export interface User {
   role: Role;
   faculty: string | null;
   phone: string | null;
+  banned:boolean;
 }
 
 export interface Session {
