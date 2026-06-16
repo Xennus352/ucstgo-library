@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Eye, Edit, CheckCircle } from "lucide-react";
 
 import { BookPreviewCard } from "../BookPreview";
-import { BookFormFields } from "./BookFormField";
+import { BookFormFields } from "../BookFormField";
 
 export default function CreateBookForm() {
   const router = useRouter();

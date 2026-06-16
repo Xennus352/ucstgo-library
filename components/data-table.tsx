@@ -326,8 +326,14 @@ export function DataTable({
     pageSize: 10,
   });
 
-  // Keep track of the active tab view state
   const [currentTab, setCurrentTab] = React.useState("all-loans");
+  const [loading, setLoading] = React.useState(true);
+
+  // Simulate network pipeline latency delay or mount synchronization lifecycle
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 850);
+    return () => clearTimeout(timer);
+  }, []);
 
   const sortableId = React.useId();
   const sensors = useSensors(
@@ -366,7 +372,6 @@ export function DataTable({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  // Handle syncing Tab switches directly into TanStack Table's column filters
   const handleTabChange = (value: string) => {
     setCurrentTab(value);
     if (value === "all-loans") {
@@ -389,11 +394,98 @@ export function DataTable({
     }
   }
 
-  // Calculate badges counts dynamically from source records
   const overdueCount = React.useMemo(
     () => data.filter((item) => item.status === "Overdue").length,
     [data],
   );
+
+  // Integrated Loading State matching component structural typography dimensions
+  if (loading) {
+    return (
+      <div className="w-full space-y-6 animate-pulse">
+        {/* Actions Toolbar Skeleton */}
+        <div className="flex items-center justify-between px-4 lg:px-6">
+          <div className="h-9 w-80 rounded-lg bg-slate-200 dark:bg-slate-800 hidden @xl/main:block" />
+          <div className="h-9 w-28 rounded-lg bg-slate-200 dark:bg-slate-800 @xl/main:hidden" />
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-24 rounded-lg bg-slate-200 dark:bg-slate-800" />
+            <div className="h-9 w-32 rounded-lg bg-slate-200 dark:bg-slate-800" />
+          </div>
+        </div>
+
+        {/* Unified Datatable Wireframe Mesh */}
+        <div className="px-4 lg:px-6">
+          <div className="overflow-hidden rounded-lg border border-slate-100 dark:border-slate-800">
+            <Table>
+              <TableHeader className="bg-muted/60">
+                <TableRow>
+                  <TableHead className="w-8">
+                    <div className="h-4 w-4 bg-slate-200 dark:bg-slate-800 rounded" />
+                  </TableHead>
+                  <TableHead className="w-12">
+                    <div className="h-4 w-4 bg-slate-200 dark:bg-slate-800 rounded" />
+                  </TableHead>
+                  <TableHead>Book Title</TableHead>
+                  <TableHead>Borrower</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Issue Date</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead className="w-8" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...Array(6)].map((_, index) => (
+                  <TableRow key={index} className="hover:bg-transparent">
+                    <TableCell>
+                      <div className="h-4 w-3 bg-slate-200 dark:bg-slate-800 rounded" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 w-4 bg-slate-200 dark:bg-slate-800 rounded" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 w-44 bg-slate-200 dark:bg-slate-800 rounded" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-5 w-16 bg-slate-100 dark:bg-slate-800 rounded-full" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-5 w-20 bg-slate-100 dark:bg-slate-800 rounded-full" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 w-20 bg-slate-200 dark:bg-slate-800 rounded tabular-nums" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 w-20 bg-slate-200 dark:bg-slate-800 rounded tabular-nums" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 w-4 bg-slate-200 dark:bg-slate-800 rounded" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* Footer Pagination Strip Skeleton */}
+        <div className="flex items-center justify-between px-8">
+          <div className="h-4 w-40 bg-slate-200 dark:bg-slate-800 rounded hidden lg:block" />
+          <div className="flex items-center gap-6 ml-auto lg:ml-0">
+            <div className="h-8 w-32 bg-slate-200 dark:bg-slate-800 rounded hidden lg:block" />
+            <div className="h-4 w-20 bg-slate-200 dark:bg-slate-800 rounded" />
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 bg-slate-200 dark:bg-slate-800 rounded" />
+              <div className="h-8 w-8 bg-slate-200 dark:bg-slate-800 rounded" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Tabs
@@ -482,7 +574,6 @@ export function DataTable({
         </div>
       </div>
 
-      {/* Lifted content grid to reside in a single container updated by filters */}
       <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6 mt-4">
         <div className="overflow-hidden rounded-lg border">
           <DndContext

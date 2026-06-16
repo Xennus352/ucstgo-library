@@ -26,6 +26,10 @@ export async function GET() {
       faculty: true,
       phone: true,
       createdAt: true,
+      image: true,
+      emailVerified: true,
+      updatedAt: true,
+      banned: true,
     },
   });
 

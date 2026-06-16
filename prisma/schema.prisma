@@ -122,8 +122,8 @@ model Book {
   categoryId String
   authorId   String
 
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  author   Author   @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  author   Author   @relation(fields: [authorId], references: [id], onDelete: Restrict)
 
   copies       BookCopy[]
   ebook        Ebook?
@@ -139,9 +139,8 @@ model Book {
 }
 
 model Category {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
+  id   String @id @default(uuid())
+  name String @unique
 
   books Book[]
 
@@ -166,9 +165,10 @@ model BookCopy {
   barcode       String     @unique
   shelfLocation String?
   status        CopyStatus @default(AVAILABLE)
+  createdAt     DateTime   @default(now())
 
-  bookId String
   book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  bookId String
 
   borrowRecords BorrowRecord[]
 
@@ -194,8 +194,8 @@ model BorrowRecord {
   userId String
   copyId String
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  bookCopy BookCopy @relation(fields: [copyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  copy BookCopy @relation(fields: [copyId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([copyId])

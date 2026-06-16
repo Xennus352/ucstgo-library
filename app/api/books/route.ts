@@ -81,6 +81,244 @@ function generateBarcode(isbn: string, index: number): string {
 }
 
 /* -----------------------------
+   GET books
+----------------------------- */
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+
+    // -----------------------------
+    // 1. Pagination
+    // -----------------------------
+    const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
+    const limit = Math.min(
+      parseInt(searchParams.get("limit") || "20", 10),
+      100,
+    );
+    const skip = (page - 1) * limit;
+
+    // -----------------------------
+    // 2. Search & Filter Parameters
+    // -----------------------------
+    const searchQuery = searchParams.get("q") || "";
+    const categoryId = searchParams.get("categoryId") || "";
+    const status = searchParams.get("status") || "";
+
+    // -----------------------------
+    // 3. Build WHERE clause
+    // -----------------------------
+    const where: any = {};
+
+    // Search filter (title, author name, ISBN)
+    if (searchQuery) {
+      where.OR = [
+        { title: { contains: searchQuery, mode: "insensitive" } },
+        { isbn: { contains: searchQuery, mode: "insensitive" } },
+        {
+          author: {
+            name: { contains: searchQuery, mode: "insensitive" },
+          },
+        },
+      ];
+    }
+
+    // Category filter
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    // Status filter (based on book availability)
+    if (status) {
+      if (status === "available") {
+        // Books with at least one available copy
+        where.copies = {
+          some: {
+            status: "AVAILABLE",
+          },
+        };
+      } else if (status === "borrowed") {
+        // Books with all copies borrowed
+        where.copies = {
+          every: {
+            status: "BORROWED",
+          },
+          some: {
+            status: "BORROWED",
+          },
+        };
+      } else if (status === "reserved") {
+        where.reservations = {
+          some: {
+            status: "ACTIVE",
+          },
+        };
+      }
+    }
+
+    // -----------------------------
+    // 4. Fetch books + total count with filters
+    // -----------------------------
+    const [books, total] = await Promise.all([
+      prisma.book.findMany({
+        where,
+        select: {
+          id: true,
+          isbn: true,
+          title: true,
+          coverImage: true,
+          language: true,
+          publicationYear: true,
+          createdAt: true,
+
+          author: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+
+          copies: {
+            select: {
+              id: true,
+              barcode: true,
+              shelfLocation: true,
+              status: true,
+            },
+          },
+
+          ebook: {
+            select: {
+              id: true,
+              format: true,
+            },
+          },
+
+          _count: {
+            select: {
+              copies: true,
+              reservations: true,
+            },
+          },
+        },
+
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        skip,
+        take: limit,
+      }),
+
+      prisma.book.count({ where }),
+    ]);
+
+    // -----------------------------
+    // 5. Fetch BookCopy status stats for filtered books
+    // -----------------------------
+    const bookIds = books.map((book) => book.id);
+
+    const copyStats = await prisma.bookCopy.groupBy({
+      by: ["bookId", "status"],
+      where: {
+        bookId: {
+          in: bookIds,
+        },
+      },
+      _count: {
+        status: true,
+      },
+    });
+
+    // -----------------------------
+    // 6. Build availability map
+    // -----------------------------
+    const availabilityMap = new Map<string, any>();
+
+    for (const item of copyStats) {
+      if (!availabilityMap.has(item.bookId)) {
+        availabilityMap.set(item.bookId, {
+          AVAILABLE: 0,
+          BORROWED: 0,
+          LOST: 0,
+          DAMAGED: 0,
+        });
+      }
+
+      availabilityMap.get(item.bookId)[item.status] = item._count.status;
+    }
+
+    // -----------------------------
+    // 7. Attach availability to books
+    // -----------------------------
+    const enrichedBooks = books.map((book) => {
+      const stats = availabilityMap.get(book.id) || {
+        AVAILABLE: 0,
+        BORROWED: 0,
+        LOST: 0,
+        DAMAGED: 0,
+      };
+
+      const available = stats.AVAILABLE;
+      const borrowed = stats.BORROWED;
+      const total = book._count.copies;
+
+      return {
+        ...book,
+        status:
+          available > 0
+            ? "available"
+            : borrowed > 0
+              ? "borrowed"
+              : "unavailable",
+        availability: {
+          available,
+          borrowed,
+          total,
+          isAvailable: available > 0,
+        },
+      };
+    });
+
+    // -----------------------------
+    // 8. Response
+    // -----------------------------
+    return NextResponse.json(
+      {
+        success: true,
+        data: enrichedBooks,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: page * limit < total,
+          hasPreviousPage: page > 1,
+        },
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("API Error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to fetch books",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+/* -----------------------------
    POST /api/books
 ----------------------------- */
 

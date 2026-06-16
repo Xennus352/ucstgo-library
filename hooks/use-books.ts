@@ -1,7 +1,6 @@
+import { fetcher } from "@/lib/fetcher";
 import useSWR from "swr";
 
-const fetcher = (url: string) =>
-  fetch(url).then((res) => res.json());
 
 export function useBooks(query: string) {
   return useSWR(

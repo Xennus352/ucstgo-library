@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { NavDocuments } from "@/components/nav-documents";
+
 import { NavMain } from "@/components/nav-main";
-import { NavSecondary } from "@/components/nav-secondary";
+
 import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
@@ -16,11 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboardIcon,
-  Settings2Icon,
-  CircleHelpIcon,
-  SearchIcon,
   DatabaseIcon,
-  FileChartColumnIcon,
   BookSearch,
   GraduationCapIcon,
   ShieldCheckIcon,
@@ -34,7 +30,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, isLoading, error } = useCurrentUser();
   const pathname = usePathname();
 
-  // Define navigation data (static, doesn't depend on user)
+  // Define navigation data
   const navData = {
     navMain: [
       {
@@ -59,11 +55,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       },
       {
         title: "Library Management",
-        url: "#", // Parent doesn't need a direct URL if it's a folder
+        url: "#",
         icon: <BookOpenIcon />,
         items: [
-          { title: "Books", url: "/admin/books" },
-          { title: "Physical Inventory", url: "/admin/inventory" },
+          { title: "Books Inventory", url: "/admin/books" },
+
           { title: "Borrowing", url: "/admin/borrowing" },
           { title: "Reservations", url: "/admin/reservations" },
         ],
@@ -72,53 +68,47 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Digital Library",
         url: "#",
         icon: <DatabaseIcon />,
-        items: [
-          { title: "Ebooks", url: "/admin/ebooks" },
-          { title: "Reading Analytics", url: "/admin/analytics" },
-        ],
+        items: [{ title: "Ebooks", url: "/admin/ebooks" }],
       },
     ],
-    navSecondary: [
-      {
-        title: "System Settings",
-        url: "#",
-        icon: <Settings2Icon />,
-      },
-      {
-        title: "Get Help",
-        url: "#",
-        icon: <CircleHelpIcon />,
-      },
-      {
-        title: "Global Search",
-        url: "#",
-        icon: <SearchIcon />,
-      },
-    ],
-    // documents: [
-    //   {
-    //     name: "Data Library",
-    //     url: "#",
-    //     icon: <DatabaseIcon />,
-    //   },
-    //   {
-    //     name: "System Reports",
-    //     url: "#",
-    //     icon: <FileChartColumnIcon />,
-    //   },
-    // ],
   };
 
-  // Create user data (fallback for loading/error states)
-  const userData = {
-    name: isLoading ? "Loading..." : error ? "Error" : user?.name || "Guest",
-    email: isLoading
-      ? "Please wait..."
-      : error
-        ? "Failed to load"
-        : user?.email || "Not logged in",
-    avatar: "/avatars/admin.jpg",
-  };
+  // Create user data
+  const userData = user
+    ? {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+
+        image: user.image ?? "/images/avatar.png",
+
+        role: user.role,
+        studentId: user.studentId ?? "N/A",
+        faculty: user.faculty ?? "N/A",
+        phone: user.phone ?? "N/A",
+
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        emailVerified: user.emailVerified,
+        banned: user.banned,
+      }
+    : {
+        id: "",
+        name: isLoading ? "Loading..." : "Error loading user",
+        email: isLoading ? "Please wait..." : "Failed to load details",
+
+        image: "/images/avatar.png",
+
+        role: "PENDING",
+        studentId: "N/A",
+        faculty: "N/A",
+        phone: "N/A",
+
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        emailVerified: null,
+        banned: false,
+      };
 
   const activeStyles =
     "bg-white/60 dark:bg-slate-900/40 backdrop-blur-md border border-white/50 text-blue-700 dark:text-blue-300 font-medium shadow-sm rounded-lg";
@@ -126,25 +116,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     "hover:bg-white/30 hover:text-blue-800 transition-all duration-200";
 
   const mainItemsWithActive = navData.navMain.map((item) => {
-    const isCurrent = pathname === item.url;
-    return {
-      ...item,
-      isActive: isCurrent,
-      className: isCurrent ? activeStyles : hoverStyles,
-    };
-  });
-
-  // TODO:Delete later
-  // const documentItemsWithActive = navData.documents.map((item) => {
-  //   const isCurrent = pathname === item.url;
-  //   return {
-  //     ...item,
-  //     isActive: isCurrent,
-  //     className: isCurrent ? activeStyles : hoverStyles,
-  //   };
-  // });
-
-  const secondaryItemsWithActive = navData.navSecondary.map((item) => {
     const isCurrent = pathname === item.url;
     return {
       ...item,
@@ -172,9 +143,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={mainItemsWithActive} />
-        {/* //TODO:Delete later */}
-        {/* <NavDocuments items={documentItemsWithActive} /> */}
-        {/* <NavSecondary items={secondaryItemsWithActive} className="mt-auto" /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />
