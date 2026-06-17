@@ -1,17 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, Filter, Package, TrendingUp, Users } from "lucide-react";
+import { BookOpen, Filter, Package, Users } from "lucide-react";
 import { getLibraryStats } from "@/app/actions/bookStatus";
-
 
 type StatItem = {
   label: string;
   value: string;
   color: string;
   icon: React.ComponentType<any>;
-  trend: string;
-  trendColor: string;
 };
 
 export function BookStats() {
@@ -29,32 +26,19 @@ export function BookStats() {
             value: d.totalBooks,
             color: "blue",
             icon: BookOpen,
-            trend: d.booksThisMonthTrend,
-            trendColor: "emerald",
           },
-          {
-            label: "Active Borrowers",
-            value: d.activeBorrowers,
-            color: "emerald",
-            icon: Users,
-            trend: d.borrowerTrend,
-            trendColor: "emerald",
-          },
+
           {
             label: "Available Copies",
             value: d.availableCopies,
             color: "amber",
             icon: Package,
-            trend: d.currentlyBorrowedTrend,
-            trendColor: "amber",
           },
           {
             label: "Categories",
             value: d.totalCategories,
             color: "purple",
             icon: Filter,
-            trend: d.genreTrend,
-            trendColor: "slate",
           },
         ]);
       }
@@ -79,22 +63,13 @@ export function BookStats() {
     return colors[color as keyof typeof colors] || colors.blue;
   };
 
-  const getTrendColor = (color: string) => {
-    const colors = {
-      emerald: "text-emerald-600",
-      amber: "text-amber-600",
-      slate: "text-slate-600",
-    };
-    return colors[color as keyof typeof colors] || colors.slate;
-  };
-
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className="bg-white dark:bg-slate-900 rounded-xl p-4 animate-pulse h-28 border border-slate-200 dark:border-slate-700"
+            className="bg-white dark:bg-slate-900 rounded-xl p-4 animate-pulse h-24 border border-slate-200 dark:border-slate-700"
           />
         ))}
       </div>
@@ -106,7 +81,6 @@ export function BookStats() {
       {stats.map((stat) => {
         const Icon = stat.icon;
         const colorClasses = getColorClasses(stat.color);
-        const trendColor = getTrendColor(stat.trendColor);
 
         return (
           <div
@@ -117,14 +91,6 @@ export function BookStats() {
               <div>
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
                 <p className="text-2xl font-bold mt-1">{stat.value}</p>
-                <p
-                  className={`text-xs ${trendColor} mt-1 flex items-center gap-1`}
-                >
-                  {stat.trend.includes("+") && (
-                    <TrendingUp className="w-3 h-3" />
-                  )}
-                  {stat.trend}
-                </p>
               </div>
               <div
                 className={`w-12 h-12 ${colorClasses.bg} rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform`}

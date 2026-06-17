@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +13,7 @@ import { BookFormFields } from "../BookFormField";
 
 export default function CreateBookForm() {
   const router = useRouter();
+  const routePath = usePathname()
   const [pending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
 
@@ -45,6 +46,9 @@ export default function CreateBookForm() {
       setCoverPreview(null);
     }
   };
+
+  const isLibrarian = routePath.startsWith("/librarian");
+  const basePath = isLibrarian ? "/librarian/books" : "/admin/books";
 
   const handleSubmit = () => {
     if (!form.title || !form.isbn || !form.author || !form.category) {
@@ -82,7 +86,7 @@ export default function CreateBookForm() {
         }
 
         toast.success("Book created successfully");
-        router.push("/admin/books");
+        router.push(basePath);
       } catch (err) {
         toast.error("Something went wrong");
       }
@@ -94,7 +98,7 @@ export default function CreateBookForm() {
       {/* Header */}
       <div className="mb-5">
         <button
-          onClick={() => router.push("/admin/books")}
+          onClick={() => router.push(basePath)}
           className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-3 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />

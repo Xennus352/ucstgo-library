@@ -14,64 +14,32 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import {
-  LayoutDashboardIcon,
-  DatabaseIcon,
-  BookSearch,
-  GraduationCapIcon,
-  ShieldCheckIcon,
-  BookOpenIcon,
-  UserCheckIcon,
-} from "lucide-react";
+import { BookSearch } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { usePathname } from "next/navigation";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+// Match the exact shape of your navData object
+interface NavSubItem {
+  title: string;
+  url: string;
+}
+
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ReactNode;
+  items?: NavSubItem[];
+}
+
+interface DynamicSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  navData: {
+    navMain: NavItem[];
+  };
+}
+
+export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
   const { user, isLoading, error } = useCurrentUser();
   const pathname = usePathname();
-
-  // Define navigation data
-  const navData = {
-    navMain: [
-      {
-        title: "Dashboard",
-        url: "/admin/dashboard",
-        icon: <LayoutDashboardIcon />,
-      },
-      {
-        title: "Student Management",
-        url: "/admin/students",
-        icon: <GraduationCapIcon />,
-      },
-      {
-        title: "Librarian Management",
-        url: "/admin/librarians",
-        icon: <ShieldCheckIcon />,
-      },
-      {
-        title: "Teacher Management",
-        url: "/admin/teachers",
-        icon: <UserCheckIcon />,
-      },
-      {
-        title: "Library Management",
-        url: "#",
-        icon: <BookOpenIcon />,
-        items: [
-          { title: "Books Inventory", url: "/admin/books" },
-
-          { title: "Borrowing", url: "/admin/borrowing" },
-          { title: "Reservations", url: "/admin/reservations" },
-        ],
-      },
-      {
-        title: "Digital Library",
-        url: "#",
-        icon: <DatabaseIcon />,
-        items: [{ title: "Ebooks", url: "/admin/ebooks" }],
-      },
-    ],
-  };
 
   // Create user data
   const userData = user
@@ -79,14 +47,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         id: user.id,
         name: user.name,
         email: user.email,
-
         image: user.image ?? "/images/avatar.png",
-
-        role: user.role,
+        role: user.role, // This correctly maps to the Role enum
         studentId: user.studentId ?? "N/A",
         faculty: user.faculty ?? "N/A",
         phone: user.phone ?? "N/A",
-
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         emailVerified: user.emailVerified,
@@ -96,17 +61,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         id: "",
         name: isLoading ? "Loading..." : "Error loading user",
         email: isLoading ? "Please wait..." : "Failed to load details",
-
         image: "/images/avatar.png",
 
-        role: "PENDING",
+        // FIX 1: Cast the string to the Role enum, or set to your default STUDENT role
+        role: "STUDENT" as const,
+
         studentId: "N/A",
         faculty: "N/A",
         phone: "N/A",
 
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        emailVerified: null,
+        // FIX 2: Pass an actual Date object instead of a string
+        createdAt: new Date(),
+        updatedAt: new Date(),
+
+        // FIX 3: Pass a boolean (false) instead of null
+        emailVerified: false,
         banned: false,
       };
 

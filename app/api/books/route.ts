@@ -83,7 +83,6 @@ function generateBarcode(isbn: string, index: number): string {
 /* -----------------------------
    GET books
 ----------------------------- */
-
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -104,6 +103,7 @@ export async function GET(req: NextRequest) {
     const searchQuery = searchParams.get("q") || "";
     const categoryId = searchParams.get("categoryId") || "";
     const status = searchParams.get("status") || "";
+    const type = searchParams.get("type") || "all";
 
     // -----------------------------
     // 3. Build WHERE clause
@@ -131,14 +131,12 @@ export async function GET(req: NextRequest) {
     // Status filter (based on book availability)
     if (status) {
       if (status === "available") {
-        // Books with at least one available copy
         where.copies = {
           some: {
             status: "AVAILABLE",
           },
         };
       } else if (status === "borrowed") {
-        // Books with all copies borrowed
         where.copies = {
           every: {
             status: "BORROWED",
@@ -153,6 +151,19 @@ export async function GET(req: NextRequest) {
             status: "ACTIVE",
           },
         };
+      }
+    }
+
+    // Format type filtering logic
+    if (type === "ebook") {
+      // Must contain an eBook configuration
+      where.ebook = { isNot: null };
+    } else if (type === "physical") {
+      // Must NOT contain an eBook entry
+      where.ebook = null;
+      // Must possess physical barcodes
+      if (!where.copies) {
+        where.copies = { some: {} };
       }
     }
 

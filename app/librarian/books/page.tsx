@@ -45,7 +45,7 @@ export default function BooksPage() {
 
   // Edit Handler
   const handleEdit = (id: string) => {
-    window.location.href = `/admin/books/edit/${id}`;
+    window.location.href = `/librarian/books/edit/${id}`;
   };
 
   const books = data?.data || [];
@@ -72,7 +72,7 @@ export default function BooksPage() {
                 <FileUp className="w-4 h-4 mr-2" /> Bulk Import
               </Button>
 
-              <Link href="/admin/books/create">
+              <Link href="/librarian/books/create">
                 <Button className="hover:cursor-pointer">
                   <Plus className="w-4 h-4 mr-2" /> Create New Book
                 </Button>

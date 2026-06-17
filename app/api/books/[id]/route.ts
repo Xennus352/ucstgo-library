@@ -14,33 +14,96 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  // Await the params to resolve them
-  const { id } = await params;
+  try {
+    const { id } = await params;
 
-  const book = await prisma.book.findUnique({
-    where: { id },
-    include: {
-      author: true,
-      category: true,
-
-      copies: {
-        select: {
-          id: true,
-          barcode: true,
-          shelfLocation: true,
-          status: true,
+    const book = await prisma.book.findUnique({
+      where: { id },
+      include: {
+        author: true,
+        category: true,
+        copies: {
+          select: {
+            id: true,
+            barcode: true,
+            shelfLocation: true,
+            status: true,
+          },
+        },
+        ebook: {
+          select: {
+            id: true,
+            format: true,
+          },
+        },
+        _count: {
+          select: {
+            copies: true,
+            reservations: true,
+          },
         },
       },
+    });
 
-      _count: {
-        select: {
-          copies: true,
+    if (!book) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Book not found",
         },
-      },
-    },
-  });
+        { status: 404 },
+      );
+    }
 
-  return NextResponse.json(book);
+    // -----------------------------
+    // availability calculation (same logic style as list API)
+    // -----------------------------
+    const stats = {
+      AVAILABLE: 0,
+      BORROWED: 0,
+      LOST: 0,
+      DAMAGED: 0,
+    };
+
+    for (const copy of book.copies) {
+      stats[copy.status] = (stats[copy.status] || 0) + 1;
+    }
+
+    const available = stats.AVAILABLE;
+    const borrowed = stats.BORROWED;
+    const total = book._count.copies;
+
+    const enrichedBook = {
+      ...book,
+      status:
+        available > 0 ? "available" : borrowed > 0 ? "borrowed" : "unavailable",
+
+      availability: {
+        available,
+        borrowed,
+        total,
+        isAvailable: available > 0,
+      },
+    };
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: enrichedBook,
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("API Error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to fetch book",
+      },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PATCH(

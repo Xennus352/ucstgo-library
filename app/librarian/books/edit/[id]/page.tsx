@@ -42,7 +42,7 @@ export default async function EditBookPage({
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {/* Back Button - Styled cleanly with Lucide icon */}
             <Link
-              href="/admin/books" 
+              href="/librarian/books" 
               className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-sm transition-colors w-fit"
             >
               <ArrowLeft className="w-4 h-4" />

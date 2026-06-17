@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { BookFormFields } from "./BookFormField";
 
 export function EditBookForm({ initialData }: { initialData: any }) {
   const router = useRouter();
+  const routePath = usePathname();
+
   const [rawCoverFile, setRawCoverFile] = useState<File | null>(null);
   const [isPending, setIsPending] = useState(false);
   // -----------------------------
@@ -28,7 +30,8 @@ export function EditBookForm({ initialData }: { initialData: any }) {
 
   const [copies, setCopies] = useState<number>(0);
   const [shelfLocation, setShelfLocation] = useState<string>("");
-
+  const isLibrarian = routePath.startsWith("/librarian");
+  const basePath = isLibrarian ? "/librarian/books" : "/admin/books";
   // -----------------------------
   // SYNC INITIAL DATA (IMPORTANT FIX)
   // -----------------------------
@@ -97,7 +100,7 @@ export function EditBookForm({ initialData }: { initialData: any }) {
       });
 
       if (response.ok) {
-        router.push("/admin/books");
+        router.push(basePath);
         router.refresh();
       } else {
         console.error("Update failed");
