@@ -290,7 +290,7 @@ export const BookCard: React.FC<BookCardProps> = ({
         </span>
       </div>
 
-      {/* Sliding Data Panel (Replaces old static titles) */}
+      {/* Sliding Data Panel  */}
       <div
         className="absolute bottom-0 left-0 right-0 mx-auto w-[90%]
              bg-white/70

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Library UCSTGO",
+  title: "UCSTGO Digital Library",
   description: "E-book and online library of COMPUTER UNIVERSITY(TAUNGOO)",
 };
 

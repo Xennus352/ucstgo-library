@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, unlink } from "fs/promises";
 import { join } from "path";
 import prisma from "@/lib/prisma";
+
 import {
   ensureUploadDir,
   generateBarcode,
@@ -9,7 +10,11 @@ import {
   getOrCreateCategory,
   getUploadPath,
 } from "@/lib/upload";
+import { Semester } from "@/app/generated/prisma/enums";
 
+/* -----------------------------
+   GET /api/books/[id]
+----------------------------- */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -34,6 +39,8 @@ export async function GET(
           select: {
             id: true,
             format: true,
+            filePath: true,
+            semester: true, // Added back to individual fetch payload
           },
         },
         _count: {
@@ -47,17 +54,12 @@ export async function GET(
 
     if (!book) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Book not found",
-        },
+        { success: false, error: "Book not found" },
         { status: 404 },
       );
     }
 
-    // -----------------------------
-    // availability calculation (same logic style as list API)
-    // -----------------------------
+    // availability calculation
     const stats = {
       AVAILABLE: 0,
       BORROWED: 0,
@@ -77,7 +79,6 @@ export async function GET(
       ...book,
       status:
         available > 0 ? "available" : borrowed > 0 ? "borrowed" : "unavailable",
-
       availability: {
         available,
         borrowed,
@@ -87,25 +88,21 @@ export async function GET(
     };
 
     return NextResponse.json(
-      {
-        success: true,
-        data: enrichedBook,
-      },
+      { success: true, data: enrichedBook },
       { status: 200 },
     );
   } catch (error) {
     console.error("API Error:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch book",
-      },
+      { success: false, error: "Failed to fetch book" },
       { status: 500 },
     );
   }
 }
 
+/* -----------------------------
+   PATCH /api/books/[id]
+----------------------------- */
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
@@ -114,9 +111,7 @@ export async function PATCH(
     const { id } = await context.params;
     const formData = await req.formData();
 
-    // -----------------------------
     // 1. SAFE extraction
-    // -----------------------------
     const title = String(formData.get("title") || "");
     const isbn = String(formData.get("isbn") || "");
     const authorName = String(formData.get("author") || "");
@@ -124,8 +119,13 @@ export async function PATCH(
     const description = String(formData.get("description") || "");
     const publisher = String(formData.get("publisher") || "");
     const language = String(formData.get("language") || "");
-
     const shelfLocation = String(formData.get("shelfLocation") || "");
+
+    const donate =
+      formData.get("donate") !== null ? String(formData.get("donate")) : null; 
+    const semester = formData.get("semester")
+      ? (formData.get("semester") as Semester)
+      : null; 
 
     const publicationYearRaw = formData.get("publicationYear");
     const publicationYear =
@@ -134,36 +134,31 @@ export async function PATCH(
         : null;
 
     const desiredCopiesRaw = formData.get("copies");
-
     const desiredCopies =
       desiredCopiesRaw && !isNaN(Number(desiredCopiesRaw))
         ? Number(desiredCopiesRaw)
         : 0;
 
     const cover = formData.get("cover") as File | null;
+    const ebookFile = formData.get("ebook") as File | null; // Extracted ebook file element if uploaded
 
-    // -----------------------------
     // 2. Relations
-    // -----------------------------
     const [author, category] = await Promise.all([
       getOrCreateAuthor(authorName),
       getOrCreateCategory(categoryName),
     ]);
 
-    // -----------------------------
     // 3. Existing book check
-    // -----------------------------
     const existingBook = await prisma.book.findUnique({
       where: { id },
+      include: { ebook: true },
     });
 
     if (!existingBook) {
       return NextResponse.json({ error: "Book not found" }, { status: 404 });
     }
 
-    // -----------------------------
     // 4. Cover upload
-    // -----------------------------
     let coverImage = existingBook.coverImage;
 
     if (cover && cover.size > 0) {
@@ -183,9 +178,30 @@ export async function PATCH(
       }
     }
 
-    // -----------------------------
-    // 5. Update BOOK
-    // -----------------------------
+    // 5. E-book Upload & Database Record Mutation
+    let ebookDbPath: string | null = existingBook.ebook?.filePath || null;
+
+    if (ebookFile && ebookFile.size > 0) {
+      await ensureUploadDir("ebooks");
+      const ebookUpload = getUploadPath("ebooks");
+
+      const ebookBuffer = Buffer.from(await ebookFile.arrayBuffer());
+      const ebookFileName = `${Date.now()}-${ebookFile.name.replace(/\s+/g, "-")}`;
+
+      await writeFile(join(ebookUpload.dir, ebookFileName), ebookBuffer);
+      ebookDbPath = `${ebookUpload.publicPath}/${ebookFileName}`;
+
+      // Delete former physical book PDF file if replacing it
+      if (existingBook.ebook?.filePath) {
+        try {
+          await unlink(
+            join(process.cwd(), "public", existingBook.ebook.filePath),
+          );
+        } catch {}
+      }
+    }
+
+    // 6. Update BOOK + Upsert/Update Connected E-book Sub-relation data
     const updatedBook = await prisma.book.update({
       where: { id },
       data: {
@@ -198,65 +214,60 @@ export async function PATCH(
         publicationYear,
         language,
         coverImage,
+        donate, 
+
+        // Dynamic nested relation write to sync E-book adjustments seamlessly
+        ebook: ebookDbPath
+          ? {
+              upsert: {
+                create: { filePath: ebookDbPath, format: "PDF", semester },
+                update: { filePath: ebookDbPath, semester },
+              },
+            }
+          : semester // If no new file was uploaded, but the target curriculum semester changed
+            ? {
+                update: { semester },
+              }
+            : undefined,
       },
       include: {
         author: true,
         category: true,
+        ebook: true,
       },
     });
 
-    // -----------------------------
-    // 6. Sync BookCopy table
-    // -----------------------------
-
+    // 7. Sync BookCopy table
     const currentCopiesCount = await prisma.bookCopy.count({
-      where: {
-        bookId: id,
-      },
+      where: { bookId: id },
     });
 
     const diff = desiredCopies - currentCopiesCount;
 
-    // Update shelf location for all copies
     if (shelfLocation) {
       await prisma.bookCopy.updateMany({
-        where: {
-          bookId: id,
-        },
-        data: {
-          shelfLocation,
-        },
+        where: { bookId: id },
+        data: { shelfLocation },
       });
     }
 
-    // -----------------------------
     // Add copies
-    // -----------------------------
     if (diff > 0) {
       const newCopies = Array.from({ length: diff }).map((_, index) => ({
         bookId: id,
-        barcode: generateBarcode(isbn, currentCopiesCount + index + 1),
+        barcode: generateBarcode(isbn, currentCopiesCount + index),
         status: "AVAILABLE" as const,
         shelfLocation: shelfLocation || "Unassigned",
       }));
 
-      await prisma.bookCopy.createMany({
-        data: newCopies,
-      });
+      await prisma.bookCopy.createMany({ data: newCopies });
     }
 
-    // -----------------------------
     // Remove copies
-    // -----------------------------
     if (diff < 0) {
       const copiesToDelete = await prisma.bookCopy.findMany({
-        where: {
-          bookId: id,
-          status: "AVAILABLE",
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
+        where: { bookId: id, status: "AVAILABLE" },
+        orderBy: { createdAt: "desc" },
         take: Math.abs(diff),
       });
 
@@ -271,21 +282,11 @@ export async function PATCH(
       }
 
       await prisma.bookCopy.deleteMany({
-        where: {
-          id: {
-            in: copiesToDelete.map((copy) => copy.id),
-          },
-        },
+        where: { id: { in: copiesToDelete.map((copy) => copy.id) } },
       });
     }
 
-    // -----------------------------
-    // 8. Response
-    // -----------------------------
-    return NextResponse.json({
-      success: true,
-      data: updatedBook,
-    });
+    return NextResponse.json({ success: true, data: updatedBook });
   } catch (error) {
     console.error("PATCH Error:", error);
     return NextResponse.json(

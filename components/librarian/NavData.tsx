@@ -35,11 +35,5 @@ export const navData = {
         { title: "Reservations", url: "/librarian/reservations" },
       ],
     },
-    {
-      title: "Digital Library",
-      url: "#",
-      icon: <DatabaseIcon />,
-      items: [{ title: "Ebooks", url: "/librarian/ebooks" }],
-    },
   ],
 };

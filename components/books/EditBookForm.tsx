@@ -11,8 +11,9 @@ export function EditBookForm({ initialData }: { initialData: any }) {
 
   const [rawCoverFile, setRawCoverFile] = useState<File | null>(null);
   const [isPending, setIsPending] = useState(false);
+  
   // -----------------------------
-  // FORM STATE
+  // FORM STATE (Added donate field)
   // -----------------------------
   const [form, setForm] = useState({
     title: "",
@@ -23,17 +24,20 @@ export function EditBookForm({ initialData }: { initialData: any }) {
     description: "",
     publicationYear: "",
     language: "",
+    donate: "", // Added here
   });
 
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [ebook, setEbook] = useState<File | null>(null);
+  const [semester, setSemester] = useState<string>(""); // Added state for semester track
 
   const [copies, setCopies] = useState<number>(0);
   const [shelfLocation, setShelfLocation] = useState<string>("");
   const isLibrarian = routePath.startsWith("/librarian");
   const basePath = isLibrarian ? "/librarian/books" : "/admin/books";
+
   // -----------------------------
-  // SYNC INITIAL DATA (IMPORTANT FIX)
+  // SYNC INITIAL DATA
   // -----------------------------
   useEffect(() => {
     if (!initialData) return;
@@ -47,9 +51,19 @@ export function EditBookForm({ initialData }: { initialData: any }) {
       description: initialData.description ?? "",
       publicationYear: initialData.publicationYear?.toString() ?? "",
       language: initialData.language ?? "",
+      donate: initialData.donate ?? "", // Hydrate donation record data
     });
 
     setCoverPreview(initialData.coverImage ?? null);
+    
+    // Check if an ebook record exists in your initialData relation model
+    if (initialData.ebook) {
+      setSemester(initialData.ebook.semester ?? "");
+      // To satisfy frontend conditional visibility if a record is present:
+      if (initialData.ebook.filePath) {
+        setEbook(new File([], initialData.ebook.filePath.split("/").pop() || "ebook.pdf"));
+      }
+    }
 
     setCopies(initialData._count?.copies ?? initialData.copies?.length ?? 0);
 
@@ -94,6 +108,16 @@ export function EditBookForm({ initialData }: { initialData: any }) {
         formData.append("cover", rawCoverFile);
       }
 
+      // Append new ebook file adjustments if provided during editing
+      if (ebook && ebook.size > 0) {
+        formData.append("ebook", ebook);
+      }
+
+      // Always pass the current semester assignment back along with the form
+      if (semester) {
+        formData.append("semester", semester);
+      }
+
       const response = await fetch(`/api/books/${initialData.id}`, {
         method: "PATCH",
         body: formData,
@@ -121,6 +145,8 @@ export function EditBookForm({ initialData }: { initialData: any }) {
         handleCoverChange={handleCoverChange}
         ebook={ebook}
         setEbook={setEbook}
+        semester={semester}
+        setSemester={setSemester}
         copies={copies}
         setCopies={setCopies}
         shelfLocation={shelfLocation}

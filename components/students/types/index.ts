@@ -38,6 +38,7 @@ export interface Ebook {
   id: string;
   filePath: string;
   fileSize: number | null;
+  semester: string | null;
   format: EbookFormat;
   accessType: EbookAccessType;
   bookId: string;
@@ -153,6 +154,7 @@ export interface Verification {
 export interface BookWithDetails extends Book {
   author: Author;
   category: Category;
+  donate?: string | null;
   ebook?: Ebook;
   copies?: BookCopy[];
   readingProgress?: number;

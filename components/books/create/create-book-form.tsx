@@ -13,7 +13,7 @@ import { BookFormFields } from "../BookFormField";
 
 export default function CreateBookForm() {
   const router = useRouter();
-  const routePath = usePathname()
+  const routePath = usePathname();
   const [pending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
 
@@ -26,11 +26,13 @@ export default function CreateBookForm() {
     description: "",
     publicationYear: "",
     language: "",
+    donate: "", 
   });
 
   const [cover, setCover] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [ebook, setEbook] = useState<File | null>(null);
+  const [semester, setSemester] = useState(""); 
   const [copies, setCopies] = useState(1);
   const [shelfLocation, setShelfLocation] = useState("");
 
@@ -69,6 +71,7 @@ export default function CreateBookForm() {
     fd.append("copies", String(copies));
     fd.append("cover", cover);
     if (ebook) fd.append("ebook", ebook);
+    if (semester && ebook) fd.append("semester", semester); 
     if (shelfLocation) fd.append("shelfLocation", shelfLocation);
 
     startTransition(async () => {
@@ -150,6 +153,8 @@ export default function CreateBookForm() {
               handleCoverChange={handleCoverChange}
               ebook={ebook}
               setEbook={setEbook}
+              semester={semester}
+              setSemester={setSemester}
               copies={copies}
               setCopies={setCopies}
               shelfLocation={shelfLocation}
@@ -166,6 +171,8 @@ export default function CreateBookForm() {
               copies={copies}
               coverUrl={coverPreview}
               hasEbook={!!ebook}
+              semester={semester}
+              donate={form.donate}
               shelfLocation={shelfLocation}
               onRemoveCover={() => handleCoverChange(null)}
             />
@@ -183,6 +190,8 @@ export default function CreateBookForm() {
             handleCoverChange={handleCoverChange}
             ebook={ebook}
             setEbook={setEbook}
+            semester={semester}
+            setSemester={setSemester}
             copies={copies}
             setCopies={setCopies}
             shelfLocation={shelfLocation}
@@ -200,6 +209,8 @@ export default function CreateBookForm() {
             copies={copies}
             coverUrl={coverPreview}
             hasEbook={!!ebook}
+            semester={semester}
+            donate={form.donate}
             shelfLocation={shelfLocation}
             onRemoveCover={() => handleCoverChange(null)}
           />
@@ -210,7 +221,7 @@ export default function CreateBookForm() {
       <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
         <Button
           variant="outline"
-          onClick={() => router.push("/admin/books")}
+          onClick={() => router.push(basePath)}
           className="px-5 h-9 text-sm"
         >
           Cancel

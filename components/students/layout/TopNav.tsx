@@ -2,9 +2,9 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Settings, Search } from "lucide-react";
+
 import { SearchBar } from "../ui/SearchBar";
-import { IconButton } from "../ui/IconButton";
+
 import { TabConfig, TabId } from "../types";
 import Image from "next/image";
 
@@ -22,7 +22,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   activeTab,
   onTabChange,
   onSearch,
-  brandName = "UCSTGO Library",
+  brandName = "UCSTGO Digital Library",
   searchValue = "",
 }) => {
   return (
@@ -60,7 +60,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
-            
+
             return (
               <button
                 key={tab.id}
@@ -79,7 +79,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                     transition={{
                       type: "spring",
                       stiffness: 380,
-                      damping: 30
+                      damping: 30,
                     }}
                   />
                 )}
@@ -101,11 +101,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           className="sm:flex"
         />
 
-        {/* MOBILE ACTIONS */}
-        {/* <div className="flex md:hidden items-center gap-2">
-          <IconButton icon={Search} aria-label="Search" />
-          <IconButton icon={Settings} aria-label="Settings" />
-        </div> */}
+      
       </div>
     </motion.header>
   );

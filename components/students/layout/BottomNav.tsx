@@ -1,8 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { NavProps } from "@/app/student/dashboard/page";
+import { motion } from "framer-motion";
+import { TabId } from "../types";
+
+type NavItem = {
+  id: TabId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+type NavProps = {
+  tabs: NavItem[];
+  activeTab: TabId;
+  onTabChange: (id: TabId) => void;
+};
 
 // Custom hook to ensure component unmounts entirely on desktop viewports
 function useIsMobile() {

@@ -13,8 +13,10 @@ import {
   X,
   MapPin,
   CheckCircle,
+  GraduationCap,
 } from "lucide-react";
 
+// 1. Updated Interface Definition to align with main page states
 interface BookFormFieldsProps {
   form: {
     title: string;
@@ -25,6 +27,7 @@ interface BookFormFieldsProps {
     description: string;
     publicationYear: string;
     language: string;
+    donate: string; // Added here
   };
   setForm: React.Dispatch<
     React.SetStateAction<{
@@ -36,12 +39,15 @@ interface BookFormFieldsProps {
       description: string;
       publicationYear: string;
       language: string;
+      donate: string; // Added here
     }>
   >;
   coverPreview: string | null;
   handleCoverChange: (file: File | null) => void;
   ebook: File | null;
   setEbook: React.Dispatch<React.SetStateAction<File | null>>;
+  semester: string; 
+  setSemester: React.Dispatch<React.SetStateAction<string>>; 
   copies: number;
   setCopies: React.Dispatch<React.SetStateAction<number>>;
   shelfLocation?: string;
@@ -55,11 +61,25 @@ export function BookFormFields({
   handleCoverChange,
   ebook,
   setEbook,
+  semester, 
+  setSemester, 
   copies,
   setCopies,
   shelfLocation = "",
   setShelfLocation,
 }: BookFormFieldsProps) {
+  // Available semesters mapping to your database Schema Enum definitions
+  const semesterOptions = [
+    { value: "Y1_SEM1", label: "Year 1 - Semester 1" },
+    { value: "Y1_SEM2", label: "Year 1 - Semester 2" },
+    { value: "Y2_SEM1", label: "Year 2 - Semester 1" },
+    { value: "Y2_SEM2", label: "Year 2 - Semester 2" },
+    { value: "Y3_SEM1", label: "Year 3 - Semester 1" },
+    { value: "Y3_SEM2", label: "Year 3 - Semester 2" },
+    { value: "Y4_SEM1", label: "Year 4 - Semester 1" },
+    { value: "Y4_SEM2", label: "Year 4 - Semester 2" },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Basic Information - 2 column grid */}
@@ -193,6 +213,19 @@ export function BookFormFields({
               className="h-9 text-sm"
             />
           </div>
+
+          {/* 2. Added Donation Input Field */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Donation Information (Optional)
+            </label>
+            <Input
+              placeholder="e.g., Donated by John Doe"
+              value={form.donate}
+              onChange={(e) => setForm({ ...form, donate: e.target.value })}
+              className="h-9 text-sm"
+            />
+          </div>
         </div>
       </Card>
 
@@ -288,6 +321,7 @@ export function BookFormFields({
                       onClick={(e) => {
                         e.preventDefault();
                         setEbook(null);
+                        setSemester(""); // Clear semester if ebook is removed
                       }}
                       className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                     >
@@ -307,6 +341,28 @@ export function BookFormFields({
                 )}
               </div>
             </label>
+
+            {/* 3. Conditional Semester Selector (Shows up only when Ebook is active) */}
+            {ebook && (
+              <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <GraduationCap className="w-3.5 h-3.5 text-blue-500" />
+                  Target Semester
+                </label>
+                <select
+                  value={semester}
+                  onChange={(e) => setSemester(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:focus-visible:ring-slate-300"
+                >
+                  <option value="">Select a semester...</option>
+                  {semesterOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </Card>

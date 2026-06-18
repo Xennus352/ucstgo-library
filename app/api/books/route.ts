@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import prisma from "@/lib/prisma";
+import { Semester } from "@/app/generated/prisma/enums";
+
 
 /* -----------------------------
    Upload Helpers
@@ -74,9 +76,7 @@ async function getOrCreateCategory(name: string) {
 ----------------------------- */
 
 function generateBarcode(isbn: string, index: number): string {
-  // Clean ISBN (remove hyphens)
   const cleanIsbn = isbn.replace(/-/g, "");
-  // Generate barcode: ISBN-COPYYYY
   return `${cleanIsbn}-${String(index + 1).padStart(4, "0")}`;
 }
 
@@ -87,9 +87,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
 
-    // -----------------------------
     // 1. Pagination
-    // -----------------------------
     const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
     const limit = Math.min(
       parseInt(searchParams.get("limit") || "20", 10),
@@ -97,20 +95,16 @@ export async function GET(req: NextRequest) {
     );
     const skip = (page - 1) * limit;
 
-    // -----------------------------
     // 2. Search & Filter Parameters
-    // -----------------------------
     const searchQuery = searchParams.get("q") || "";
     const categoryId = searchParams.get("categoryId") || "";
     const status = searchParams.get("status") || "";
     const type = searchParams.get("type") || "all";
+    const semesterFilter = searchParams.get("semester") || ""; // Added filtering handle for semester queries
 
-    // -----------------------------
     // 3. Build WHERE clause
-    // -----------------------------
     const where: any = {};
 
-    // Search filter (title, author name, ISBN)
     if (searchQuery) {
       where.OR = [
         { title: { contains: searchQuery, mode: "insensitive" } },
@@ -123,53 +117,36 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // Category filter
     if (categoryId) {
       where.categoryId = categoryId;
     }
 
-    // Status filter (based on book availability)
     if (status) {
       if (status === "available") {
-        where.copies = {
-          some: {
-            status: "AVAILABLE",
-          },
-        };
+        where.copies = { some: { status: "AVAILABLE" } };
       } else if (status === "borrowed") {
         where.copies = {
-          every: {
-            status: "BORROWED",
-          },
-          some: {
-            status: "BORROWED",
-          },
+          every: { status: "BORROWED" },
+          some: { status: "BORROWED" },
         };
       } else if (status === "reserved") {
-        where.reservations = {
-          some: {
-            status: "ACTIVE",
-          },
-        };
+        where.reservations = { some: { status: "ACTIVE" } };
       }
     }
 
-    // Format type filtering logic
     if (type === "ebook") {
-      // Must contain an eBook configuration
       where.ebook = { isNot: null };
+      if (semesterFilter) {
+        where.ebook = { semester: semesterFilter as Semester };
+      }
     } else if (type === "physical") {
-      // Must NOT contain an eBook entry
       where.ebook = null;
-      // Must possess physical barcodes
       if (!where.copies) {
         where.copies = { some: {} };
       }
     }
 
-    // -----------------------------
     // 4. Fetch books + total count with filters
-    // -----------------------------
     const [books, total] = await Promise.all([
       prisma.book.findMany({
         where,
@@ -180,22 +157,11 @@ export async function GET(req: NextRequest) {
           coverImage: true,
           language: true,
           publicationYear: true,
+          donate: true, 
           createdAt: true,
 
-          author: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-
-          category: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-
+          author: { select: { id: true, name: true } },
+          category: { select: { id: true, name: true } },
           copies: {
             select: {
               id: true,
@@ -209,48 +175,30 @@ export async function GET(req: NextRequest) {
             select: {
               id: true,
               format: true,
+              filePath: true,
+              semester: true, 
             },
           },
 
-          _count: {
-            select: {
-              copies: true,
-              reservations: true,
-            },
-          },
+          _count: { select: { copies: true, reservations: true } },
         },
-
-        orderBy: {
-          createdAt: "desc",
-        },
-
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
-
       prisma.book.count({ where }),
     ]);
 
-    // -----------------------------
     // 5. Fetch BookCopy status stats for filtered books
-    // -----------------------------
     const bookIds = books.map((book) => book.id);
 
     const copyStats = await prisma.bookCopy.groupBy({
       by: ["bookId", "status"],
-      where: {
-        bookId: {
-          in: bookIds,
-        },
-      },
-      _count: {
-        status: true,
-      },
+      where: { bookId: { in: bookIds } },
+      _count: { status: true },
     });
 
-    // -----------------------------
     // 6. Build availability map
-    // -----------------------------
     const availabilityMap = new Map<string, any>();
 
     for (const item of copyStats) {
@@ -262,13 +210,10 @@ export async function GET(req: NextRequest) {
           DAMAGED: 0,
         });
       }
-
       availabilityMap.get(item.bookId)[item.status] = item._count.status;
     }
 
-    // -----------------------------
     // 7. Attach availability to books
-    // -----------------------------
     const enrichedBooks = books.map((book) => {
       const stats = availabilityMap.get(book.id) || {
         AVAILABLE: 0,
@@ -298,9 +243,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // -----------------------------
     // 8. Response
-    // -----------------------------
     return NextResponse.json(
       {
         success: true,
@@ -318,12 +261,8 @@ export async function GET(req: NextRequest) {
     );
   } catch (error) {
     console.error("API Error:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch books",
-      },
+      { success: false, error: "Failed to fetch books" },
       { status: 500 },
     );
   }
@@ -342,6 +281,8 @@ export async function POST(req: NextRequest) {
     const authorName = formData.get("author") as string;
     const categoryName = formData.get("category") as string;
     const shelfLocation = formData.get("shelfLocation") as string | null;
+    const donate = formData.get("donate") as string | null; 
+    const semester = formData.get("semester") as string | null; 
 
     const cover = formData.get("cover") as File;
     const ebook = formData.get("ebook") as File | null;
@@ -364,7 +305,6 @@ export async function POST(req: NextRequest) {
     /* -----------------------------
        Save Cover
     ----------------------------- */
-
     const coverPath = getUploadPath("covers");
     const coverBuffer = Buffer.from(await cover.arrayBuffer());
 
@@ -372,13 +312,11 @@ export async function POST(req: NextRequest) {
     const coverFullPath = join(coverPath.dir, coverFileName);
 
     await writeFile(coverFullPath, coverBuffer);
-
     const coverDbPath = `${coverPath.publicPath}/${coverFileName}`;
 
     /* -----------------------------
        Save Ebook
     ----------------------------- */
-
     let ebookDbPath: string | null = null;
 
     if (ebook) {
@@ -389,14 +327,12 @@ export async function POST(req: NextRequest) {
       const ebookFullPath = join(ebookPath.dir, ebookFileName);
 
       await writeFile(ebookFullPath, ebookBuffer);
-
       ebookDbPath = `${ebookPath.publicPath}/${ebookFileName}`;
     }
 
     /* -----------------------------
        DATABASE SAFE OPS
     ----------------------------- */
-
     const author = await getOrCreateAuthor(authorName);
     const category = await getOrCreateCategory(categoryName);
 
@@ -404,16 +340,14 @@ export async function POST(req: NextRequest) {
       data: {
         title,
         isbn,
-
+        donate: donate || null, 
         description: (formData.get("description") as string) || null,
         publisher: (formData.get("publisher") as string) || null,
         publicationYear: formData.get("publicationYear")
           ? Number(formData.get("publicationYear"))
           : null,
         language: (formData.get("language") as string) || "English",
-
         coverImage: coverDbPath,
-
         categoryId: category.id,
         authorId: author.id,
       },
@@ -424,8 +358,9 @@ export async function POST(req: NextRequest) {
         data: {
           bookId: book.id,
           filePath: ebookDbPath,
-          format: "PDF", // Default format
-          accessType: "OPEN", // Default access type
+          format: "PDF",
+          accessType: "OPEN",
+          semester: semester ? (semester as Semester) : null, 
         },
       });
     }
@@ -443,7 +378,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: book }, { status: 201 });
   } catch (error) {
     console.error("API Error:", error);
-
     return NextResponse.json(
       { error: "Failed to create book" },
       { status: 500 },

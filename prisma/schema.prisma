@@ -118,6 +118,7 @@ model Book {
   publicationYear Int?
   language        String  @default("English")
   coverImage      String?
+  donate          String?
 
   categoryId String
   authorId   String
@@ -242,6 +243,7 @@ model Ebook {
   fileSize   Int?
   format     EbookFormat     @default(PDF)
   accessType EbookAccessType @default(OPEN)
+  semester   Semester?
 
   bookId String @unique
   book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -253,6 +255,17 @@ model Ebook {
 
   @@index([bookId])
   @@index([format])
+}
+
+enum Semester {
+  Y1_SEM1
+  Y1_SEM2
+  Y2_SEM1
+  Y2_SEM2
+  Y3_SEM1
+  Y3_SEM2
+  Y4_SEM1
+  Y4_SEM2
 }
 
 enum EbookFormat {

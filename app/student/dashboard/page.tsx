@@ -19,8 +19,16 @@ import { ProfileTab } from "@/components/students/tabs/ProfileTab";
 import { TopNav } from "@/components/students/layout/TopNav";
 import BottomNav from "@/components/students/layout/BottomNav";
 
-// Import your infinite fetching custom hook
-import { useBooksInfinite } from "@/hooks/useBooksInfinite"; // Double check your real path here
+import { useBooksInfinite } from "@/hooks/useBooksInfinite";
+import { toast } from "sonner";
+import dynamic from "next/dynamic";
+
+import { PhysicalBookDetailsModal } from "@/components/students/modals/PhysicalBookDetailsModal";
+
+const EbookReaderContainer = dynamic(
+  () => import("@/components/reader/EbookReaderContainer"),
+  { ssr: false },
+);
 
 /* -----------------------------
  SAMPLE DATA
@@ -59,17 +67,24 @@ export default function LibraryApp() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
+  // 1. ADD STATE LAYER FOR MOUNTING THE SPLIT READER VIEW OVERLAY
+  const [activeEbookUrl, setActiveEbookUrl] = useState<string | null>(null);
+
+  // ---  PHYSICAL INVENTORY UI STATE LAYERS ---
+  const [selectedPhysicalBook, setSelectedPhysicalBook] =
+    useState<BookWithDetails | null>(null);
+  const [isPhysicalModalOpen, setIsPhysicalModalOpen] = useState(false);
+  const [isReserving, setIsReserving] = useState(false);
+
   /* -----------------------------
     DYNAMIC HOOK INTEGRATION
   ----------------------------- */
-  // Convert Tab ID layout states directly into API Query parameters
   const apiType = useMemo(() => {
     if (activeTab === "eBooks") return "ebook";
     if (activeTab === "Physical") return "physical";
     return "all";
   }, [activeTab]);
 
-  // Hook handles dynamic target adjustments automatically
   const {
     books: liveBooks,
     isLoading,
@@ -129,7 +144,7 @@ export default function LibraryApp() {
 
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [setSize, hasMore, isLoading, activeTab]); // Reacts appropriately when tabs click over
+  }, [setSize, hasMore, isLoading, activeTab]);
 
   const handleTabChange = useCallback((tabId: TabId) => {
     setActiveTab(tabId);
@@ -139,32 +154,86 @@ export default function LibraryApp() {
     setSearchQuery(query);
   }, []);
 
-  const handleBookClick = useCallback((book: BookWithDetails) => {
-    console.log("Clicked book:", book.title, book.id);
+  // --- ACTION TO SUBMIT PHYSICAL SYSTEM RESERVATION HOLD ---
+  const handleReserveBook = async (bookId: string) => {
+    try {
+      setIsReserving(true);
+      const response = await fetch("/api/reservations/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookId }),
+      });
 
-    const bookData = book as any;
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        throw new Error(
+          json.error || "Could not process reservation hold request.",
+        );
+      }
 
-    // 1. Safely grab the first copy from the copies array
-    const physicalOrEbookCopy = bookData.copies?.[0];
-
-    // 2. Look for the file path property inside that copy object.
-    // Note: Check if the key inside the copy is 'filePath', 'file', or 'url'
-    const rawPath =
-      physicalOrEbookCopy?.filePath ||
-      physicalOrEbookCopy?.file ||
-      physicalOrEbookCopy?.url;
-
-    if (rawPath) {
-      // 3. Strip 'public/' from the start of the path so it works in the browser
-      const webUrl = rawPath.replace(/^public\//, "/");
-      window.open(webUrl, "_blank", "noopener,noreferrer");
-    } else {
-      console.error(
-        "Could not find a valid file path inside book.copies[0]. Check your copy object structure:",
-        physicalOrEbookCopy,
+      toast.success(
+        "Reservation successful! Collect your item from the library desk.",
       );
+      setIsPhysicalModalOpen(false);
+      setSelectedPhysicalBook(null);
+    } catch (err: any) {
+      toast.error(
+        err.message ||
+          "An unexpected error occurred while placing reservation.",
+      );
+    } finally {
+      setIsReserving(false);
     }
-  }, []);
+  };
+
+  //  RECONSTRUCT THE SELECTION TO ROUTE IN-APP VIA REACT STATE
+  const handleBookClick = useCallback(
+    async (book: BookWithDetails) => {
+      console.log("Clicked book:", book.title, book.id);
+
+      const bookData = book as any;
+      const rawPath = bookData.ebook?.filePath;
+
+      // Route Variant A: Digital format match -> launch virtual reading interface canvas
+      if (activeTab === "eBooks" || rawPath) {
+        if (rawPath) {
+          const cleanPath = rawPath.startsWith("http")
+            ? rawPath
+            : rawPath.replace(/^public\//, "/");
+
+          setActiveEbookUrl(cleanPath);
+          return;
+        } else {
+          toast.error(
+            "This book is only available in physical format and does not have a digital e-book version.",
+          );
+          return;
+        }
+      }
+
+      // Route Variant B: Physical book match -> Fetch deep relations asynchronously using your dynamic GET API
+      try {
+        const loadToast = toast.loading("Checking inventory statuses...");
+        const response = await fetch(`/api/books/${book.id}`);
+        const json = await response.json();
+        toast.dismiss(loadToast);
+
+        if (!response.ok || !json.success) {
+          throw new Error(json.error || "Failed to load copy structures.");
+        }
+
+        // Synchronize backend details object with local overlay view layer
+        setSelectedPhysicalBook(json.data);
+        setIsPhysicalModalOpen(true);
+      } catch (err: any) {
+        console.error("Fetch inventory error:", err);
+        toast.error(
+          err.message || "Could not retrieve current book availability.",
+        );
+      }
+    },
+    [activeTab],
+  );
 
   const renderTabContent = useCallback(() => {
     if (isLoading && liveBooks.length === 0) {
@@ -199,7 +268,7 @@ export default function LibraryApp() {
       case "eBooks":
         return (
           <EbooksTab
-            books={filteredBooks} // No more local filtering needed! Managed by your database now.
+            books={filteredBooks}
             onViewChange={setViewMode}
             viewMode={viewMode}
             onBookClick={handleBookClick}
@@ -209,7 +278,7 @@ export default function LibraryApp() {
       case "Physical":
         return (
           <PhysicalTab
-            books={filteredBooks} // Clean, isolated server-side verified copies.
+            books={filteredBooks}
             onViewChange={setViewMode}
             viewMode={viewMode}
             onBookClick={handleBookClick}
@@ -251,7 +320,6 @@ export default function LibraryApp() {
       <main className="w-full px-4 md:px-12 lg:px-16 pt-6 flex-1">
         {renderTabContent()}
 
-        {/* SHOW TRIGGER LOADER ON COMPATIBLE WORKSPACES ACROSS ALL FILTERED TABS */}
         {activeTab !== "Profile" && hasMore && (
           <div
             ref={loadMoreRef}
@@ -291,6 +359,26 @@ export default function LibraryApp() {
           onTabChange={handleTabChange}
         />
       </div>
+
+      {/*  CONDITIONAL IN-APP MODAL RENDER PORTAL LAYOUT */}
+      {activeEbookUrl && (
+        <EbookReaderContainer
+          fileUrl={activeEbookUrl}
+          onClose={() => setActiveEbookUrl(null)} // Unmounting handles cleanup/garbage collection automatically
+        />
+      )}
+
+      {/* CONDITIONAL PHYSICAL COPIES TRACKING AND RESERVATIONS OVERLAY */}
+      <PhysicalBookDetailsModal
+        book={selectedPhysicalBook}
+        isOpen={isPhysicalModalOpen}
+        isReserving={isReserving}
+        onClose={() => {
+          setIsPhysicalModalOpen(false);
+          setSelectedPhysicalBook(null);
+        }}
+        onReserve={handleReserveBook}
+      />
     </div>
   );
 }

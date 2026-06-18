@@ -1,6 +1,15 @@
 "use client";
 
-import { BookOpen, Tag, Layers, X, FileText, MapPin } from "lucide-react";
+import {
+  BookOpen,
+  Tag,
+  Layers,
+  X,
+  FileText,
+  MapPin,
+  GraduationCap,
+  HeartHandshake,
+} from "lucide-react";
 
 interface BookPreviewCardProps {
   title: string;
@@ -12,8 +21,9 @@ interface BookPreviewCardProps {
   copies: number;
   coverUrl: string | null;
   hasEbook: boolean;
+  semester?: string; // Added optional semester string
+  donate?: string; // Added optional donation string
   shelfLocation?: string;
-  // FIX: Make this optional since we might not pass it from the server
   onRemoveCover?: () => void;
 }
 
@@ -27,13 +37,21 @@ export function BookPreviewCard({
   copies,
   coverUrl,
   hasEbook,
+  semester, // Destructured semester
+  donate, // Destructured donate
   shelfLocation,
   onRemoveCover,
 }: BookPreviewCardProps) {
+  // Clean label generator for formatting backend enums (e.g., Y1_SEM1 -> Year 1 - Sem 1)
+  const formatSemesterLabel = (sem?: string) => {
+    if (!sem) return "";
+    return sem.replace("Y", "Year ").replace("_SEM", " - Sem ");
+  };
+
   return (
     <div className="sticky top-6">
       <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
-        {/* Cover Image - Full width at top */}
+        {/* Cover Image */}
         <div className="relative bg-slate-100 dark:bg-slate-800 flex justify-center p-8 border-b border-slate-200 dark:border-slate-700">
           {coverUrl ? (
             <div className="relative group shadow-xl shadow-slate-200 dark:shadow-black/20">
@@ -42,7 +60,6 @@ export function BookPreviewCard({
                 alt="Cover preview"
                 className="w-36 h-52 object-cover rounded-md"
               />
-              {/* FIX: Only render button if onRemoveCover is provided */}
               {onRemoveCover && (
                 <button
                   onClick={onRemoveCover}
@@ -62,7 +79,7 @@ export function BookPreviewCard({
           )}
         </div>
 
-        {/* Book Details - Vertical list */}
+        {/* Book Details */}
         <div className="p-5 space-y-4">
           {/* Title */}
           <div>
@@ -80,6 +97,14 @@ export function BookPreviewCard({
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-snug line-clamp-3">
                 {description}
               </p>
+            </div>
+          )}
+
+          {/* Donation Badge / Info (Rendered conditionally below title/description) */}
+          {donate && (
+            <div className="flex items-center gap-2 bg-pink-50 dark:bg-pink-950/20 text-pink-700 dark:text-pink-400 px-3 py-2 rounded-lg text-xs font-medium border border-pink-100 dark:border-pink-900/30">
+              <HeartHandshake className="w-4 h-4 shrink-0" />
+              <span className="truncate">Donation: {donate}</span>
             </div>
           )}
 
@@ -120,7 +145,7 @@ export function BookPreviewCard({
               <span className="text-slate-500 flex items-center gap-2">
                 <span className="text-xs">✍️</span> Author
               </span>
-              <span className="font-medium text-slate-900 dark:text-slate-200 truncate max-w-[120px]">
+              <span className="font-medium text-slate-900 dark:text-slate-200 truncate max-w-[150px]">
                 {author || "—"}
               </span>
             </div>
@@ -138,10 +163,22 @@ export function BookPreviewCard({
               <span className="text-slate-500 flex items-center gap-2">
                 <Tag className="w-3 h-3" /> Category
               </span>
-              <span className="font-medium text-slate-900 dark:text-slate-200 truncate max-w-[120px]">
+              <span className="font-medium text-slate-900 dark:text-slate-200 truncate max-w-[150px]">
                 {category || "—"}
               </span>
             </div>
+
+            {/* Target Curriculum Semester (Only visible if an E-Book is uploaded with a selected semester) */}
+            {hasEbook && semester && (
+              <div className="flex items-center justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-2">
+                <span className="text-slate-500 flex items-center gap-2">
+                  <GraduationCap className="w-3.5 h-3.5" /> Semester
+                </span>
+                <span className="font-medium text-blue-600 dark:text-blue-400">
+                  {formatSemesterLabel(semester)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Footer */}
