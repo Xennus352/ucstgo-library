@@ -14,12 +14,57 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { BorrowRecord, Reservation } from "../types";
+import { BorrowRecord } from "../types";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { ReservationStatus } from "@/app/generated/prisma/enums";
+
+interface ProfileBorrowRecord extends BorrowRecord {
+  copy: {
+    id: string;
+    barcode: string;
+    shelfLocation: string | null;
+
+    book: {
+      id: string;
+      title: string;
+      isbn: string;
+
+      category: {
+        id: string;
+        name: string;
+      };
+
+      author: {
+        id: string;
+        name: string;
+      };
+    };
+  };
+}
+
+interface ProfileReservation {
+  id: string;
+  reservedAt: Date;
+  status: ReservationStatus;
+
+  book: {
+    id: string;
+    title: string;
+    isbn: string;
+    author: {
+      id: string;
+      name: string;
+    };
+    category: {
+      id: string;
+      name: string;
+    };
+  };
+}
 
 interface ProfileTabProps {
-  borrowRecords?: BorrowRecord[];
-  reservations?: Reservation[];
+  borrowRecords?: ProfileBorrowRecord[];
+  reservations?: ProfileReservation[];
 }
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({
@@ -58,15 +103,31 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   }
 
   // Categorize activity logs
-  const activeBorrows = borrowRecords.filter(
-    (b) => b.status === ("ACTIVE" as any),
-  );
+  const activeBorrows = borrowRecords.filter((b) => b.status === "BORROWED");
+
   const activeReservations = reservations.filter(
-    (r) => r.status === ("ACTIVE" as any),
+    (r) => r.status === ReservationStatus.ACTIVE,
   );
+
   const pastBorrows = borrowRecords.filter(
     (b) => b.status === ("RETURNED" as any),
   );
+
+  // Due date book count
+  const now = new Date();
+
+  const overdueCount = activeBorrows.filter(
+    (b) => b.dueDate && new Date(b.dueDate) < now,
+  ).length;
+
+  const dueSoonCount = activeBorrows.filter((b) => {
+    if (!b.dueDate) return false;
+
+    const due = new Date(b.dueDate);
+    const diffDays = (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
+    return diffDays >= 0 && diffDays <= 3; // next 3 days
+  }).length;
 
   return (
     <div className="w-full mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -112,12 +173,11 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                   </span>
                 )}
               </div>
-
-             
             </div>
 
             {/* Quick Count Numerical Metrics */}
-            <div className="grid grid-cols-3 border-t border-border/50 bg-muted/20 text-center divide-x divide-border/40">
+            <div className="grid grid-cols-4 border-t border-border/50 bg-muted/20 text-center divide-x divide-border/40">
+              {/* Borrowed */}
               <div className="py-3 px-2">
                 <div className="text-lg font-bold text-sky-600">
                   {activeBorrows.length}
@@ -126,6 +186,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                   Borrowed
                 </div>
               </div>
+
+              {/* Reserved */}
               <div className="py-3 px-2">
                 <div className="text-lg font-bold text-emerald-600">
                   {activeReservations.length}
@@ -134,12 +196,24 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                   Reserved
                 </div>
               </div>
+
+              {/* Overdue */}
               <div className="py-3 px-2">
-                <div className="text-lg font-bold text-slate-600">
-                  {borrowRecords.length}
+                <div className="text-lg font-bold text-red-600">
+                  {overdueCount}
                 </div>
                 <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                  Total Logs
+                  Overdue
+                </div>
+              </div>
+
+              {/* Due Soon */}
+              <div className="py-3 px-2">
+                <div className="text-lg font-bold text-amber-600">
+                  {dueSoonCount}
+                </div>
+                <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  Due Soon
                 </div>
               </div>
             </div>
@@ -318,37 +392,89 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                       description="You do not have any items checked out right now."
                     />
                   ) : (
-                    activeBorrows.map((borrow) => (
-                      <div
-                        key={borrow.id}
-                        className="group bg-card border border-border/50 rounded-2xl p-4 flex items-center justify-between shadow-xs transition-all hover:border-sky-400/40"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-600 border border-sky-500/5 group-hover:scale-102 transition-transform">
-                            <BookOpen className="h-4 w-4" />
+                    activeBorrows.map((borrow) => {
+                      const isOverdue =
+                        borrow.dueDate && new Date(borrow.dueDate) < new Date();
+
+                      return (
+                        <div
+                          key={borrow.id}
+                          className={`group bg-card border rounded-2xl p-4 flex items-center justify-between shadow-xs transition-all
+        ${
+          isOverdue
+            ? "border-red-400/60 hover:border-red-500"
+            : "border-border/50 hover:border-sky-400/40"
+        }`}
+                        >
+                          {/* LEFT SIDE */}
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`p-2.5 rounded-xl border transition-transform group-hover:scale-102
+            ${
+              isOverdue
+                ? "bg-red-500/10 text-red-600 border-red-500/10"
+                : "bg-sky-500/10 text-sky-600 border-sky-500/5"
+            }`}
+                            >
+                              <BookOpen className="h-4 w-4" />
+                            </div>
+
+                            <div className="min-w-0">
+                              {/* TITLE */}
+                              <h5 className="text-xs font-bold text-foreground truncate">
+                                {borrow.copy?.book?.title || "Unknown Book"}
+                              </h5>
+
+                              {/* AUTHOR */}
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                by{" "}
+                                {borrow.copy?.book?.author?.name ||
+                                  "Unknown Author"}
+                              </p>
+
+                              {/* DUE DATE */}
+                              <p
+                                className={`text-[11px] mt-0.5 flex items-center gap-1 ${
+                                  isOverdue
+                                    ? "text-red-500 font-semibold"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                <Clock className="h-3 w-3" />
+                                Due:{" "}
+                                {borrow.dueDate
+                                  ? new Date(borrow.dueDate).toLocaleDateString(
+                                      "en-US",
+                                      {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      },
+                                    )
+                                  : "No due date"}
+                              </p>
+
+                              {/* COPY ID */}
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                Copy ID: {borrow.copyId}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <h5 className="text-xs font-bold text-foreground truncate">
-                              Asset Identifier #{borrow.copyId}
-                            </h5>
-                            <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                              <Clock className="h-3 w-3 text-sky-500" /> Due:{" "}
-                              {new Date(borrow.dueDate).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                },
-                              )}
-                            </p>
-                          </div>
+
+                          {/* RIGHT SIDE STATUS */}
+                          <span
+                            className={`text-[10px] font-bold tracking-wide uppercase px-2.5 py-0.5 rounded-full border shrink-0
+          ${
+            isOverdue
+              ? "bg-red-500/10 text-red-600 border-red-500/20"
+              : "bg-sky-500/10 text-sky-600 border-sky-500/10"
+          }`}
+                          >
+                            {isOverdue ? "Overdue" : "Checked Out"}
+                          </span>
                         </div>
-                        <span className="text-[10px] font-bold tracking-wide uppercase px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-600 border border-sky-500/10 shrink-0">
-                          Checked Out
-                        </span>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </>
               )}
@@ -368,19 +494,34 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                         className="group bg-card border border-border/50 rounded-2xl p-4 flex items-center justify-between shadow-xs transition-all hover:border-emerald-400/40"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/5 group-hover:scale-102 transition-transform">
-                            <Clock className="h-4 w-4" />
+                          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/5">
+                            <BookOpen className="h-4 w-4" />
                           </div>
+
                           <div className="min-w-0">
                             <h5 className="text-xs font-bold text-foreground truncate">
-                              Reserved Book Reference
+                              {res.book.title}
                             </h5>
+
                             <p className="text-[11px] text-muted-foreground mt-0.5">
-                              Expires on pickup hold date limits
+                              {res.book.author.name} • {res.book.category?.name}
+                            </p>
+
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              Reserved on{" "}
+                              {new Date(res.reservedAt).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                },
+                              )}
                             </p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold tracking-wide uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/10 shrink-0">
+
+                        <span className="text-[10px] font-bold tracking-wide uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/10">
                           On Hold
                         </span>
                       </div>
@@ -401,24 +542,154 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                     pastBorrows.map((log) => (
                       <div
                         key={log.id}
-                        className="bg-card/70 border border-border/40 rounded-2xl p-4 flex items-center justify-between shadow-xs opacity-85"
+                        className="group relative bg-gradient-to-br from-white to-gray-50/80 dark:from-gray-800/90 dark:to-gray-900/80 border border-gray-200/60 dark:border-gray-700/60 rounded-2xl p-5 hover:shadow-xl hover:border-gray-300/80 dark:hover:border-gray-600/80 transition-all duration-300 hover:-translate-y-0.5 shadow-sm"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2.5 rounded-xl bg-muted text-muted-foreground border border-border/20">
-                            <BookOpen className="h-4 w-4" />
+                        {/* Status Indicator Bar - Left side accent */}
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-emerald-400 to-emerald-600 dark:from-emerald-500 dark:to-emerald-700 rounded-r-full opacity-80 group-hover:opacity-100 transition-opacity" />
+
+                        {/* Card Content */}
+                        <div className="flex items-center justify-between gap-4 pl-3">
+                          {/* Left Section - Book Info */}
+                          <div className="flex items-center gap-4 min-w-0 flex-1">
+                            {/* Book Icon with gradient background */}
+                            <div className="relative flex-shrink-0">
+                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 dark:from-emerald-500/30 dark:to-teal-500/30 flex items-center justify-center border border-emerald-200/40 dark:border-emerald-700/40 group-hover:scale-105 group-hover:border-emerald-300/60 dark:group-hover:border-emerald-600/60 transition-all duration-300 shadow-sm group-hover:shadow-md">
+                                <BookOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                              </div>
+                              {/* Small status dot */}
+                              <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-800 shadow-sm animate-pulse" />
+                            </div>
+
+                            {/* Book Details */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <h5 className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                  {log.copy.book.title}
+                                </h5>
+                                {/* Category Badge */}
+                                {log.copy.book.category && (
+                                  <span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50">
+                                    {log.copy.book.category.name}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                                  <span className="text-gray-400 dark:text-gray-500">
+                                    by
+                                  </span>
+                                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                                    {log.copy.book.author.name}
+                                  </span>
+                                </p>
+                                <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+                                <p className="text-[10px] font-mono text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                                  <span className="text-gray-400 dark:text-gray-500">
+                                    📚
+                                  </span>
+                                  {log.copy.barcode}
+                                </p>
+                              </div>
+
+                              {/* Return Date with icon */}
+                              <div className="flex items-center gap-1.5 mt-1.5">
+                                <svg
+                                  className="w-3 h-3 text-emerald-500 dark:text-emerald-400"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                  Returned on{" "}
+                                  {log.returnDate
+                                    ? new Date(
+                                        log.returnDate,
+                                      ).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      })
+                                    : "Unknown"}
+                                </p>
+                                {/* Duration badge */}
+                                {log.borrowDate && log.returnDate && (
+                                  <span className="text-[9px] text-gray-400 dark:text-gray-500 ml-1 bg-gray-100 dark:bg-gray-700/50 px-1.5 py-0.5 rounded-full">
+                                    {Math.ceil(
+                                      (new Date(log.returnDate).getTime() -
+                                        new Date(log.borrowDate).getTime()) /
+                                        (1000 * 60 * 60 * 24),
+                                    )}{" "}
+                                    days
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <h5 className="text-xs font-bold text-muted-foreground line-through truncate">
-                              Asset Unique #{log.copyId}
-                            </h5>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              Completed circulation process
-                            </p>
+
+                          {/* Right Section - Status & Actions */}
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            {/* Status Badge - Enhanced */}
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-wide px-3 py-1 rounded-full bg-gradient-to-r from-emerald-100 to-emerald-50 dark:from-emerald-900/30 dark:to-emerald-800/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-700/50 shadow-sm">
+                                <svg
+                                  className="w-2.5 h-2.5"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                Returned
+                              </span>
+                              {/* Completion time */}
+                              {log.returnDate && (
+                                <span className="text-[9px] text-gray-400 dark:text-gray-500">
+                                  {new Date(log.returnDate).toLocaleTimeString(
+                                    "en-US",
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* View Details Button */}
+                            {/* <button
+                              onClick={() => handleViewHistoryDetail(log.id)}
+                              className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/60 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-200 group/btn"
+                            >
+                              <svg
+                                className="w-4 h-4 group-hover/btn:scale-110 transition-transform"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M13 7l5 5m0 0l-5 5m5-5H6"
+                                />
+                              </svg>
+                            </button> */}
                           </div>
                         </div>
-                        <span className="text-[10px] font-semibold tracking-wide uppercase px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/50 shrink-0">
-                          Returned
-                        </span>
+
+                        {/* Subtle bottom gradient line */}
+                        <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-gray-200/50 dark:via-gray-700/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                     ))
                   )}

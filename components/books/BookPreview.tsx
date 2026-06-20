@@ -42,41 +42,45 @@ export function BookPreviewCard({
   shelfLocation,
   onRemoveCover,
 }: BookPreviewCardProps) {
+  // 1. Establish the fallback fallback image
+  const defaultCover = "/images/bookCover.jpg";
+
+  // 2. Ensure null, undefined, or empty strings safely fall back to the default
+  const finalCoverUrl =
+    coverUrl && coverUrl.trim() !== "" ? coverUrl : defaultCover;
+
+  // 3. Flag whether a genuine, custom uploaded cover exists
+  const hasUploadedCover =
+    !!coverUrl && coverUrl.trim() !== "" && coverUrl !== defaultCover;
+
   // Clean label generator for formatting backend enums (e.g., Y1_SEM1 -> Year 1 - Sem 1)
   const formatSemesterLabel = (sem?: string) => {
     if (!sem) return "";
     return sem.replace("Y", "Year ").replace("_SEM", " - Sem ");
   };
-
+console.log(hasUploadedCover)
   return (
     <div className="sticky top-6">
       <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
-        {/* Cover Image */}
+        {/* Cover Image Wrapper */}
         <div className="relative bg-slate-100 dark:bg-slate-800 flex justify-center p-8 border-b border-slate-200 dark:border-slate-700">
-          {coverUrl ? (
-            <div className="relative group shadow-xl shadow-slate-200 dark:shadow-black/20">
-              <img
-                src={coverUrl}
-                alt="Cover preview"
-                className="w-36 h-52 object-cover rounded-md"
-              />
-              {onRemoveCover && (
-                <button
-                  onClick={onRemoveCover}
-                  className="absolute -top-2 -right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="w-36 h-52 bg-slate-200 dark:bg-slate-700 rounded-md flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-600 shadow-inner">
-              <BookOpen className="w-10 h-10 text-slate-400 mb-2" />
-              <span className="text-xs font-medium text-slate-400">
-                No Cover
-              </span>
-            </div>
-          )}
+          <div className="relative group shadow-xl shadow-slate-200 dark:shadow-black/20">
+            <img
+              src={finalCoverUrl}
+              alt="Cover preview"
+              className="w-36 h-52 object-cover rounded-md"
+            />
+
+            {/* Show delete only if REAL uploaded image exists */}
+            {hasUploadedCover && onRemoveCover && (
+              <button
+                onClick={onRemoveCover}
+                className="absolute -top-2 -right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Book Details */}

@@ -1,9 +1,47 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import unzipper from "unzipper";
-import fs from "fs";
-import path from "path";
+import { writeFile, mkdir } from "fs/promises";
+import { join, resolve } from "path";
 import prisma from "@/lib/prisma";
+
+import {
+  generateBarcode,
+  getOrCreateAuthor,
+  getOrCreateCategory,
+} from "@/lib/upload";
+
+import { Semester } from "@/app/generated/prisma/enums";
+
+/* -----------------------------------
+   STORAGE CONFIG (MATCHS POST API)
+------------------------------------ */
+
+const STORAGE_ROOT = resolve(process.cwd(), "..", "ucstgo-library-storage");
+
+function getZipUploadPath(type: "covers" | "ebooks") {
+  const date = new Date();
+  const year = date.getFullYear().toString();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return {
+    dir: join(STORAGE_ROOT, "books", type, year, month),
+    dbPath: `books/${type}/${year}/${month}`,
+  };
+}
+
+async function ensureZipDir(type: "covers" | "ebooks") {
+  const { dir } = getZipUploadPath(type);
+  await mkdir(dir, { recursive: true });
+}
+
+function sanitizeFileName(name: string) {
+  return name.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9.\-_]/g, "");
+}
+
+/* -----------------------------------
+   ZIP IMPORT API
+------------------------------------ */
 
 export async function POST(req: Request) {
   try {
@@ -16,21 +54,24 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await zipFile.arrayBuffer());
 
-    // 📦 Extract ZIP
+    /* -----------------------------
+       Extract ZIP
+    ----------------------------- */
     const directory = await unzipper.Open.buffer(buffer);
 
     let excelBuffer: Buffer | null = null;
-    const fileMap: Record<string, Buffer> = {};
+    const fileMap = new Map<string, Buffer>();
 
     for (const file of directory.files) {
-      if (file.type === "File") {
-        const content = await file.buffer();
+      if (file.type !== "File") continue;
 
-        if (file.path.endsWith(".xlsx")) {
-          excelBuffer = content;
-        } else {
-          fileMap[file.path] = content;
-        }
+      const content = await file.buffer();
+      const normalizedPath = file.path.replace(/\\/g, "/").toLowerCase();
+
+      if (normalizedPath.endsWith(".xlsx")) {
+        excelBuffer = content;
+      } else {
+        fileMap.set(normalizedPath, content);
       }
     }
 
@@ -41,80 +82,141 @@ export async function POST(req: Request) {
       );
     }
 
-    // 📊 Read Excel
+    /* -----------------------------
+       Read Excel
+    ----------------------------- */
     const workbook = XLSX.read(excelBuffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet);
 
-    const books: any[] = [];
+    /* -----------------------------
+       Ensure storage directories
+    ----------------------------- */
+    await ensureZipDir("covers");
+    await ensureZipDir("ebooks");
 
+    let processedCount = 0;
+
+    /* -----------------------------
+       Process rows
+    ----------------------------- */
     for (const row of rows as any[]) {
-      const coverFile = row.cover_file;
-      const ebookFile = row.ebook_file;
+      const title = String(row.title || "").trim();
+      const isbn = String(row.isbn || "").trim();
+      const authorName = String(row.author || "").trim();
+      const categoryName = String(row.category || "").trim();
 
+      if (!title || !isbn || !authorName || !categoryName) continue;
+
+      const coverFile = row.cover_file;
       if (!coverFile) {
-        throw new Error(`Missing cover_file for ${row.title}`);
+        throw new Error(`Missing cover_file for book: ${title}`);
       }
 
-      // 📁 Paths inside project
-      const coverPath = `/uploads/covers/${coverFile}`;
-      const ebookPath = ebookFile ? `/uploads/ebooks/${ebookFile}` : null;
+      const normalize = (p: string) => p.replace(/\\/g, "/").toLowerCase();
 
-      // 📌 Save cover image
-      const coverBuffer = fileMap[`covers/${coverFile}`];
+      const coverKey = normalize(`covers/${coverFile}`);
+
+      const coverBuffer =
+        fileMap.get(coverKey) ||
+        [...fileMap.entries()].find(([k]) => k.endsWith(coverKey))?.[1] ||
+        null;
+
       if (!coverBuffer) {
         throw new Error(`Cover not found in ZIP: ${coverFile}`);
       }
 
-      fs.mkdirSync(path.join(process.cwd(), "public/uploads/covers"), {
-        recursive: true,
-      });
+      /* -----------------------------
+         SAVE COVER
+      ----------------------------- */
+      const coverPath = getZipUploadPath("covers");
+      const coverFileName = `${crypto.randomUUID()}-${sanitizeFileName(coverFile)}`;
+      const coverFullPath = join(coverPath.dir, coverFileName);
 
-      fs.writeFileSync(
-        path.join(process.cwd(), "public", coverPath),
-        coverBuffer,
-      );
+      await writeFile(coverFullPath, coverBuffer);
+      const coverDbPath = `${coverPath.dbPath}/${coverFileName}`;
 
-      // 📌 Save ebook (optional)
+      /* -----------------------------
+         SAVE EBOOK (optional)
+      ----------------------------- */
+      let ebookDbPath: string | null = null;
+
+      const ebookFile = row.ebook_file;
+
       if (ebookFile) {
-        const ebookBuffer = fileMap[`ebooks/${ebookFile}`];
+        const ebookKey = normalize(`ebooks/${ebookFile}`);
+
+        const ebookBuffer =
+          fileMap.get(ebookKey) ||
+          [...fileMap.entries()].find(([k]) => k.endsWith(ebookKey))?.[1] ||
+          null;
 
         if (ebookBuffer) {
-          fs.mkdirSync(path.join(process.cwd(), "public/uploads/ebooks"), {
-            recursive: true,
-          });
+          const ebookPath = getZipUploadPath("ebooks");
+          const ebookFileName = `${crypto.randomUUID()}-${sanitizeFileName(ebookFile)}`;
+          const ebookFullPath = join(ebookPath.dir, ebookFileName);
 
-          fs.writeFileSync(
-            path.join(process.cwd(), "public", ebookPath!),
-            ebookBuffer,
-          );
+          await writeFile(ebookFullPath, ebookBuffer);
+          ebookDbPath = `${ebookPath.dbPath}/${ebookFileName}`;
         }
       }
 
-      books.push({
-        title: row.title,
-        isbn: row.isbn,
-        author: row.author,
-        category: row.category,
-        publisher: row.publisher || null,
-        publicationYear: row.year ? Number(row.year) : null,
-        language: row.language || "English",
-        copies: row.copies ? Number(row.copies) : 1,
-        coverImage: coverPath,
-        ebookPath: ebookPath,
-      });
-    }
+      /* -----------------------------
+         DB OPERATIONS
+      ----------------------------- */
+      const author = await getOrCreateAuthor(authorName);
+      const category = await getOrCreateCategory(categoryName);
 
-    await prisma.book.createMany({
-      data: books,
-      skipDuplicates: true,
-    });
+      const copiesCount = row.copies ? Number(row.copies) : 1;
+      const semester = row.semester ? (row.semester as Semester) : null;
+
+      await prisma.$transaction(async (tx) => {
+        const book = await tx.book.create({
+          data: {
+            title,
+            isbn,
+            coverImage: coverDbPath,
+            authorId: author.id,
+            categoryId: category.id,
+            publisher: row.publisher || null,
+            description: row.description || null,
+            donate: row.donate ? String(row.donate) : null,
+            publicationYear: row.year ? Number(row.year) : null,
+            language: row.language || "English",
+          },
+        });
+
+        if (ebookDbPath) {
+          await tx.ebook.create({
+            data: {
+              bookId: book.id,
+              filePath: ebookDbPath,
+              format: "PDF",
+              accessType: "OPEN",
+              semester,
+            },
+          });
+        }
+
+        await tx.bookCopy.createMany({
+          data: Array.from({ length: copiesCount }).map((_, i) => ({
+            bookId: book.id,
+            barcode: generateBarcode(isbn, i),
+            status: "AVAILABLE",
+            shelfLocation: row.shelfLocation || "Unassigned",
+          })),
+        });
+      });
+
+      processedCount++;
+    }
 
     return NextResponse.json({
       success: true,
-      inserted: books.length,
+      inserted: processedCount,
     });
   } catch (err: any) {
+    console.error("Bulk Import Error:", err);
     return NextResponse.json(
       { error: err.message || "Import failed" },
       { status: 500 },

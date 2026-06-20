@@ -9,7 +9,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 
 interface PdfCanvasViewProps {
   fileUrl: string;
-  pageNumber: number;
+  numPages: number | null;
+  setPageNumber: React.Dispatch<React.SetStateAction<number>>;
   onDocumentLoadSuccess: ({ numPages }: { numPages: number }) => void;
   scale: number;
   setScale: React.Dispatch<React.SetStateAction<number>>;
@@ -17,7 +18,8 @@ interface PdfCanvasViewProps {
 
 export default function PdfCanvasView({
   fileUrl,
-  pageNumber,
+  numPages,
+  setPageNumber,
   onDocumentLoadSuccess,
   scale,
   setScale,
@@ -25,7 +27,7 @@ export default function PdfCanvasView({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(800);
 
-  // Auto-calculate scale to fit the screen size perfectly on mount/resize
+  // Auto-calculate base scale fit
   useEffect(() => {
     const handleResize = () => {
       if (!containerRef.current) return;
@@ -33,17 +35,15 @@ export default function PdfCanvasView({
       const width = containerRef.current.clientWidth;
       setContainerWidth(width);
 
-      // Base unscaled PDF page width assumption is 800px
       const basePdfWidth = 800;
       const padding = window.innerWidth < 640 ? 24 : 48;
       const availableWidth = width - padding;
 
-      // Only auto-scale down if the screen is smaller than the document base width
       if (availableWidth < basePdfWidth) {
         const optimalScale = Number((availableWidth / basePdfWidth).toFixed(2));
         setScale(optimalScale);
       } else {
-        setScale(1); // Default layout view on large desktop screens
+        setScale(1);
       }
     };
 
@@ -52,47 +52,103 @@ export default function PdfCanvasView({
     return () => window.removeEventListener("resize", handleResize);
   }, [setScale]);
 
+  // IntersectionObserver detects which page is active on continuous scroll
+  useEffect(() => {
+    if (!numPages) return;
+
+    const observerOptions = {
+      root: containerRef.current,
+      rootMargin: "0px",
+      threshold: 0.3, // Triggers when 30% of a page wrapper element is visible
+    };
+
+    const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const pageAttr = entry.target.getAttribute("data-page-number");
+          if (pageAttr) {
+            setPageNumber(parseInt(pageAttr, 10));
+          }
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(
+      observerCallback,
+      observerOptions,
+    );
+
+    // Dynamic timeout to wait for actual pages to mount to the DOM tree
+    const timeoutId = setTimeout(() => {
+      for (let i = 1; i <= numPages; i++) {
+        const el = document.getElementById(`pdf-page-wrapper-${i}`);
+        if (el) observer.observe(el);
+      }
+    }, 600);
+
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [numPages, setPageNumber, scale]);
+
+  const targetWidth = Math.min(
+    containerWidth - (window.innerWidth < 640 ? 24 : 48),
+    800,
+  );
+
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-y-auto overflow-x-auto flex items-start justify-center p-3 sm:p-6 scrollbar-thin"
+      className="w-full h-full overflow-y-auto overflow-x-auto flex flex-col items-center p-4 sm:p-8 scrollbar-thin space-y-8"
     >
-      <div className="flex flex-col items-center w-full my-auto py-4">
-        <Document
-          file={fileUrl}
-          onLoadSuccess={onDocumentLoadSuccess}
-          className="flex justify-center"
-          loading={
-            <div className="flex flex-col items-center justify-center h-72 gap-3">
-              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-medium text-muted-foreground animate-pulse">
-                Rendering Page...
-              </p>
-            </div>
-          }
-          error={
-            <div className="flex items-center justify-center h-64 text-center p-4">
-              <p className="text-destructive font-medium text-sm">
-                Could not load document preview.
-              </p>
-            </div>
-          }
-        >
-          <Page
-            key={`page_${pageNumber}`}
-            pageNumber={pageNumber}
-            // Dynamic resolution matching base width scaled down/up perfectly
-            width={Math.min(
-              containerWidth - (window.innerWidth < 640 ? 24 : 48),
-              800,
-            )}
-            scale={scale}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-            className="shadow-2xl rounded-md border border-border/40 bg-white transition-transform duration-200 ease-out"
-          />
-        </Document>
-      </div>
+      <Document
+        file={fileUrl}
+        onLoadSuccess={onDocumentLoadSuccess}
+        className="flex flex-col items-center space-y-8 w-full"
+        loading={
+          <div className="flex flex-col items-center justify-center h-72 gap-3">
+            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-medium text-muted-foreground animate-pulse">
+              Rendering Pages...
+            </p>
+          </div>
+        }
+        error={
+          <div className="flex items-center justify-center h-64 text-center p-4">
+            <p className="text-destructive font-medium text-sm">
+              Could not load document preview.
+            </p>
+          </div>
+        }
+      >
+        {numPages &&
+          Array.from(new Array(numPages), (_, index) => {
+            const pageNo = index + 1;
+            return (
+              <div
+                key={`page_container_${pageNo}`}
+                id={`pdf-page-wrapper-${pageNo}`}
+                data-page-number={pageNo}
+                className="w-full flex flex-col items-center transition-transform duration-200 ease-out"
+              >
+                {/* Optional mini visual indicator subtle label like modern apps */}
+                <span className="text-[13px] text-slate-200 font-mono font-semibold tracking-wider mb-2 select-none">
+                  Page {pageNo}
+                </span>
+
+                <Page
+                  pageNumber={pageNo}
+                  width={targetWidth}
+                  scale={scale}
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                  className="shadow-2xl rounded-md border border-border/40 bg-white"
+                />
+              </div>
+            );
+          })}
+      </Document>
     </div>
   );
 }

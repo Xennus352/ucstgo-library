@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  BookOpen,
 } from "lucide-react";
 import { BookWithDetails } from "@/components/students/types";
 import {
@@ -22,18 +23,27 @@ interface PhysicalBookDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onReserve: (bookId: string) => void;
+  onBorrow: (bookId: string) => void; // Add borrow handler
+  isBorrowing?: boolean;
   isReserving?: boolean;
 }
 
 export const PhysicalBookDetailsModal: React.FC<
   PhysicalBookDetailsModalProps
-> = ({ book, isOpen, onClose, onReserve, isReserving = false }) => {
+> = ({
+  book,
+  isOpen,
+  onClose,
+  onReserve,
+  onBorrow, // Receive borrow handler
+  isBorrowing = false,
+  isReserving = false,
+}) => {
   if (!book) return null;
 
   const copies = book.copies || [];
 
   // Calculate availability stats based on your CopyStatus
-  
   const totalCopies = copies.length;
   const availableCopies = copies.filter((c) => c.status === "AVAILABLE").length;
   const borrowedCopies = copies.filter((c) => c.status === "BORROWED").length;
@@ -132,7 +142,7 @@ export const PhysicalBookDetailsModal: React.FC<
           </div>
         </div>
 
-        {/* Action Controls */}
+        {/* Action Controls - Updated with Borrow button */}
         <div className="mt-6 flex gap-2.5">
           <button
             onClick={onClose}
@@ -140,14 +150,43 @@ export const PhysicalBookDetailsModal: React.FC<
           >
             Cancel
           </button>
+
+          {/* Borrow Button - Primary Action */}
           <button
-            disabled={!isAvailable || isReserving}
+            disabled={!isAvailable || isBorrowing || isReserving}
+            onClick={() => onBorrow(book.id)}
+            className="flex-1 h-9.5 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            {isBorrowing ? (
+              <>
+                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Borrowing...
+              </>
+            ) : (
+              <>
+                <BookOpen className="h-3.5 w-3.5" />
+                Borrow Now
+              </>
+            )}
+          </button>
+
+          {/* Reserve Button - Secondary Action */}
+          <button
+            disabled={isAvailable || isReserving || isBorrowing}
             onClick={() => onReserve(book.id)}
             className="flex-1 h-9.5 text-xs font-medium bg-primary text-primary-foreground hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center"
           >
-            {isReserving ? "Processing..." : "Place Reservation"}
+            {isReserving ? "Processing..." : "Reserve"}
           </button>
         </div>
+
+        {/* Helpful note when no copies available */}
+        {!isAvailable && (
+          <p className="text-[10px] text-muted-foreground/70 text-center mt-1">
+            All copies are currently checked out. You can place a reservation to
+            be notified when a copy becomes available.
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );

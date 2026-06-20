@@ -1,9 +1,7 @@
 import {
   BookOpenIcon,
-  DatabaseIcon,
   GraduationCapIcon,
   LayoutDashboardIcon,
-  ShieldCheckIcon,
   UserCheckIcon,
 } from "lucide-react";
 
@@ -30,9 +28,8 @@ export const navData = {
       icon: <BookOpenIcon />,
       items: [
         { title: "Books Inventory", url: "/librarian/books" },
-
-        { title: "Borrowing", url: "/librarian/borrowing" },
-        { title: "Reservations", url: "/librarian/reservations" },
+        { title: "Borrowing", url: "/librarian/books/borrow-books" },
+        { title: "Reservations", url: "/librarian/books/reservations" },
       ],
     },
   ],

@@ -37,10 +37,8 @@ export default function BooksPage() {
 
   // Delete Handler
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this book?")) return;
-
     await fetch(`/api/books/${id}`, { method: "DELETE" });
-    mutate(); // Refresh the data list
+    mutate(); // Instantly refresh SWR layout cache
   };
 
   // Edit Handler

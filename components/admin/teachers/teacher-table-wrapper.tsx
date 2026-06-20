@@ -38,6 +38,7 @@ import { User } from "@/types/UserType";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import CreateTeacherForm from "./teacher-create-teacher-form";
+import { Button } from "@/components/ui/button";
 
 type EditableImportRow = {
   _localKey: string;
@@ -657,7 +658,7 @@ export function TeacherTableWrapper() {
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-2 pt-2 text-xs text-slate-500 font-medium">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 pt-2 text-xs text-slate-500 font-medium">
         <span>
           Showing records{" "}
           <span className="font-bold text-slate-700 dark:text-slate-300">
@@ -665,24 +666,25 @@ export function TeacherTableWrapper() {
           </span>{" "}
           of <span className="font-mono">{totalRecords}</span> values
         </span>
-        <div className="flex items-center gap-1.5">
-          <button
+
+        <div className="flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-end">
+          <Button
             onClick={() => setPage((p) => Math.max(p - 1, 1))}
             disabled={page === 1 || isLoading}
             className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-md hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
           >
             <ChevronLeftIcon className="size-3.5" />
-          </button>
-          <span className="px-2 font-mono">
+          </Button>
+          <span className="px-2 font-mono whitespace-nowrap">
             Page {page} of {totalPages}
           </span>
-          <button
+          <Button
             onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
             disabled={page === totalPages || isLoading}
             className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-md hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
           >
             <ChevronRightIcon className="size-3.5" />
-          </button>
+          </Button>
         </div>
       </div>
 

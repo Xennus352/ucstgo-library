@@ -29,53 +29,132 @@ export default function EbookReaderContainer({
 }: EbookReaderProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
+  const [pageInput, setPageInput] = useState<string>("1"); // Holds the typed search text
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [scale, setScale] = useState<number>(1);
   const [showControls, setShowControls] = useState<boolean>(true);
 
-  // Reference to the entire reader component container
   const readerRef = useRef<HTMLDivElement>(null);
+  // Ref to block IntersectionObserver updates during custom button smooth scrolling animations
+  const isProgrammaticScrolling = useRef<boolean>(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync the text input whenever the active scroll position settles on a stable page number
+  useEffect(() => {
+    setPageInput(pageNumber.toString());
+  }, [pageNumber]);
+
+  // Clean up any lingering timers on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, []);
+
+  // Safe wrapper for managing page changes via scroll observation
+  const handlePageScrollUpdate: React.Dispatch<React.SetStateAction<number>> =
+    useCallback((value) => {
+      if (!isProgrammaticScrolling.current) {
+        if (typeof value === "function") {
+          setPageNumber((prev) => {
+            const resolvedValue = value(prev);
+            return resolvedValue;
+          });
+        } else {
+          setPageNumber(value);
+        }
+      }
+    }, []);
+
+  // Function to smoothly scroll to a specific page element with proper header offsets
+  const scrollToPage = useCallback(
+    (targetPage: number) => {
+      if (!numPages || targetPage < 1 || targetPage > numPages) return;
+
+      const pageElement = document.getElementById(
+        `pdf-page-wrapper-${targetPage}`,
+      );
+      const scrollContainer = pageElement?.closest(".overflow-y-auto");
+
+      if (pageElement && scrollContainer) {
+        // Clear any old timers if buttons are clicked rapidly
+        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+
+        // Turn lock on: Ignore observer events while sliding
+        isProgrammaticScrolling.current = true;
+        setPageNumber(targetPage); // Instantly set state target to lock buttons correctly
+
+        const headerElement = readerRef.current?.querySelector("header");
+        const headerHeight = headerElement ? headerElement.clientHeight : 64;
+        const elementTop = pageElement.offsetTop;
+
+        scrollContainer.scrollTo({
+          top: elementTop - headerHeight - 16,
+          behavior: "smooth",
+        });
+
+        // Release the scroll observation lock once the slide animation finishes (~500ms)
+        scrollTimeoutRef.current = setTimeout(() => {
+          isProgrammaticScrolling.current = false;
+        }, 500);
+      }
+    },
+    [numPages],
+  );
+
+  // Handle manual input search submission (Shared by desktop and mobile forms)
+  const handlePageSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedPage = parseInt(pageInput, 10);
+    if (
+      !isNaN(parsedPage) &&
+      numPages &&
+      parsedPage >= 1 &&
+      parsedPage <= numPages
+    ) {
+      scrollToPage(parsedPage);
+      // Blur the currently active input to close mobile keyboard layout automatically
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    } else {
+      setPageInput(pageNumber.toString());
+    }
+  };
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === "INPUT") return;
+
       if (e.key === "Escape") {
         if (isFullscreen) toggleFullscreen();
         else onClose();
       }
-      if (e.key === "ArrowLeft" && pageNumber > 1) handleChangePage(-1);
-      if (e.key === "ArrowRight" && numPages && pageNumber < numPages)
-        handleChangePage(1);
+      if (e.key === "ArrowLeft" && pageNumber > 1) {
+        scrollToPage(pageNumber - 1);
+      }
+      if (e.key === "ArrowRight" && numPages && pageNumber < numPages) {
+        scrollToPage(pageNumber + 1);
+      }
     };
 
     document.addEventListener("keydown", handleKeyPress);
     return () => document.removeEventListener("keydown", handleKeyPress);
-  }, [isFullscreen, pageNumber, numPages]);
+  }, [isFullscreen, pageNumber, numPages, scrollToPage]);
 
   const handleDocumentLoadSuccess = useCallback(
     ({ numPages }: { numPages: number }) => {
       setNumPages(numPages);
       setPageNumber(1);
+      setPageInput("1");
       setLoading(false);
     },
     [],
   );
 
-  const handleChangePage = useCallback(
-    (offset: number) => {
-      setPageNumber((prev) => {
-        const targetPage = prev + offset;
-        if (numPages && (targetPage < 1 || targetPage > numPages)) return prev;
-        return targetPage;
-      });
-    },
-    [numPages],
-  );
-
-  // Targets the actual reader container component for the Fullscreen frame
   const toggleFullscreen = async () => {
     if (!readerRef.current) return;
-
     try {
       if (!document.fullscreenElement) {
         await readerRef.current.requestFullscreen();
@@ -91,12 +170,10 @@ export default function EbookReaderContainer({
     }
   };
 
-  // Keep state sync'd if user exits fullscreen using native browser mechanics (like hitting ESC)
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(document.fullscreenElement === readerRef.current);
     };
-
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () =>
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
@@ -132,31 +209,67 @@ export default function EbookReaderContainer({
             </div>
           </div>
 
-          {/* Symmetrical Desktop Layout Pagination */}
-          <div className="hidden sm:flex items-center gap-2 bg-slate-800/60 p-1 rounded-lg border border-slate-700/50">
+          {/* Symmetrical Desktop Layout Pagination with Wide Search Bar */}
+          <div className="hidden sm:flex items-center gap-1.5 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800 shadow-inner">
             <button
-              onClick={() => handleChangePage(-1)}
+              onClick={() => scrollToPage(pageNumber - 1)}
               disabled={pageNumber <= 1}
-              className="p-1.5 rounded-md hover:bg-slate-700 text-slate-300 disabled:opacity-30 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-20 transition-all shrink-0"
+              title="Previous Page"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <div className="flex items-center gap-1.5 px-2 text-xs font-medium text-slate-300">
-              <span>Page</span>
-              <span className="text-white font-semibold">{pageNumber}</span>
-              <span className="text-slate-500">/</span>
-              <span>{numPages || "..."}</span>
-            </div>
+
+            <form
+              onSubmit={handlePageSearchSubmit}
+              className="flex items-center gap-2.5 px-3 py-1 bg-slate-800/40 rounded-lg border border-slate-700/40 focus-within:border-indigo-500/80 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all"
+            >
+              <svg
+                className="w-3.5 h-3.5 text-slate-500 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+
+              <div className="flex items-center gap-1 text-xs font-medium text-slate-400">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onBlur={() => setPageInput(pageNumber.toString())}
+                  placeholder="Search..."
+                  className="w-24 bg-slate-950 text-white pl-2 pr-1 font-semibold rounded-md border border-slate-800 py-0.5 focus:outline-hidden font-mono text-xs shadow-xs placeholder:text-slate-600 placeholder:font-sans"
+                  title="Type page number and press Enter"
+                />
+                <span className="text-slate-600 font-normal px-0.5 select-none">
+                  /
+                </span>
+                <span className="text-slate-300 font-semibold select-none pr-1 min-w-[16px] text-left">
+                  {numPages || "..."}
+                </span>
+              </div>
+            </form>
+
             <button
-              onClick={() => handleChangePage(1)}
+              onClick={() => scrollToPage(pageNumber + 1)}
               disabled={!numPages || pageNumber >= numPages}
-              className="p-1.5 rounded-md hover:bg-slate-700 text-slate-300 disabled:opacity-30 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-20 transition-all shrink-0"
+              title="Next Page"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Control Triggers */}
+          {/* Controls Trigger Layout */}
           <div className="flex items-center gap-1 sm:gap-2">
             <div className="flex items-center bg-slate-800/40 rounded-lg border border-slate-700/30 p-0.5 text-xs">
               <button
@@ -178,7 +291,6 @@ export default function EbookReaderContainer({
 
             <div className="w-px h-5 bg-slate-800 mx-1 hidden xs:block" />
 
-            {/* FULLSCREEN TRIGGER BUTTON */}
             <button
               onClick={toggleFullscreen}
               className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white transition-all border border-slate-700/50"
@@ -205,7 +317,8 @@ export default function EbookReaderContainer({
       <div className="flex-1 overflow-hidden bg-slate-950 relative flex items-center justify-center">
         <PdfCanvasView
           fileUrl={fileUrl}
-          pageNumber={pageNumber}
+          numPages={numPages}
+          setPageNumber={handlePageScrollUpdate}
           onDocumentLoadSuccess={handleDocumentLoadSuccess}
           scale={scale}
           setScale={setScale}
@@ -222,22 +335,40 @@ export default function EbookReaderContainer({
           </div>
         )}
 
-        {/* Mobile floating pill layout */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-6 bg-slate-900/90 backdrop-blur-lg rounded-full shadow-2xl px-5 py-2.5 border border-slate-800 sm:hidden z-20">
+        {/* Mobile floating pill layout with Integrated Touch-Safe Page Search */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-slate-900/95 backdrop-blur-xl rounded-full shadow-2xl px-3.5 py-2 border border-slate-800/90 sm:hidden z-20">
           <button
-            onClick={() => handleChangePage(-1)}
+            onClick={() => scrollToPage(pageNumber - 1)}
             disabled={pageNumber <= 1}
-            className="p-1 rounded-full text-slate-400 hover:text-white disabled:opacity-20 transition-all"
+            className="p-2 rounded-full text-slate-400 active:bg-slate-800 active:text-white disabled:opacity-20 transition-all touch-manipulation"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <span className="text-xs font-semibold tracking-wider text-slate-200 font-mono min-w-15 text-center">
-            {pageNumber} / {numPages || "..."}
-          </span>
+
+          {/* Mobile Search Form Wrapper */}
+          <form
+            onSubmit={handlePageSearchSubmit}
+            className="flex items-center gap-1 px-3 py-1 bg-slate-950 rounded-full border border-slate-800 focus-within:border-indigo-500/80 focus-within:ring-1 focus-within:ring-indigo-500/30 transition-all"
+          >
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onBlur={() => setPageInput(pageNumber.toString())}
+              className="w-10 bg-transparent text-white text-center font-bold focus:outline-hidden font-mono text-sm"
+            />
+            <span className="text-slate-600 select-none text-xs">/</span>
+            <span className="text-white font-semibold select-none text-xs pl-0.5 min-w-[14px] text-center font-mono">
+              {numPages || "..."}
+            </span>
+          </form>
+
           <button
-            onClick={() => handleChangePage(1)}
+            onClick={() => scrollToPage(pageNumber + 1)}
             disabled={!numPages || pageNumber >= numPages}
-            className="p-1 rounded-full text-slate-400 hover:text-white disabled:opacity-20 transition-all"
+            className="p-2 rounded-full text-slate-400 active:bg-slate-800 active:text-white disabled:opacity-20 transition-all touch-manipulation"
           >
             <ChevronRight className="h-5 w-5" />
           </button>

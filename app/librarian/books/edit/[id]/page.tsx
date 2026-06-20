@@ -20,7 +20,16 @@ export default async function EditBookPage({
 
   if (!book) notFound();
 
-  // Map the Prisma data to the BookPreviewCard props
+  /* -------------------------------------------------------------
+     TRANSFORM DB PATHS FOR CLIENT-SIDE RETRIEVAL (UI)
+  ------------------------------------------------------------- */
+  // Prepends the clean catch-all router stream prefix so the UI renders elements correctly
+  const clientCoverUrl = book.coverImage ? `/api/files/${book.coverImage}` : "";
+  const clientEbookPath = book.ebook?.filePath
+    ? `/api/files/${book.ebook.filePath}`
+    : null;
+
+  // Map the Prisma data to the BookPreviewCard props with public route references
   const bookPreviewData = {
     title: book.title,
     description: book.description || "",
@@ -29,9 +38,21 @@ export default async function EditBookPage({
     isbn: book.isbn || "",
     publicationYear: book.publicationYear?.toString() || "",
     copies: book.copies?.length || 0,
-    coverUrl: book.coverImage,
+    coverUrl: clientCoverUrl,
     hasEbook: !!book.ebook,
     shelfLocation: book.copies?.[0]?.shelfLocation ?? undefined,
+  };
+
+  // Clone and enrich data schema variables specifically for form pre-population hooks
+  const enrichedInitialData = {
+    ...book,
+    coverImage: clientCoverUrl,
+    ebook: book.ebook
+      ? {
+          ...book.ebook,
+          filePath: clientEbookPath,
+        }
+      : null,
   };
 
   return (
@@ -40,9 +61,9 @@ export default async function EditBookPage({
         {/* Page Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 ">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            {/* Back Button - Styled cleanly with Lucide icon */}
+            {/* Back Button */}
             <Link
-              href="/librarian/books" 
+              href="/librarian/books"
               className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-sm transition-colors w-fit"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -75,7 +96,7 @@ export default async function EditBookPage({
 
         {/* The Responsive Layout Component */}
         <EditBookLayout bookData={bookPreviewData}>
-          <EditBookForm initialData={book} />
+          <EditBookForm initialData={enrichedInitialData} />
         </EditBookLayout>
       </div>
     </div>

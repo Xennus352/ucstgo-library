@@ -214,7 +214,8 @@ enum BorrowStatus {
 model Reservation {
   id         String            @id @default(uuid())
   reservedAt DateTime          @default(now())
-  status     ReservationStatus @default(PENDING)
+  expiresAt  DateTime?
+  status     ReservationStatus @default(ACTIVE)
 
   userId String
   bookId String
@@ -225,12 +226,14 @@ model Reservation {
   @@index([userId])
   @@index([bookId])
   @@index([status])
+  @@index([expiresAt])
 }
 
 enum ReservationStatus {
-  PENDING
-  FULFILLED
-  CANCELLED
+  ACTIVE // user is waiting in queue
+  FULFILLED // book was issued to user
+  CANCELLED // user cancelled manually
+  EXPIRED // system auto-expired reservation
 }
 
 // ----------------------------------------------------

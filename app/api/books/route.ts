@@ -1,28 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import path, { join } from "path";
 import prisma from "@/lib/prisma";
 import { Semester } from "@/app/generated/prisma/enums";
 
-
 /* -----------------------------
-   Upload Helpers
+   Upload Helpers (Decoupled Sandbox Model)
 ----------------------------- */
 
 function getUploadPath(type: "covers" | "ebooks") {
   const date = new Date();
+
   const year = date.getFullYear().toString();
   const month = String(date.getMonth() + 1).padStart(2, "0");
 
+  // Dynamically step out of './ucstgo-library' into the adjacent storage sandbox
+  const baseStorageDir = path.resolve(
+    process.cwd(),
+    "..",
+    "ucstgo-library-storage",
+  );
+
   return {
-    dir: join(process.cwd(), `public/uploads/books/${type}/${year}/${month}`),
-    publicPath: `/uploads/books/${type}/${year}/${month}`,
+    // Physical storage sandbox absolute path
+    dir: join(baseStorageDir, "books", type, year, month),
+
+    // Normalized clean path stored in the database
+    dbPath: `books/${type}/${year}/${month}`,
   };
 }
 
 async function ensureUploadDir(type: "covers" | "ebooks") {
   const { dir } = getUploadPath(type);
-  await mkdir(dir, { recursive: true });
+
+  await mkdir(dir, {
+    recursive: true,
+  });
+}
+
+function generateFileName(file: File) {
+  const ext = file.name.split(".").pop() || "";
+
+  const baseName = file.name
+    .replace(/\.[^/.]+$/, "") // remove extension
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-") // special chars -> -
+    .replace(/^-+|-+$/g, "") // trim -
+    .replace(/-+/g, "-"); // remove duplicate -
+
+  return `${crypto.randomUUID()}-${baseName}.${ext}`;
 }
 
 /* -----------------------------
@@ -100,7 +126,7 @@ export async function GET(req: NextRequest) {
     const categoryId = searchParams.get("categoryId") || "";
     const status = searchParams.get("status") || "";
     const type = searchParams.get("type") || "all";
-    const semesterFilter = searchParams.get("semester") || ""; // Added filtering handle for semester queries
+    const semesterFilter = searchParams.get("semester") || "";
 
     // 3. Build WHERE clause
     const where: any = {};
@@ -135,10 +161,10 @@ export async function GET(req: NextRequest) {
     }
 
     if (type === "ebook") {
-      where.ebook = { isNot: null };
-      if (semesterFilter) {
-        where.ebook = { semester: semesterFilter as Semester };
-      }
+      where.ebook = {
+        isNot: null,
+        ...(semesterFilter && { semester: semesterFilter as Semester }),
+      };
     } else if (type === "physical") {
       where.ebook = null;
       if (!where.copies) {
@@ -157,7 +183,7 @@ export async function GET(req: NextRequest) {
           coverImage: true,
           language: true,
           publicationYear: true,
-          donate: true, 
+          donate: true,
           createdAt: true,
 
           author: { select: { id: true, name: true } },
@@ -176,7 +202,7 @@ export async function GET(req: NextRequest) {
               id: true,
               format: true,
               filePath: true,
-              semester: true, 
+              semester: true,
             },
           },
 
@@ -213,7 +239,7 @@ export async function GET(req: NextRequest) {
       availabilityMap.get(item.bookId)[item.status] = item._count.status;
     }
 
-    // 7. Attach availability to books
+    // 7. Attach availability AND inject security route file prefixes
     const enrichedBooks = books.map((book) => {
       const stats = availabilityMap.get(book.id) || {
         AVAILABLE: 0,
@@ -228,6 +254,13 @@ export async function GET(req: NextRequest) {
 
       return {
         ...book,
+        coverImage: book.coverImage ? `/api/files/${book.coverImage}` : null,
+        ebook: book.ebook
+          ? {
+              ...book.ebook,
+              filePath: `/api/files/${book.ebook.filePath}`,
+            }
+          : null,
         status:
           available > 0
             ? "available"
@@ -269,9 +302,8 @@ export async function GET(req: NextRequest) {
 }
 
 /* -----------------------------
-   POST /api/books
+   POST /api/books  
 ----------------------------- */
-
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -281,15 +313,16 @@ export async function POST(req: NextRequest) {
     const authorName = formData.get("author") as string;
     const categoryName = formData.get("category") as string;
     const shelfLocation = formData.get("shelfLocation") as string | null;
-    const donate = formData.get("donate") as string | null; 
-    const semester = formData.get("semester") as string | null; 
+    const donate = formData.get("donate") as string | null;
+    const semester = formData.get("semester") as string | null;
 
-    const cover = formData.get("cover") as File;
+    // Softly cast as optional parameters
+    const cover = formData.get("cover") as File | null;
     const ebook = formData.get("ebook") as File | null;
 
     const copies = Number(formData.get("copies") || 1);
 
-    if (!title || !isbn || !authorName || !categoryName || !cover) {
+    if (!title || !isbn || !authorName || !categoryName) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -297,41 +330,41 @@ export async function POST(req: NextRequest) {
     }
 
     /* -----------------------------
-       Upload dirs
+       Save Cover (Safe Optional Processing)
     ----------------------------- */
-    await ensureUploadDir("covers");
-    if (ebook) await ensureUploadDir("ebooks");
+    let coverDbPath: string | null = null;
 
-    /* -----------------------------
-       Save Cover
-    ----------------------------- */
-    const coverPath = getUploadPath("covers");
-    const coverBuffer = Buffer.from(await cover.arrayBuffer());
+    if (cover && cover instanceof File && cover.size > 0) {
+      await ensureUploadDir("covers");
+      const coverPath = getUploadPath("covers");
+      const coverBuffer = Buffer.from(await cover.arrayBuffer());
 
-    const coverFileName = `${Date.now()}-${cover.name.replace(/\s+/g, "-")}`;
-    const coverFullPath = join(coverPath.dir, coverFileName);
+      const coverFileName = generateFileName(cover);
+      const coverFullPath = join(coverPath.dir, coverFileName);
 
-    await writeFile(coverFullPath, coverBuffer);
-    const coverDbPath = `${coverPath.publicPath}/${coverFileName}`;
-
-    /* -----------------------------
-       Save Ebook
-    ----------------------------- */
-    let ebookDbPath: string | null = null;
-
-    if (ebook) {
-      const ebookPath = getUploadPath("ebooks");
-      const ebookBuffer = Buffer.from(await ebook.arrayBuffer());
-
-      const ebookFileName = `${Date.now()}-${ebook.name.replace(/\s+/g, "-")}`;
-      const ebookFullPath = join(ebookPath.dir, ebookFileName);
-
-      await writeFile(ebookFullPath, ebookBuffer);
-      ebookDbPath = `${ebookPath.publicPath}/${ebookFileName}`;
+      await writeFile(coverFullPath, coverBuffer);
+      coverDbPath = `${coverPath.dbPath}/${coverFileName}`;
     }
 
     /* -----------------------------
-       DATABASE SAFE OPS
+       Save Ebook (Safe Optional Processing)
+    ----------------------------- */
+    let ebookDbPath: string | null = null;
+
+    if (ebook && ebook instanceof File && ebook.size > 0) {
+      await ensureUploadDir("ebooks");
+      const ebookPath = getUploadPath("ebooks");
+      const ebookBuffer = Buffer.from(await ebook.arrayBuffer());
+
+      const ebookFileName = generateFileName(ebook);
+      const ebookFullPath = join(ebookPath.dir, ebookFileName);
+
+      await writeFile(ebookFullPath, ebookBuffer);
+      ebookDbPath = `${ebookPath.dbPath}/${ebookFileName}`;
+    }
+
+    /* -----------------------------
+       DATABASE SAFE OPERATIONS
     ----------------------------- */
     const author = await getOrCreateAuthor(authorName);
     const category = await getOrCreateCategory(categoryName);
@@ -340,14 +373,14 @@ export async function POST(req: NextRequest) {
       data: {
         title,
         isbn,
-        donate: donate || null, 
+        donate: donate || null,
         description: (formData.get("description") as string) || null,
         publisher: (formData.get("publisher") as string) || null,
         publicationYear: formData.get("publicationYear")
           ? Number(formData.get("publicationYear"))
           : null,
         language: (formData.get("language") as string) || "English",
-        coverImage: coverDbPath,
+        coverImage: coverDbPath, // Implicitly accepts string paths or null
         categoryId: category.id,
         authorId: author.id,
       },
@@ -360,7 +393,7 @@ export async function POST(req: NextRequest) {
           filePath: ebookDbPath,
           format: "PDF",
           accessType: "OPEN",
-          semester: semester ? (semester as Semester) : null, 
+          semester: semester ? (semester as Semester) : null,
         },
       });
     }

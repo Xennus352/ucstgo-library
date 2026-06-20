@@ -123,12 +123,12 @@ export function DeleteBookDialog({
                 <AlertDialogDescription className="text-sm md:text-base text-slate-600 dark:text-slate-400 leading-relaxed mt-1.5">
                   You are about to permanently remove this record from the
                   library database:
-                  <div className="flex items-start gap-2.5 mt-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700/50">
+                  <span className="flex items-start gap-2.5 mt-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700/50">
                     <BookOpen className="w-4 h-4 text-slate-400 dark:text-slate-500 mt-0.5 shrink-0" />
                     <span className="font-mono text-xs md:text-sm font-semibold text-slate-800 dark:text-slate-200 wrap-break-word whitespace-normal">
                       {book.title}
                     </span>
-                  </div>
+                  </span>
                   <span className="block mt-3 text-red-600 dark:text-red-400 font-medium">
                     ⚠️ This action cannot be undone.
                   </span>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, unlink } from "fs/promises";
-import { join } from "path";
+import { writeFile, unlink, mkdir } from "fs/promises";
+import path, { join } from "path";
 import prisma from "@/lib/prisma";
 
 import {
@@ -11,6 +11,16 @@ import {
   getUploadPath,
 } from "@/lib/upload";
 import { Semester } from "@/app/generated/prisma/enums";
+
+// Helper to determine absolute file resolution path inside decoupled sandbox
+// function getAbsoluteStoragePath(dbRelativePath: string): string {
+//   const baseStorageDir = path.resolve(
+//     process.cwd(),
+//     "..",
+//     "ucstgo-library-storage",
+//   );
+//   return join(baseStorageDir, dbRelativePath);
+// }
 
 /* -----------------------------
    GET /api/books/[id]
@@ -40,7 +50,7 @@ export async function GET(
             id: true,
             format: true,
             filePath: true,
-            semester: true, // Added back to individual fetch payload
+            semester: true,
           },
         },
         _count: {
@@ -59,8 +69,8 @@ export async function GET(
       );
     }
 
-    // availability calculation
-    const stats = {
+    // Availability calculation
+    const stats: Record<string, number> = {
       AVAILABLE: 0,
       BORROWED: 0,
       LOST: 0,
@@ -68,15 +78,24 @@ export async function GET(
     };
 
     for (const copy of book.copies) {
-      stats[copy.status] = (stats[copy.status] || 0) + 1;
+      const statusKey = copy.status as string;
+      stats[statusKey] = (stats[statusKey] || 0) + 1;
     }
 
     const available = stats.AVAILABLE;
     const borrowed = stats.BORROWED;
     const total = book._count.copies;
 
+    // TRANSFORM ASSET LINKS: Format database keys for frontend route usage
     const enrichedBook = {
       ...book,
+      coverImage: book.coverImage ? `/api/files/${book.coverImage}` : null,
+      ebook: book.ebook
+        ? {
+            ...book.ebook,
+            filePath: `/api/files/${book.ebook.filePath}`,
+          }
+        : null,
       status:
         available > 0 ? "available" : borrowed > 0 ? "borrowed" : "unavailable",
       availability: {
@@ -100,6 +119,20 @@ export async function GET(
   }
 }
 
+// ===============================
+// STORAGE ROOT (ONLY SOURCE OF TRUTH)
+// ===============================
+const STORAGE_ROOT = path.resolve(
+  process.cwd(),
+  "..",
+  "ucstgo-library-storage",
+);
+
+// Convert DB path -> absolute filesystem path
+function toAbsoluteStoragePath(dbPath: string) {
+  return path.join(STORAGE_ROOT, dbPath);
+}
+
 /* -----------------------------
    PATCH /api/books/[id]
 ----------------------------- */
@@ -111,7 +144,6 @@ export async function PATCH(
     const { id } = await context.params;
     const formData = await req.formData();
 
-    // 1. SAFE extraction
     const title = String(formData.get("title") || "");
     const isbn = String(formData.get("isbn") || "");
     const authorName = String(formData.get("author") || "");
@@ -122,10 +154,11 @@ export async function PATCH(
     const shelfLocation = String(formData.get("shelfLocation") || "");
 
     const donate =
-      formData.get("donate") !== null ? String(formData.get("donate")) : null; 
+      formData.get("donate") !== null ? String(formData.get("donate")) : null;
+
     const semester = formData.get("semester")
       ? (formData.get("semester") as Semester)
-      : null; 
+      : null;
 
     const publicationYearRaw = formData.get("publicationYear");
     const publicationYear =
@@ -140,15 +173,30 @@ export async function PATCH(
         : 0;
 
     const cover = formData.get("cover") as File | null;
-    const ebookFile = formData.get("ebook") as File | null; // Extracted ebook file element if uploaded
+    const ebookFile = formData.get("ebook") as File | null;
 
-    // 2. Relations
+    const STORAGE_ROOT = path.resolve(
+      process.cwd(),
+      "..",
+      "ucstgo-library-storage",
+    );
+
+    function getUploadPath(type: "covers" | "ebooks") {
+      const date = new Date();
+      const year = date.getFullYear().toString();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+
+      return {
+        dir: join(STORAGE_ROOT, "books", type, year, month),
+        dbPath: `books/${type}/${year}/${month}`,
+      };
+    }
+
     const [author, category] = await Promise.all([
       getOrCreateAuthor(authorName),
       getOrCreateCategory(categoryName),
     ]);
 
-    // 3. Existing book check
     const existingBook = await prisma.book.findUnique({
       where: { id },
       include: { ebook: true },
@@ -158,50 +206,65 @@ export async function PATCH(
       return NextResponse.json({ error: "Book not found" }, { status: 404 });
     }
 
-    // 4. Cover upload
+    /* =========================
+       COVER UPDATE (FIXED)
+    ========================== */
     let coverImage = existingBook.coverImage;
 
     if (cover && cover.size > 0) {
-      await ensureUploadDir("covers");
-      const upload = getUploadPath("covers");
+      const coverPath = getUploadPath("covers");
+
+      await mkdir(coverPath.dir, { recursive: true });
+
+      const safeName = cover.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const fileName = `${crypto.randomUUID()}-${safeName}`;
+
+      const absolutePath = join(coverPath.dir, fileName);
 
       const buffer = Buffer.from(await cover.arrayBuffer());
-      const fileName = `${Date.now()}-${cover.name.replace(/\s+/g, "-")}`;
+      await writeFile(absolutePath, buffer);
 
-      await writeFile(join(upload.dir, fileName), buffer);
-      coverImage = `${upload.publicPath}/${fileName}`;
+      coverImage = `${coverPath.dbPath}/${fileName}`;
 
+      // delete old cover
       if (existingBook.coverImage) {
         try {
-          await unlink(join(process.cwd(), "public", existingBook.coverImage));
+          await unlink(path.join(STORAGE_ROOT, existingBook.coverImage));
         } catch {}
       }
     }
 
-    // 5. E-book Upload & Database Record Mutation
+    /* =========================
+       EBOOK UPDATE (FIXED)
+    ========================== */
     let ebookDbPath: string | null = existingBook.ebook?.filePath || null;
 
     if (ebookFile && ebookFile.size > 0) {
-      await ensureUploadDir("ebooks");
-      const ebookUpload = getUploadPath("ebooks");
+      const ebookPath = getUploadPath("ebooks");
 
-      const ebookBuffer = Buffer.from(await ebookFile.arrayBuffer());
-      const ebookFileName = `${Date.now()}-${ebookFile.name.replace(/\s+/g, "-")}`;
+      await mkdir(ebookPath.dir, { recursive: true });
 
-      await writeFile(join(ebookUpload.dir, ebookFileName), ebookBuffer);
-      ebookDbPath = `${ebookUpload.publicPath}/${ebookFileName}`;
+      const safeName = ebookFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const fileName = `${crypto.randomUUID()}-${safeName}`;
 
-      // Delete former physical book PDF file if replacing it
+      const absolutePath = join(ebookPath.dir, fileName);
+
+      const buffer = Buffer.from(await ebookFile.arrayBuffer());
+      await writeFile(absolutePath, buffer);
+
+      ebookDbPath = `${ebookPath.dbPath}/${fileName}`;
+
+      // delete old ebook
       if (existingBook.ebook?.filePath) {
         try {
-          await unlink(
-            join(process.cwd(), "public", existingBook.ebook.filePath),
-          );
+          await unlink(path.join(STORAGE_ROOT, existingBook.ebook.filePath));
         } catch {}
       }
     }
 
-    // 6. Update BOOK + Upsert/Update Connected E-book Sub-relation data
+    /* =========================
+       UPDATE DATABASE
+    ========================== */
     const updatedBook = await prisma.book.update({
       where: { id },
       data: {
@@ -214,17 +277,23 @@ export async function PATCH(
         publicationYear,
         language,
         coverImage,
-        donate, 
+        donate,
 
-        // Dynamic nested relation write to sync E-book adjustments seamlessly
         ebook: ebookDbPath
           ? {
               upsert: {
-                create: { filePath: ebookDbPath, format: "PDF", semester },
-                update: { filePath: ebookDbPath, semester },
+                create: {
+                  filePath: ebookDbPath,
+                  format: "PDF",
+                  semester,
+                },
+                update: {
+                  filePath: ebookDbPath,
+                  semester,
+                },
               },
             }
-          : semester // If no new file was uploaded, but the target curriculum semester changed
+          : semester
             ? {
                 update: { semester },
               }
@@ -237,7 +306,9 @@ export async function PATCH(
       },
     });
 
-    // 7. Sync BookCopy table
+    /* =========================
+       SYNC COPIES
+    ========================== */
     const currentCopiesCount = await prisma.bookCopy.count({
       where: { bookId: id },
     });
@@ -251,19 +322,17 @@ export async function PATCH(
       });
     }
 
-    // Add copies
     if (diff > 0) {
-      const newCopies = Array.from({ length: diff }).map((_, index) => ({
-        bookId: id,
-        barcode: generateBarcode(isbn, currentCopiesCount + index),
-        status: "AVAILABLE" as const,
-        shelfLocation: shelfLocation || "Unassigned",
-      }));
-
-      await prisma.bookCopy.createMany({ data: newCopies });
+      await prisma.bookCopy.createMany({
+        data: Array.from({ length: diff }).map((_, i) => ({
+          bookId: id,
+          barcode: generateBarcode(isbn, currentCopiesCount + i),
+          status: "AVAILABLE",
+          shelfLocation: shelfLocation || "Unassigned",
+        })),
+      });
     }
 
-    // Remove copies
     if (diff < 0) {
       const copiesToDelete = await prisma.bookCopy.findMany({
         where: { bookId: id, status: "AVAILABLE" },
@@ -275,22 +344,102 @@ export async function PATCH(
         return NextResponse.json(
           {
             error:
-              "Cannot reduce copies because some copies are borrowed or unavailable.",
+              "Cannot reduce copies because some are borrowed/unavailable.",
           },
           { status: 400 },
         );
       }
 
       await prisma.bookCopy.deleteMany({
-        where: { id: { in: copiesToDelete.map((copy) => copy.id) } },
+        where: {
+          id: { in: copiesToDelete.map((c) => c.id) },
+        },
       });
     }
 
-    return NextResponse.json({ success: true, data: updatedBook });
+    /* =========================
+       RESPONSE
+    ========================== */
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...updatedBook,
+        coverImage: updatedBook.coverImage
+          ? `/api/files/${updatedBook.coverImage}`
+          : null,
+        ebook: updatedBook.ebook
+          ? {
+              ...updatedBook.ebook,
+              filePath: `/api/files/${updatedBook.ebook.filePath}`,
+            }
+          : null,
+      },
+    });
   } catch (error) {
     console.error("PATCH Error:", error);
     return NextResponse.json(
       { error: "Failed to update book" },
+      { status: 500 },
+    );
+  }
+}
+
+/* -----------------------------
+   DELETE /api/books/[id]
+----------------------------- */
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await context.params;
+
+    // 1. Fetch record to track down existing storage assets before deletion
+    const book = await prisma.book.findUnique({
+      where: { id },
+      include: { ebook: true },
+    });
+
+    if (!book) {
+      return NextResponse.json(
+        { success: false, error: "Book not found" },
+        { status: 404 },
+      );
+    }
+
+    // 2. Clear out filesystem assets
+    if (book.coverImage) {
+      try {
+        await unlink(toAbsoluteStoragePath(book.coverImage));
+      } catch (err) {
+        console.warn("Failed to remove cover image on deletion:", err);
+      }
+    }
+
+    if (book.ebook?.filePath) {
+      try {
+        await unlink(toAbsoluteStoragePath(book.ebook.filePath));
+      } catch (err) {
+        console.warn("Failed to remove ebook file on deletion:", err);
+      }
+    }
+
+    // 3. Remove database references (Cascade hooks or manual deletion blocks)
+    // Delete copies and e-books first if they don't use PostgreSQL Cascades
+    await prisma.$transaction([
+      prisma.bookCopy.deleteMany({ where: { bookId: id } }),
+      prisma.ebook.deleteMany({ where: { bookId: id } }),
+      prisma.book.delete({ where: { id } }),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      message: "Book deleted successfully",
+    });
+  } catch (error) {
+    console.error("DELETE Error:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to delete book record" },
       { status: 500 },
     );
   }

@@ -1,11 +1,13 @@
 "use client";
 import React from "react";
-import { Book, CheckCircle, MapPin, Star } from "lucide-react";
+import { CheckCircle, MapPin, Star, Heart, Gift } from "lucide-react";
 import { BookCopy, BookWithDetails } from "../types";
 import { CopyStatus } from "@/app/generated/prisma/enums";
+import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
 
 interface BookCardProps {
-  book: BookWithDetails;
+  book: BookWithDetails & { donate?: string | null };
   onClick?: (book: BookWithDetails) => void;
   variant?: "grid" | "list" | "carousel";
   showProgress?: boolean;
@@ -25,7 +27,10 @@ export const BookCard: React.FC<BookCardProps> = ({
 }) => {
   const handleClick = () => onClick?.(book);
 
-  // Get available copies
+  const defaultCover = "/images/bookCover.jpg";
+  const hasRealCover = !!book.coverImage && book.coverImage.trim() !== "";
+  const finalCoverUrl = (hasRealCover ? book.coverImage : defaultCover) || "";
+
   const availableCopies =
     book.copies?.filter(
       (copy: BookCopy) => copy.status === CopyStatus.AVAILABLE,
@@ -33,8 +38,8 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   const isAvailable = availableCopies.length > 0;
   const totalCopies = book.copies?.length || 0;
+  const isDonated = !!book.donate && book.donate.trim() !== "";
 
-  // Get cover color based on category or generate one
   const getCoverColor = () => {
     const colors = [
       "bg-amber-100 border-amber-300 text-amber-800",
@@ -61,16 +66,35 @@ export const BookCard: React.FC<BookCardProps> = ({
         <div
           className={`h-36 w-full rounded-r-md rounded-l-xs shadow-md border-y border-r ${coverColor} p-2 flex flex-col justify-between transform transition-transform group-hover:-translate-y-1 relative overflow-hidden`}
         >
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-black/10 rounded-l-xs" />
-          <span className="text-[10px] uppercase tracking-wider opacity-70 font-bold block truncate">
-            {book.ebook ? "Ebook" : "Physical"}
-          </span>
-          <p className="font-serif font-bold text-xs leading-tight line-clamp-3 my-auto">
-            {book.title}
-          </p>
-          <p className="text-[9px] truncate opacity-80 text-right font-medium">
-            {book.author?.name || "Unknown Author"}
-          </p>
+          <Image
+            src={finalCoverUrl}
+            alt={book.title}
+            fill
+            sizes="112px"
+            className="object-cover z-0"
+            priority={false}
+          />
+          <div className="absolute inset-0 bg-black/30 dark:bg-black/50 z-10" />
+
+          <div className="relative z-20 flex flex-col h-full justify-between text-white">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-black/10 rounded-l-xs" />
+            <div className="flex justify-between items-center w-full">
+              <span className="text-[10px] uppercase tracking-wider opacity-90 font-bold block truncate">
+                <Badge variant="secondary" className="text-[8px] px-1 py-0">
+                  {book.ebook ? "Ebook" : "Physical"}
+                </Badge>
+              </span>
+              {isDonated && (
+                <Heart className="h-3 w-3 text-rose-400 fill-rose-400 shrink-0" />
+              )}
+            </div>
+            <p className="font-serif font-bold text-xs leading-tight line-clamp-3 my-auto drop-shadow-sm">
+              {book.title}
+            </p>
+            <p className="text-[9px] truncate opacity-90 text-right font-medium drop-shadow-sm">
+              {book.author?.name || "Unknown Author"}
+            </p>
+          </div>
         </div>
         <span className="text-xs font-semibold mt-2 text-navy line-clamp-1 group-hover:text-royal">
           {book.title}
@@ -91,22 +115,28 @@ export const BookCard: React.FC<BookCardProps> = ({
         <div
           className={`w-16 h-20 rounded-lg ${coverColor} flex items-center justify-center border border-border/50 shrink-0 relative overflow-hidden`}
         >
-          {book.coverImage ? (
-            <img
-              src={book.coverImage}
-              alt={book.title}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          ) : (
-            <Book className="h-6 w-6 text-muted-foreground/40" />
-          )}
+          <Image
+            src={finalCoverUrl}
+            alt={book.title}
+            fill
+            sizes="64px"
+            className="object-cover"
+          />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-navy group-hover:text-royal truncate">
-                {book.title}
-              </p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="text-sm font-semibold text-navy group-hover:text-royal truncate">
+                  {book.title}
+                </p>
+                {isDonated && (
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-medium bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 px-1.5 py-0.5 rounded">
+                    <Heart className="h-2.5 w-2.5 fill-current" />
+                    Donated by {book.donate}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground truncate">
                 {book.author?.name || "Unknown Author"}
               </p>
@@ -157,180 +187,179 @@ export const BookCard: React.FC<BookCardProps> = ({
     );
   }
 
-  // Grid variant (default) normal design
-  // return (
-  //   <div
-  //     onClick={handleClick}
-  //     className="bg-card border border-border/40 rounded-xl p-3 flex flex-col items-center text-center shadow-xs hover:shadow-md transition-shadow group cursor-pointer w-full"
-  //   >
-  //     {/* Aspect ratio container wrapper */}
-  //     <div
-  //       className={`w-full aspect-3/4 ${coverColor} border border-dashed border-muted rounded-lg flex flex-col items-center justify-center text-muted-foreground/60 group-hover:bg-sky/5 group-hover:border-sky/40 transition-colors relative overflow-hidden`}
-  //     >
-  //       {book.coverImage ? (
-  //         <img
-  //           src={book.coverImage}
-  //           alt={book.title}
-  //           className="absolute inset-0 w-full h-full object-cover p-2"
-  //         />
-  //       ) : (
-  //         <>
-  //           <div className="absolute inset-0 opacity-10 flex items-center justify-center">
-  //             <div className="w-[141%] h-px bg-foreground rotate-45 absolute" />
-  //             <div className="w-[141%] h-px bg-foreground -rotate-45 absolute" />
-  //           </div>
-  //           <Book className="h-5 w-5 mb-1 text-muted-foreground/40 group-hover:text-royal/60 transition-colors" />
-  //           <span className="text-[10px] font-medium tracking-tight">
-  //             Book Cover
-  //           </span>
-  //         </>
-  //       )}
-
-  //       {book.readingProgress !== undefined &&
-  //         book.readingProgress > 0 &&
-  //         book.readingProgress < 100 && (
-  //           <div className="absolute bottom-1.5 left-1.5 right-1.5 z-10">
-  //             <div className="w-full h-1 bg-muted/60 rounded-full overflow-hidden">
-  //               <div
-  //                 className="h-full bg-royal rounded-full transition-all duration-500"
-  //                 style={{ width: `${book.readingProgress}%` }}
-  //               />
-  //             </div>
-  //           </div>
-  //         )}
-  //       {book.readingProgress === 100 && (
-  //         <div className="absolute top-1.5 right-1.5 z-10">
-  //           <CheckCircle className="h-4 w-4 text-green-500" />
-  //         </div>
-  //       )}
-  //       {showAvailability && (
-  //         <div
-  //           className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold z-10 ${
-  //             isAvailable ? "bg-green-500 text-white" : "bg-red-500 text-white"
-  //           }`}
-  //         >
-  //           {isAvailable ? "Available" : "Unavailable"}
-  //         </div>
-  //       )}
-  //       <span className="absolute bottom-1.5 px-1 py-0.5 rounded text-[8px] uppercase tracking-widest font-bold bg-muted/60 text-muted-foreground z-10">
-  //         {book.ebook ? "Ebook" : "Physical"}
-  //       </span>
-  //     </div>
-  //     <p className="text-xs font-bold text-navy mt-2.5 line-clamp-1 w-full group-hover:text-royal">
-  //       {book.title}
-  //     </p>
-  //     <p className="text-[11px] text-muted-foreground line-clamp-1 w-full mt-0.5">
-  //       {book.author?.name || "Unknown Author"}
-  //     </p>
-  //     {book.publicationYear && (
-  //       <p className="text-[10px] text-muted-foreground mt-0.5">
-  //         {book.publicationYear}
-  //       </p>
-  //     )}
-  //   </div>
-  // );
-
-  // Grid variant (default)
+  // Grid variant (default) - Improved design
   return (
     <div
       onClick={handleClick}
-      className="group relative bg-card border border-border/40 rounded-xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-300 cursor-pointer w-full h-80"
+      className="group relative bg-card border border-border/40 rounded-xl overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 cursor-pointer w-full aspect-[3/4] max-w-[240px] mx-auto flex flex-col"
     >
-      {/* Cover Image/Color Container */}
       <div
-        className={`w-full h-full ${coverColor} border border-dashed border-muted rounded-lg flex flex-col items-center justify-center text-muted-foreground/60 transition-colors relative overflow-hidden`}
+        className={`w-full h-full ${coverColor} relative overflow-hidden flex-1`}
       >
-        {book.coverImage ? (
-          <img
-            src={book.coverImage}
+        <div className="absolute inset-2.5 rounded-lg overflow-hidden">
+          <Image
+            src={finalCoverUrl}
             alt={book.title}
-            className="absolute inset-0 w-full h-full object-cover p-2"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 200px"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            priority={true}
           />
-        ) : (
-          <>
-            <div className="absolute inset-0 opacity-10 flex items-center justify-center">
-              <div className="w-[141%] h-px bg-foreground rotate-45 absolute" />
-              <div className="w-[141%] h-px bg-foreground -rotate-45 absolute" />
-            </div>
-            <Book className="h-5 w-5 mb-1 text-muted-foreground/40 group-hover:text-royal/60 transition-colors" />
-            <span className="text-[10px] font-medium tracking-tight">
-              Book Cover
-            </span>
-          </>
-        )}
+        </div>
 
+        {/* Top Badges */}
+        <div className="absolute top-3 left-3 right-3 z-10 flex justify-between items-start">
+          <div className="flex flex-col gap-1.5 items-start">
+            {showAvailability && (
+              <Badge
+                variant={isAvailable ? "secondary" : "destructive"}
+                className={`text-[9px] px-2 py-0.5 uppercase tracking-widest font-semibold shadow-sm`}
+              >
+                {isAvailable ? "Available" : "Unavailable"}
+              </Badge>
+            )}
+            {isDonated && (
+              <Badge className="bg-gradient-to-r from-rose-500 to-pink-500 text-white border-0 text-[9px] px-2 py-0.5 shadow-sm flex items-center gap-1">
+                <Gift className="h-2.5 w-2.5" />
+                Donated
+              </Badge>
+            )}
+          </div>
+          <Badge
+            variant="outline"
+            className="bg-black/50 backdrop-blur-sm text-white border-white/20 text-[8px] px-1.5 py-0.5 uppercase tracking-widest font-bold shadow-sm"
+          >
+            {book.ebook ? "Ebook" : "Physical"}
+          </Badge>
+        </div>
+
+        {/* Reading Progress */}
         {book.readingProgress !== undefined &&
           book.readingProgress > 0 &&
           book.readingProgress < 100 && (
-            <div className="absolute bottom-1.5 left-1.5 right-1.5 z-10">
-              <div className="w-full h-1 bg-muted/60 rounded-full overflow-hidden">
+            <div className="absolute bottom-3 left-3 right-3 z-10 transition-opacity duration-200 group-hover:opacity-0">
+              <div className="w-full h-1 bg-muted/60 rounded-full overflow-hidden backdrop-blur-sm">
                 <div
-                  className="h-full bg-royal rounded-full transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-royal to-blue-400 rounded-full transition-all duration-500"
                   style={{ width: `${book.readingProgress}%` }}
                 />
               </div>
             </div>
           )}
         {book.readingProgress === 100 && (
-          <div className="absolute top-1.5 right-1.5 z-10">
-            <CheckCircle className="h-4 w-4 text-green-500" />
+          <div className="absolute top-3 right-3 z-10">
+            <CheckCircle className="h-4 w-4 text-green-500 bg-white rounded-full shadow-sm" />
           </div>
         )}
-        {showAvailability && (
-          <div
-            className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold z-10 ${
-              isAvailable ? "bg-green-500 text-white" : "bg-red-500 text-white"
-            }`}
-          >
-            {isAvailable ? "Available" : "Unavailable"}
-          </div>
-        )}
-        <span className="absolute bottom-4 px-1 py-0.5 rounded text-[8px] uppercase tracking-widest font-bold bg-muted/60 text-muted-foreground z-10">
-          {book.ebook ? "Ebook" : "Physical"}
-        </span>
-      </div>
 
-      {/* Sliding Data Panel  */}
-      <div
-        className="absolute bottom-0 left-0 right-0 mx-auto w-[90%]
-             bg-white/70
-             backdrop-blur-md
-             border border-white/40
-             shadow-xl
-             rounded-t-xl
-             p-4
-             translate-y-[calc(100%-2.5rem)] opacity-0 pointer-events-none
-             group-hover:-translate-y-4 group-hover:opacity-100 group-hover:pointer-events-auto
-             transition-all duration-500 ease-out z-20"
-      >
-        <div className="space-y-2">
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-slate-500 font-medium">
-              Title
-            </p>
-            <p className="text-xs font-bold text-slate-900 line-clamp-1">
+        {/* Sliding Details Panel - Redesigned */}
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-black/20
+             text-white p-5 flex flex-col justify-end
+             translate-y-full group-hover:translate-y-0
+             transition-transform duration-300 ease-out z-20"
+        >
+          <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 delay-75">
+            {/* Book Title */}
+            <h3 className="text-sm font-bold leading-tight line-clamp-2 mb-1">
               {book.title}
-            </p>
-          </div>
+            </h3>
 
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-slate-500 font-medium">
-              Author
+            {/* Author */}
+            <p className="text-xs text-white/80 line-clamp-1 mb-1.5">
+              by {book.author?.name || "Unknown Author"}
             </p>
-            <p className="text-[11px] text-slate-800 line-clamp-1">
-              {book.author?.name || "Unknown Author"}
-            </p>
-          </div>
 
-          {book.publicationYear && (
-            <div>
-              <p className="text-[9px] uppercase tracking-wider text-slate-500 font-medium">
-                Published
-              </p>
-              <p className="text-[11px] text-slate-800">
-                {book.publicationYear}
-              </p>
+            {/* Category & Year */}
+            <div className="flex items-center gap-2 mb-2.5">
+              {book.category && (
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-sm text-white/90 border border-white/10">
+                  {book.category.name}
+                </span>
+              )}
+              {book.publicationYear && (
+                <span className="text-[9px] text-white/50">
+                  {book.publicationYear}
+                </span>
+              )}
+              {book.language && (
+                <span className="text-[9px] text-white/50">
+                  • {book.language}
+                </span>
+              )}
             </div>
+
+            {/* Divider */}
+            <div className="w-12 h-0.5 bg-gradient-to-r from-rose-400 to-amber-400 rounded-full mb-2.5" />
+
+            {/* Important Info Grid */}
+            <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+              {/* ISBN */}
+              {book.isbn && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[8px] uppercase tracking-wider text-white/40 font-semibold">
+                    ISBN
+                  </span>
+                  <span className="text-[10px] text-white/70 truncate">
+                    {book.isbn}
+                  </span>
+                </div>
+              )}
+
+              {/* Copies Available */}
+              {showAvailability && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[8px] uppercase tracking-wider text-white/40 font-semibold">
+                    Copies
+                  </span>
+                  <span className="text-[10px] text-white/70">
+                    {availableCopies.length} available
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Donation Info - Distinct and prominent */}
+            {isDonated && (
+              <div className="flex items-center gap-2 bg-gradient-to-r from-rose-500/20 to-pink-500/20 backdrop-blur-sm border border-rose-400/30 rounded-lg px-3 py-1.5 mb-2">
+                <div className="p-1 bg-gradient-to-r from-rose-500/30 to-pink-500/30 rounded-full">
+                  <Gift className="h-3.5 w-3.5 text-rose-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] text-rose-200/80 uppercase tracking-wider font-medium">
+                    Community Donation
+                  </p>
+                  <p className="text-xs text-white font-medium truncate flex items-center gap-1">
+                    <span>❤️</span>
+                    {book.donate}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Publisher Info - if available */}
+            {book.publisher && (
+              <p className="text-[10px] text-white/40 truncate">
+                {book.publisher}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Persistent Bottom Bar */}
+        <div
+          className="absolute bottom-0 left-0 right-0 
+                     bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm
+                     px-3 py-2.5 border-t border-border/40 min-h-[44px] 
+                     flex items-center justify-between 
+                     group-hover:opacity-0 group-hover:pointer-events-none
+                     transition-all duration-200 z-10"
+        >
+          <span className="text-xs font-semibold text-slate-900 dark:text-white truncate pr-2">
+            {book.title}
+          </span>
+          {isDonated && (
+            <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500 shrink-0" />
           )}
         </div>
       </div>

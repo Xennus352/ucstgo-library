@@ -25,6 +25,10 @@ import dynamic from "next/dynamic";
 
 import { PhysicalBookDetailsModal } from "@/components/students/modals/PhysicalBookDetailsModal";
 
+import { borrowBookAction } from "@/app/actions/borrow";
+import { fetchEbookOfflineSafe } from "@/lib/ebookCache";
+import { getUserProfileData } from "@/app/actions/profile";
+
 const EbookReaderContainer = dynamic(
   () => import("@/components/reader/EbookReaderContainer"),
   { ssr: false },
@@ -67,18 +71,50 @@ export default function LibraryApp() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // 1. ADD STATE LAYER FOR MOUNTING THE SPLIT READER VIEW OVERLAY
   const [activeEbookUrl, setActiveEbookUrl] = useState<string | null>(null);
 
-  // ---  PHYSICAL INVENTORY UI STATE LAYERS ---
   const [selectedPhysicalBook, setSelectedPhysicalBook] =
     useState<BookWithDetails | null>(null);
   const [isPhysicalModalOpen, setIsPhysicalModalOpen] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
 
-  /* -----------------------------
-    DYNAMIC HOOK INTEGRATION
-  ----------------------------- */
+  // FOR BORROWING
+  const [isBorrowing, setIsBorrowing] = useState(false);
+
+  // 1. Add state hooks inside your LibraryApp function component:
+  const [profileData, setProfileData] = useState<{
+    borrowRecords: any[];
+    reservations: any[];
+  }>({
+    borrowRecords: [],
+    reservations: [],
+  });
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
+
+  // 2. Create a handler to fetch profile information dynamically:
+  const loadProfileDetails = useCallback(async () => {
+    try {
+      setIsProfileLoading(true);
+      const res = await getUserProfileData();
+      if (res.success && res.data) {
+        setProfileData(res.data);
+      } else {
+        toast.error(res.error || "Could not synchronize history items");
+      }
+    } catch (err) {
+      toast.error("Network error sync failure");
+    } finally {
+      setIsProfileLoading(false);
+    }
+  }, []);
+
+  // 3. Trigger data download whenever the user selects the profile view segment:
+  useEffect(() => {
+    if (activeTab === "Profile") {
+      loadProfileDetails();
+    }
+  }, [activeTab, loadProfileDetails]);
+
   const apiType = useMemo(() => {
     if (activeTab === "eBooks") return "ebook";
     if (activeTab === "Physical") return "physical";
@@ -91,11 +127,9 @@ export default function LibraryApp() {
     error,
     setSize,
     hasMore,
+    mutate,
   } = useBooksInfinite(apiType);
 
-  /* -----------------------------
-    SEARCH FILTER (LOCAL)
-  ----------------------------- */
   const filteredBooks = useMemo(() => {
     if (!searchQuery) return liveBooks;
     const q = searchQuery.toLowerCase();
@@ -109,42 +143,32 @@ export default function LibraryApp() {
     );
   }, [searchQuery, liveBooks]);
 
-  const reservedBooks = useMemo(
-    () =>
-      filteredBooks.filter(
-        (b) =>
-          b.isReserved ||
-          (b.readingProgress &&
-            b.readingProgress > 0 &&
-            b.readingProgress < 100),
-      ),
-    [filteredBooks],
-  );
+  const reservedBooks = useMemo(() => {
+    return filteredBooks.filter((b) => {
+      const progress = b.readingProgress ?? 0;
+      return b.isReserved || (progress > 0 && progress < 100);
+    });
+  }, [filteredBooks]);
 
-  /* -----------------------------
-    INFINITE SCROLL LOGIC
-  ----------------------------- */
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!loadMoreRef.current) return;
-    if (!hasMore || isLoading) return;
+    const el = loadMoreRef.current;
+    if (!el || !hasMore || isLoading) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        const target = entries[0];
-        if (target.isIntersecting) {
+        if (entries[0].isIntersecting) {
           setSize((s) => s + 1);
         }
       },
-      {
-        rootMargin: "200px",
-      },
+      { rootMargin: "200px" },
     );
 
-    observer.observe(loadMoreRef.current);
+    observer.observe(el);
+
     return () => observer.disconnect();
-  }, [setSize, hasMore, isLoading, activeTab]);
+  }, [setSize, hasMore, isLoading]);
 
   const handleTabChange = useCallback((tabId: TabId) => {
     setActiveTab(tabId);
@@ -154,10 +178,10 @@ export default function LibraryApp() {
     setSearchQuery(query);
   }, []);
 
-  // --- ACTION TO SUBMIT PHYSICAL SYSTEM RESERVATION HOLD ---
   const handleReserveBook = async (bookId: string) => {
     try {
       setIsReserving(true);
+
       const response = await fetch("/api/reservations/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -165,90 +189,105 @@ export default function LibraryApp() {
       });
 
       const json = await response.json();
+
       if (!response.ok || !json.success) {
-        throw new Error(
-          json.error || "Could not process reservation hold request.",
-        );
+        throw new Error(json.error || "Reservation failed");
       }
 
-      toast.success(
-        "Reservation successful! Collect your item from the library desk.",
-      );
+      toast.success("Reservation successful!");
       setIsPhysicalModalOpen(false);
       setSelectedPhysicalBook(null);
+
+      // Sync client state immediately across SWR book array segments
+      mutate();
     } catch (err: any) {
-      toast.error(
-        err.message ||
-          "An unexpected error occurred while placing reservation.",
-      );
+      toast.error(err.message || "Unexpected error");
     } finally {
       setIsReserving(false);
     }
   };
 
-  //  RECONSTRUCT THE SELECTION TO ROUTE IN-APP VIA REACT STATE
-  const handleBookClick = useCallback(
-    async (book: BookWithDetails) => {
-      console.log("Clicked book:", book.title, book.id);
+  // IMPLEMENT THE BORROW HANDLER
+  const handleBorrowBook = async (bookId: string) => {
+    try {
+      setIsBorrowing(true);
 
-      const bookData = book as any;
-      const rawPath = bookData.ebook?.filePath;
+      // Call the secure backend action
+      const response = await borrowBookAction(bookId);
 
-      // Route Variant A: Digital format match -> launch virtual reading interface canvas
-      if (activeTab === "eBooks" || rawPath) {
-        if (rawPath) {
-          const cleanPath = rawPath.startsWith("http")
-            ? rawPath
-            : rawPath.replace(/^public\//, "/");
-
-          setActiveEbookUrl(cleanPath);
-          return;
-        } else {
-          toast.error(
-            "This book is only available in physical format and does not have a digital e-book version.",
-          );
-          return;
-        }
+      if (!response.success) {
+        throw new Error(response.error || "Borrow mutation failed");
       }
 
-      // Route Variant B: Physical book match -> Fetch deep relations asynchronously using your dynamic GET API
+      toast.success(response.message || "Book successfully checked out!");
+      setIsPhysicalModalOpen(false);
+      setSelectedPhysicalBook(null);
+
+      // Refresh cache dynamically upon checkout completion
+      mutate();
+    } catch (err: any) {
+      toast.error(err.message || "Unexpected borrow error");
+    } finally {
+      setIsBorrowing(false);
+    }
+  };
+
+  const handleBookClick = useCallback(async (book: BookWithDetails) => {
+    const rawPath = book.ebook?.filePath;
+
+    // E-book execution block containing IndexedDB routing hooks
+    if (rawPath) {
+      const cleanPath = rawPath.startsWith("http")
+        ? rawPath
+        : rawPath.replace(/^storage\//, "/");
+
+      const loadingToastId = toast.loading(
+        "Preparing e-book for offline reading...",
+      );
       try {
-        const loadToast = toast.loading("Checking inventory statuses...");
-        const response = await fetch(`/api/books/${book.id}`);
-        const json = await response.json();
-        toast.dismiss(loadToast);
-
-        if (!response.ok || !json.success) {
-          throw new Error(json.error || "Failed to load copy structures.");
-        }
-
-        // Synchronize backend details object with local overlay view layer
-        setSelectedPhysicalBook(json.data);
-        setIsPhysicalModalOpen(true);
-      } catch (err: any) {
-        console.error("Fetch inventory error:", err);
-        toast.error(
-          err.message || "Could not retrieve current book availability.",
-        );
+        // OPTIMIZATION: Pass paths down directly through your IndexedDB cache layer
+        const offlineBlobUrl = await fetchEbookOfflineSafe(cleanPath);
+        setActiveEbookUrl(offlineBlobUrl);
+        toast.dismiss(loadingToastId);
+      } catch (cacheError) {
+        // Fallback gracefully to live stream URLs if browser IndexedDB space quotas fail
+        toast.dismiss(loadingToastId);
+        setActiveEbookUrl(cleanPath);
       }
-    },
-    [activeTab],
-  );
+      return;
+    }
+
+    try {
+      const loadToast = toast.loading("Checking inventory...");
+      const response = await fetch(`/api/books/${book.id}`);
+      const json = await response.json();
+
+      toast.dismiss(loadToast);
+
+      if (!response.ok || !json.success) {
+        throw new Error(json.error || "Failed to load book");
+      }
+
+      setSelectedPhysicalBook(json.data);
+      setIsPhysicalModalOpen(true);
+    } catch (err: any) {
+      toast.error(err.message || "Error loading book");
+    }
+  }, []);
 
   const renderTabContent = useCallback(() => {
     if (isLoading && liveBooks.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-pulse">
-          <div className="text-3xl mb-2">📖</div>
-          <p className="text-sm font-medium">Loading library...</p>
+          📖 Loading library...
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 text-center my-6 text-sm">
-          ⚠️ <strong>Error:</strong> {error.message}
+        <div className="bg-red-50 text-red-700 p-4 rounded-xl">
+          ⚠️ {error.message}
         </div>
       );
     }
@@ -286,10 +325,17 @@ export default function LibraryApp() {
         );
 
       case "Profile":
+        if (isProfileLoading) {
+          return (
+            <div className="text-center py-20 text-muted-foreground animate-pulse">
+              Checking your dashboard logs...
+            </div>
+          );
+        }
         return (
           <ProfileTab
-            borrowRecords={sampleBorrowRecords as any}
-            reservations={sampleReservations as any}
+            borrowRecords={profileData.borrowRecords}
+            reservations={profileData.reservations}
           />
         );
 
@@ -308,7 +354,7 @@ export default function LibraryApp() {
   ]);
 
   return (
-    <div className="w-full min-h-screen bg-background text-foreground font-sans antialiased md:pb-12 pb-28 flex flex-col">
+    <div className="w-full min-h-screen bg-background text-foreground flex flex-col">
       <TopNav
         tabs={tabsConfig as any}
         activeTab={activeTab}
@@ -317,67 +363,40 @@ export default function LibraryApp() {
         searchValue={searchQuery}
       />
 
-      <main className="w-full px-4 md:px-12 lg:px-16 pt-6 flex-1">
+      <main className="flex-1 px-4 md:px-12 pt-6 pb-28 md:pb-6">
         {renderTabContent()}
 
         {activeTab !== "Profile" && hasMore && (
-          <div
-            ref={loadMoreRef}
-            className="flex flex-col items-center justify-center py-12"
-          >
-            {isLoading ? (
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex gap-1.5">
-                  {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      className="w-2 h-2 bg-royal rounded-full animate-bounce"
-                      style={{ animationDelay: `${i * 0.15}s` }}
-                    />
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Finding more books...
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-1 text-muted-foreground/40 hover:text-muted-foreground/80 transition-colors">
-                <BookOpen className="h-5 w-5" />
-                <span className="text-[10px] font-medium tracking-widest uppercase">
-                  Scroll to discover
-                </span>
-              </div>
-            )}
+          <div ref={loadMoreRef} className="py-12 text-center">
+            {isLoading ? "Loading..." : "Scroll to load more"}
           </div>
         )}
       </main>
 
-      <div className="block md:hidden">
-        <BottomNav
-          tabs={tabsConfig as any}
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-        />
-      </div>
+      <BottomNav
+        tabs={tabsConfig as any}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+      />
 
-      {/*  CONDITIONAL IN-APP MODAL RENDER PORTAL LAYOUT */}
       {activeEbookUrl && (
         <EbookReaderContainer
           fileUrl={activeEbookUrl}
-          onClose={() => setActiveEbookUrl(null)} // Unmounting handles cleanup/garbage collection automatically
+          onClose={() => setActiveEbookUrl(null)}
         />
       )}
 
-      {/* CONDITIONAL PHYSICAL COPIES TRACKING AND RESERVATIONS OVERLAY */}
       <PhysicalBookDetailsModal
         book={selectedPhysicalBook}
         isOpen={isPhysicalModalOpen}
         isReserving={isReserving}
+        isBorrowing={isBorrowing}
         onClose={() => {
           setIsPhysicalModalOpen(false);
           setSelectedPhysicalBook(null);
         }}
         onReserve={handleReserveBook}
+        onBorrow={handleBorrowBook}
       />
     </div>
   );

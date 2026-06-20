@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-
 import { toast } from "sonner";
 import { ArrowLeft, Eye, Edit, CheckCircle } from "lucide-react";
 
@@ -26,13 +25,13 @@ export default function CreateBookForm() {
     description: "",
     publicationYear: "",
     language: "",
-    donate: "", 
+    donate: "",
   });
 
   const [cover, setCover] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [ebook, setEbook] = useState<File | null>(null);
-  const [semester, setSemester] = useState(""); 
+  const [semester, setSemester] = useState("");
   const [copies, setCopies] = useState(1);
   const [shelfLocation, setShelfLocation] = useState("");
 
@@ -53,25 +52,29 @@ export default function CreateBookForm() {
   const basePath = isLibrarian ? "/librarian/books" : "/admin/books";
 
   const handleSubmit = () => {
+    // 1. Mandatory Text Fields Validation
     if (!form.title || !form.isbn || !form.author || !form.category) {
       toast.error("Please fill all required fields");
       return;
     }
 
-    if (!cover) {
-      toast.error("Cover image is required");
-      return;
-    }
+    // ✅ FIX 1: Removed the "if (!cover)" validation block that forced an error toast!
 
     const fd = new FormData();
 
     Object.entries(form).forEach(([key, value]) => {
       if (value) fd.append(key, value);
     });
+
     fd.append("copies", String(copies));
-    fd.append("cover", cover);
+
+    // ✅ FIX 2: Only append the file payload if the user explicitly provided one
+    if (cover) {
+      fd.append("cover", cover);
+    }
+
     if (ebook) fd.append("ebook", ebook);
-    if (semester && ebook) fd.append("semester", semester); 
+    if (semester && ebook) fd.append("semester", semester);
     if (shelfLocation) fd.append("shelfLocation", shelfLocation);
 
     startTransition(async () => {

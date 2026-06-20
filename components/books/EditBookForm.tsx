@@ -24,7 +24,7 @@ export function EditBookForm({ initialData }: { initialData: any }) {
     description: "",
     publicationYear: "",
     language: "",
-    donate: "", // Added here
+    donate: "", 
   });
 
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
