@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { BookGrid } from "../books/BookGrid";
 import { BookWithDetails, ViewMode } from "../types";
 import { Grid, List } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
+import { useCategories } from "@/hooks/use-categories";
 
 interface PhysicalTabProps {
   books: BookWithDetails[];
@@ -20,7 +21,26 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
   onViewChange,
   viewMode = "grid",
 }) => {
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+
+  // 1. Fetch categories using your SWR hook
+  const { data: categoryResponse } = useCategories();
+
   const physicalBooks = books.filter((b) => b.copies && b.copies.length > 0);
+
+  // 2. Format categories list safely from API structure
+  const categories = useMemo(() => {
+    if (!categoryResponse?.data || !Array.isArray(categoryResponse.data)) {
+      return ["All"];
+    }
+    return ["All", ...categoryResponse.data.map((cat: any) => cat.name)];
+  }, [categoryResponse]);
+
+  // 3. Filter down books based on selection
+  const filteredBooks = useMemo(() => {
+    if (selectedCategory === "All") return physicalBooks;
+    return physicalBooks.filter((b) => b.category?.name === selectedCategory);
+  }, [selectedCategory, physicalBooks]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -32,7 +52,7 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
             Physical Books
           </h2>
           <p className="text-[11px] md:text-xs text-muted-foreground truncate">
-            {physicalBooks.length} available copies
+            {filteredBooks.length} available copies
           </p>
         </div>
 
@@ -80,17 +100,90 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
         )}
       </div>
 
+      {/* HORIZONTAL CATEGORY ROW (Directly below switcher row) */}
+      {categories.length > 1 && (
+        <div
+          className="
+  flex items-center gap-2 overflow-x-auto pb-3 -mt-2 px-1 select-none py-2 scroll-smooth
+
+  /* Firefox scrollbar */
+  [scrollbar-width:thin]
+  [scrollbar-color:theme(colors.blue.400) theme(colors.blue.300)]
+
+  /* Chrome / Safari scrollbar */
+  [&::-webkit-scrollbar]:h-1
+  [&::-webkit-scrollbar-track]:bg-blue-300
+  [&::-webkit-scrollbar-track]:rounded-full
+  [&::-webkit-scrollbar-thumb]:bg-blue-400
+  [&::-webkit-scrollbar-thumb]:rounded-full
+  hover:[&::-webkit-scrollbar-thumb]:bg-blue-400/70
+"
+        >
+          {categories.map((category) => {
+            const isActive = selectedCategory === category;
+            return (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`
+            relative px-4 py-2 text-sm font-medium rounded-full 
+            transition-all duration-300 ease-out 
+            whitespace-nowrap cursor-pointer
+            backdrop-blur-sm
+            ${
+              isActive
+                ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105 font-semibold"
+                : "bg-background/50 text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:scale-105 border border-border/50"
+            }
+          `}
+              >
+                {/* Active indicator dot */}
+                {isActive && (
+                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/60 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                  </span>
+                )}
+
+                {/* Category emoji/icon - optional enhancement */}
+                <span className="mr-1.5">
+                  {category === "All"
+                    ? "✨"
+                    : category === "Popular"
+                      ? "🔥"
+                      : category === "New"
+                        ? "🆕"
+                        : category === "Featured"
+                          ? "⭐"
+                          : "📌"}
+                </span>
+
+                {category}
+
+                {/* Optional count badge - if you have counts */}
+                {/* {categoryCounts[category] && (
+            <span className="ml-1.5 text-xs opacity-70">
+              {categoryCounts[category]}
+            </span>
+          )} */}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Animated content fading container for layout switches */}
       <AnimatePresence mode="wait">
+        {/* Dynamic combined key guarantees smooth fading when changing categories OR grid layouts */}
         <motion.div
-          key={viewMode}
+          key={`${viewMode}-${selectedCategory}`}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.15, ease: "easeInOut" }}
         >
           <BookGrid
-            books={physicalBooks}
+            books={filteredBooks}
             variant={viewMode}
             onBookClick={onBookClick}
             showLocation={true}

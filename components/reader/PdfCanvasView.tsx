@@ -27,6 +27,9 @@ export default function PdfCanvasView({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(800);
 
+  // Guard reference to block cyclic updates during scroll intersections
+  const isUpdatingRef = useRef<boolean>(false);
+
   // Auto-calculate base scale fit
   useEffect(() => {
     const handleResize = () => {
@@ -58,16 +61,26 @@ export default function PdfCanvasView({
 
     const observerOptions = {
       root: containerRef.current,
-      rootMargin: "0px",
-      threshold: 0.3, // Triggers when 30% of a page wrapper element is visible
+      rootMargin: "-10% 0px -70% 0px", // Focused boundary so only one main page triggers at a time
+      threshold: 0.01,
     };
 
     const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      if (isUpdatingRef.current) return;
+
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           const pageAttr = entry.target.getAttribute("data-page-number");
           if (pageAttr) {
-            setPageNumber(parseInt(pageAttr, 10));
+            const newPage = parseInt(pageAttr, 10);
+
+            isUpdatingRef.current = true;
+            setPageNumber(newPage);
+
+            // Fast release hook to clear the thread lock safely
+            setTimeout(() => {
+              isUpdatingRef.current = false;
+            }, 50);
           }
         }
       });
@@ -90,7 +103,7 @@ export default function PdfCanvasView({
       clearTimeout(timeoutId);
       observer.disconnect();
     };
-  }, [numPages, setPageNumber, scale]);
+  }, [numPages, setPageNumber, scale]); // scale dependency is safe now with the update guard lock
 
   const targetWidth = Math.min(
     containerWidth - (window.innerWidth < 640 ? 24 : 48),
@@ -132,7 +145,6 @@ export default function PdfCanvasView({
                 data-page-number={pageNo}
                 className="w-full flex flex-col items-center transition-transform duration-200 ease-out"
               >
-                {/* Optional mini visual indicator subtle label like modern apps */}
                 <span className="text-[13px] text-slate-200 font-mono font-semibold tracking-wider mb-2 select-none">
                   Page {pageNo}
                 </span>

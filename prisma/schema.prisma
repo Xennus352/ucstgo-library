@@ -33,8 +33,9 @@ model User {
   phone     String?
 
   // Better-Auth Technical Relations
-  sessions Session[]
-  accounts Account[]
+  sessions     Session[]
+  accounts     Account[]
+  createdBooks Book[]    @relation("LecturerCreatedBooks")
 
   // Library Application Relations
   borrowRecords  BorrowRecord[]
@@ -130,13 +131,17 @@ model Book {
   ebook        Ebook?
   reservations Reservation[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  createdBy   User?    @relation("LecturerCreatedBooks", fields: [createdById], references: [id], onDelete: SetNull)
+  
 
   @@index([isbn])
   @@index([title])
   @@index([categoryId])
   @@index([authorId])
+  @@index([createdById])
 }
 
 model Category {
@@ -195,8 +200,8 @@ model BorrowRecord {
   userId String
   copyId String
 
-  user User     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  copy BookCopy @relation(fields: [copyId], references: [id], onDelete: Restrict)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  copy BookCopy @relation(fields: [copyId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([copyId])

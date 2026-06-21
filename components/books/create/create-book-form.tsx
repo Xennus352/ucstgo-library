@@ -58,7 +58,7 @@ export default function CreateBookForm() {
       return;
     }
 
-    // ✅ FIX 1: Removed the "if (!cover)" validation block that forced an error toast!
+    //  Removed the "if (!cover)" validation block that forced an error toast!
 
     const fd = new FormData();
 
@@ -68,7 +68,7 @@ export default function CreateBookForm() {
 
     fd.append("copies", String(copies));
 
-    // ✅ FIX 2: Only append the file payload if the user explicitly provided one
+    //  Only append the file payload if the user explicitly provided one
     if (cover) {
       fd.append("cover", cover);
     }

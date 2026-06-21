@@ -17,6 +17,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BorrowRecord } from "../types";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ReservationStatus } from "@/app/generated/prisma/enums";
+import { Button } from "@/components/ui/button";
+import BookManagementModal from "@/components/lecturer/BookManagementModal";
 
 interface ProfileBorrowRecord extends BorrowRecord {
   copy: {
@@ -75,7 +77,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   const [activityTab, setActivityTab] = useState<
     "borrows" | "reservations" | "history"
   >("borrows");
-
+  const [isModalOpen, setIsModalOpen] = useState(false);
   // Loading State (Skeleton Feedback)
   if (isLoading) {
     return (
@@ -295,6 +297,27 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                   </div>
                 </div>
               )}
+
+              {user.role === "LECTURER" && (
+                <div className="w-full flex justify-end">
+                  <Button
+                    variant="secondary"
+                    className="cursor-pointer"
+                    onClick={() => setIsModalOpen(true)} 
+                  >
+                    Ebook Management
+                  </Button>
+                </div>
+              )}
+
+              {/* multi-tab BookManagementModal */}
+              <BookManagementModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)} // Closes the modal
+                onSuccess={() => {
+                  console.log("Operation completed successfully!");
+                }}
+              />
             </div>
           </div>
         </div>

@@ -160,6 +160,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
+
     if (type === "ebook") {
       where.ebook = {
         isNot: null,

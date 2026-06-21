@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { AiFloatingWidget } from "@/components/ai/AiFloatingWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,11 +22,19 @@ export const metadata: Metadata = {
   description: "E-book and online library of COMPUTER UNIVERSITY(TAUNGOO)",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Fetch the session server-side using Better Auth guidelines
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  // Extract user ID if available, otherwise fallback to guest tracking
+  const currentUserId = session?.user?.id || "guest-id";
+
   return (
     <html
       lang="en"
@@ -33,7 +44,11 @@ export default function RootLayout({
         <TooltipProvider>
           <div className="min-h-screen bg-linear-to-br from-[#a5bad3] via-[#b7ceeb] to-[#bfd6f0]">
             {children}
+
+            {/* Global freely draggable AI Co-Pilot Widget */}
+            <AiFloatingWidget userId={currentUserId} />
           </div>
+
           <Toaster richColors position="top-right" />
         </TooltipProvider>
       </body>

@@ -1,67 +1,29 @@
-import { PrismaClient, Prisma } from "../app/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import "dotenv/config";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const prisma = new PrismaClient({
-  adapter,
-});
-
-// Defining the seed data strictly typed with Prisma.UserCreateInput
-const userData: Prisma.UserCreateInput[] = [
-  {
-    name: "System Admin",
-    email: "admin@library.com",
-    role: "ADMIN",
-  },
-  {
-    name: "Jane Librarian",
-    email: "jane.l@library.com",
-
-    role: "LIBRARIAN",
-  },
-  {
-    name: "Alice Smith",
-    email: "alice.student@university.com",
-    studentId: "STU12345",
-
-    role: "STUDENT",
-    faculty: "Computer Science",
-    phone: "+1234567890",
-  },
-  {
-    name: "Dr. Bob Ross",
-    email: "bob.ross@university.com",
-
-    role: "LECTURER",
-    faculty: "Fine Arts",
-  },
-];
+import { signUp } from "@/lib/auth-client";
 
 export async function main() {
-  console.log("🌱 Starting database seeding...");
+  console.log("🌱 Starting Better Auth user seeding...");
 
-  for (const u of userData) {
-    try {
-      const user = await prisma.user.create({ data: u });
-      console.log(`Created user: ${user.name} (${user.role})`);
-    } catch (error) {
-      console.error(`❌ Error creating user ${u.email}:`, error);
-    }
-  }
+  // -------------------------
+  // 1. Captain (ADMIN)
+  // -------------------------
+  const admin = await signUp.email({
+    name: "Captain",
+    email: "captain@gmail.com",
+    password: "captain324",
+  });
+
+  console.log("✅ Admin created:", admin);
+
+  // -------------------------
+  // 2. Librarian
+  // -------------------------
+  const librarian = await signUp.email({
+    name: "Librarian",
+    email: "librarian.l@library.com",
+    password: "librarian324",
+  });
+
+  console.log("✅ Librarian created:", librarian);
 
   console.log("🏁 Seeding finished.");
 }
-
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });

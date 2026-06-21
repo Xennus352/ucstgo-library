@@ -164,7 +164,9 @@ export const PhysicalBookDetailsModal: React.FC<
               </>
             ) : (
               <>
-                <BookOpen className="h-3.5 w-3.5" />
+                <span className="hidden md:flex ">
+                  <BookOpen className="h-3.5 w-3.5" />
+                </span>
                 Borrow Now
               </>
             )}
