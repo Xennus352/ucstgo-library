@@ -29,7 +29,7 @@ export function EditBookForm({ initialData }: { initialData: any }) {
 
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [ebook, setEbook] = useState<File | null>(null);
-  const [semester, setSemester] = useState<string>(""); // Added state for semester track
+  const [semester, setSemester] = useState<string>(""); 
 
   const [copies, setCopies] = useState<number>(0);
   const [shelfLocation, setShelfLocation] = useState<string>("");

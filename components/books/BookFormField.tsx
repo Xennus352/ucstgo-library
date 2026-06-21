@@ -27,7 +27,7 @@ interface BookFormFieldsProps {
     description: string;
     publicationYear: string;
     language: string;
-    donate: string; // Added here
+    donate: string;
   };
   setForm: React.Dispatch<
     React.SetStateAction<{
@@ -39,7 +39,7 @@ interface BookFormFieldsProps {
       description: string;
       publicationYear: string;
       language: string;
-      donate: string; // Added here
+      donate: string; 
     }>
   >;
   coverPreview: string | null;
@@ -79,7 +79,6 @@ export function BookFormFields({
     { value: "Y4_SEM1", label: "Year 4 - Semester 1" },
     { value: "Y4_SEM2", label: "Year 4 - Semester 2" },
   ];
-
   return (
     <div className="space-y-4">
       {/* Basic Information - 2 column grid */}

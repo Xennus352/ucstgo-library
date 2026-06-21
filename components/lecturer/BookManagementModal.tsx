@@ -1,31 +1,42 @@
-// components/lecturer/BookManagementModal.tsx
-import React, { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+"use client";
+
+import { useState, useTransition, useEffect } from "react";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Book,
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  Loader2,
-  FileText,
-  BookOpen,
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import { useLecturerBooks } from "@/hooks/use-lecturer-books";
 import { toast } from "sonner";
-import CreateBookModal from "./CreateBookModal"; // Import your existing CreateBookModal
+import { X, CheckCircle, Plus, BookOpen, Pencil } from "lucide-react";
+import { BookFormFields } from "../books/BookFormField";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+
+// Types
+interface Book {
+  id: string;
+  title: string;
+  isbn: string;
+  author: string | { id: string; name: string };
+  category: string | { id: string; name: string };
+  publisher: string;
+  description: string;
+  publicationYear: string | number;
+  language: string;
+  donate: string | null;
+  copies: number | Array<any> | { total: number; copies: number };
+  semester?: string;
+  shelfLocation?: string;
+  cover?: string;
+  coverImage?: string;
+  ebook?: {
+    id: string;
+    filePath: string;
+    format: string;
+    semester?: string;
+  };
+  status?: string;
+  availability?: { available: number; borrowed: number; total: number };
+  _count?: { copies: number; reservations: number };
+}
 
 interface BookManagementModalProps {
   isOpen: boolean;
@@ -33,438 +44,721 @@ interface BookManagementModalProps {
   onSuccess?: () => void;
 }
 
-const BookManagementModal: React.FC<BookManagementModalProps> = ({
+export default function BookManagementModal({
   isOpen,
   onClose,
   onSuccess,
-}) => {
+}: BookManagementModalProps) {
+  const [pending, startTransition] = useTransition();
+  const [activeTab, setActiveTab] = useState<"create" | "view" | "edit">(
+    "create",
+  );
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+
+  // Track existing ebook filename
+  const [existingEbookName, setExistingEbookName] = useState<string>("");
+  const [existingSemester, setExistingSemester] = useState<string>("");
+
+  // Form state for create and edit
+  const [form, setForm] = useState({
+    title: "",
+    isbn: "",
+    author: "",
+    category: "",
+    publisher: "",
+    description: "",
+    publicationYear: "",
+    language: "",
+    donate: "",
+  });
+
+  const [cover, setCover] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [ebook, setEbook] = useState<File | null>(null);
+  const [semester, setSemester] = useState("");
+  const [copies, setCopies] = useState(1);
+  const [shelfLocation, setShelfLocation] = useState("");
+
+  // Fetch lecturer's books using SWR
   const {
-    books,
-    isLoading,
+    data: response,
     error,
-    refetch,
-    totalPages,
-    currentPage,
-    totalBooks,
-    goToPage,
-    searchBooks,
-  } = useLecturerBooks();
+    mutate,
+    isLoading,
+  } = useSWR(isOpen ? "/api/books/lecturer" : null, fetcher, {
+    onError: (err) => {
+      toast.error(err.message || "Failed to fetch books");
+    },
+  });
 
-  const [activeTab, setActiveTab] = useState<"my-books" | "upload">("my-books");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  // Get books from data
+  const books = response?.data || [];
 
-  // Refresh books when modal opens
+  // Reset form when modal closes
   useEffect(() => {
     if (isOpen) {
-      refetch();
+      document.body.style.overflow = "hidden";
+      setActiveTab("create");
+    } else {
+      document.body.style.overflow = "unset";
+      resetForm();
     }
-  }, [isOpen, refetch]);
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
 
-  // Handle search with debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      searchBooks(searchTerm);
-    }, 300);
+  // Reset form fields
+  const resetForm = () => {
+    setForm({
+      title: "",
+      isbn: "",
+      author: "",
+      category: "",
+      publisher: "",
+      description: "",
+      publicationYear: "",
+      language: "",
+      donate: "",
+    });
+    setCover(null);
+    setCoverPreview(null);
+    setEbook(null);
+    setExistingEbookName("");
+    setExistingSemester("");
+    setSemester("");
+    setCopies(1);
+    setShelfLocation("");
+    setSelectedBook(null);
+  };
 
-    return () => clearTimeout(timer);
-  }, [searchTerm, searchBooks]);
+  // Handle cover change
+  const handleCoverChange = (file: File | null) => {
+    setCover(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setCoverPreview(null);
+    }
+  };
 
-  const handleDeleteBook = async (bookId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this book? This action cannot be undone.",
-      )
-    ) {
+  // Handle create book
+  const handleCreate = () => {
+    if (!form.title || !form.isbn || !form.author || !form.category) {
+      toast.error("Please fill all required fields");
       return;
     }
 
+    const fd = new FormData();
+    Object.entries(form).forEach(([key, value]) => {
+      if (value) fd.append(key, value);
+    });
+    fd.append("copies", String(copies));
+    if (cover) fd.append("cover", cover);
+    if (ebook) fd.append("ebook", ebook);
+    if (semester && ebook) fd.append("semester", semester);
+    if (shelfLocation) fd.append("shelfLocation", shelfLocation);
+
+    startTransition(async () => {
+      try {
+        const res = await fetch("/api/books/lecturer", {
+          method: "POST",
+          body: fd,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          toast.error(data.error || "Failed to create book");
+          return;
+        }
+
+        toast.success("Book created successfully");
+        await mutate();
+        resetForm();
+        if (onSuccess) onSuccess();
+      } catch (err) {
+        toast.error("Something went wrong");
+      }
+    });
+  };
+
+  // Handle edit book - populate form with selected book data
+  const handleEditBook = (book: any) => {
+    setSelectedBook(book);
+
+    // Extract author name from object or use as is
+    let authorValue = "";
+    if (book.author) {
+      if (typeof book.author === "object") {
+        authorValue = book.author.name || book.author.id || "";
+      } else {
+        authorValue = book.author;
+      }
+    }
+
+    // Extract category name from object or use as is
+    let categoryValue = "";
+    if (book.category) {
+      if (typeof book.category === "object") {
+        categoryValue = book.category.name || book.category.id || "";
+      } else {
+        categoryValue = book.category;
+      }
+    }
+
+    // Get shelf location from copies array if available
+    let shelfLocationValue = "";
+    if (book.copies && Array.isArray(book.copies) && book.copies.length > 0) {
+      shelfLocationValue = book.copies[0].shelfLocation || "";
+    }
+
+    // Get semester and ebook filename from ebook object if available
+    let semesterValue = "";
+    let ebookFileName = "";
+    if (book.ebook) {
+      if (typeof book.ebook === "object") {
+        semesterValue = book.ebook.semester || "";
+        ebookFileName = book.ebook.filePath?.split("/").pop() || "";
+      }
+    }
+
+    setForm({
+      title: book.title || "",
+      isbn: book.isbn || "",
+      author: authorValue,
+      category: categoryValue,
+      publisher: book.publisher || "",
+      description: book.description || "",
+      publicationYear: book.publicationYear ? String(book.publicationYear) : "",
+      language: book.language || "",
+      donate: book.donate || "",
+    });
+
+    // Handle copies - get the count from _count or copies array
+    let copiesValue = 1;
+    if (book._count?.copies) {
+      copiesValue = book._count.copies;
+    } else if (book.copies) {
+      if (typeof book.copies === "number") {
+        copiesValue = book.copies;
+      } else if (Array.isArray(book.copies)) {
+        copiesValue = book.copies.length;
+      } else if (typeof book.copies === "object" && book.copies.total) {
+        copiesValue = book.copies.total;
+      }
+    }
+    setCopies(copiesValue);
+
+    // Set semester and existing ebook name
+    setSemester(semesterValue);
+    setExistingSemester(semesterValue);
+    setExistingEbookName(ebookFileName);
+    setShelfLocation(shelfLocationValue);
+
+    // Handle cover image
+    const coverUrl = book.coverImage || book.cover || null;
+    setCoverPreview(coverUrl);
+
+    // Reset ebook file selection
+    setEbook(null);
+
+    setActiveTab("edit");
+  };
+
+  // Handle update book
+  const handleUpdate = () => {
+    if (!selectedBook) return;
+    if (!form.title || !form.isbn || !form.author || !form.category) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    const fd = new FormData();
+    Object.entries(form).forEach(([key, value]) => {
+      if (value) fd.append(key, value);
+    });
+    fd.append("copies", String(copies));
+    if (cover) fd.append("cover", cover);
+
+    // Only append ebook if a new file is selected
+    if (ebook) {
+      fd.append("ebook", ebook);
+    }
+
+    if (semester) {
+      fd.append("semester", semester);
+    }
+    if (shelfLocation) {
+      fd.append("shelfLocation", shelfLocation);
+    }
+
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/books/${selectedBook.id}`, {
+          method: "PATCH",
+          body: fd,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          toast.error(data.error || "Failed to update book");
+          return;
+        }
+
+        toast.success("Book updated successfully");
+        await mutate();
+        resetForm();
+        setActiveTab("view");
+        if (onSuccess) onSuccess();
+      } catch (err) {
+        toast.error("Something went wrong");
+      }
+    });
+  };
+
+  // Handle delete book
+  const handleDeleteBook = async (bookId: string) => {
+    if (!confirm("Are you sure you want to delete this book?")) return;
+
     try {
-      setDeletingId(bookId);
-      const response = await fetch(`/api/lecturer/books/${bookId}`, {
+      const res = await fetch(`/api/books/${bookId}`, {
         method: "DELETE",
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to delete book");
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Failed to delete book");
+        return;
       }
 
       toast.success("Book deleted successfully");
-      await refetch();
-      onSuccess?.();
+      await mutate();
     } catch (error) {
-      console.error("Error deleting book:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to delete book",
-      );
-    } finally {
-      setDeletingId(null);
+      toast.error("Something went wrong");
     }
   };
 
-  const handleEditBook = (bookId: string) => {
-    // Navigate to edit page or open edit modal
-    // For now, we'll just show a toast
-    toast.info("Edit functionality coming soon");
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "available":
-        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
-      case "borrowed":
-        return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
-      case "unavailable":
-        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-      default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
-    }
-  };
-
-  const handleBookCreated = () => {
-    // Refresh the book list after a new book is created
-    refetch();
-    // Switch back to "My Books" tab
-    setActiveTab("my-books");
-    // Call the onSuccess callback if provided
-    onSuccess?.();
-    toast.success("Book uploaded successfully!");
-  };
+  if (!isOpen) return null;
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">
-              My Book Collection
-            </DialogTitle>
-            <DialogDescription>
-              Manage your uploaded books, view their status, and upload new ones
-            </DialogDescription>
-          </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-start justify-center sm:items-center bg-black/50 backdrop-blur-xs p-3 sm:p-4 overflow-hidden">
+      {/* Backdrop click dismiss */}
+      <div className="absolute inset-0 -z-10" onClick={onClose} />
 
+      {/* Modal Wrapper */}
+      <div className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] transition-all">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+              Book Management
+            </h1>
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 hidden xs:block">
+              Create, view, or edit your books
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="px-4 pt-3 sm:px-6 shrink-0">
           <Tabs
             value={activeTab}
-            onValueChange={(value) => setActiveTab(value as any)}
-            className="mt-4"
+            onValueChange={(value) => {
+              setActiveTab(value as "create" | "view" | "edit");
+              if (value === "create") resetForm();
+            }}
+            className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="my-books" className="flex items-center gap-2">
-                <Book className="h-4 w-4" />
-                My Books
-                {!isLoading && totalBooks > 0 && (
-                  <span className="ml-1 text-xs bg-muted px-2 py-0.5 rounded-full">
-                    {totalBooks}
-                  </span>
-                )}
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="create" className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Create
               </TabsTrigger>
-              <TabsTrigger value="upload" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Upload New Book
+              <TabsTrigger value="view" className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                My Books
+              </TabsTrigger>
+              <TabsTrigger
+                value="edit"
+                className="flex items-center gap-2"
+                disabled={!selectedBook}
+              >
+                <Pencil className="w-4 h-4" />
+                Edit
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="my-books" className="mt-4 space-y-4">
-              {/* Search Bar */}
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Search by title, author, or ISBN..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
+            {/* Create Tab */}
+            <TabsContent value="create" className="mt-4">
+              <div className="p-4 sm:p-6 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                <BookFormFields
+                  form={form}
+                  setForm={setForm}
+                  coverPreview={coverPreview}
+                  handleCoverChange={handleCoverChange}
+                  ebook={ebook}
+                  setEbook={setEbook}
+                  semester={semester}
+                  setSemester={setSemester}
+                  copies={copies}
+                  setCopies={setCopies}
+                  shelfLocation={shelfLocation}
+                  setShelfLocation={setShelfLocation}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 sm:gap-3 px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 rounded-b-xl shrink-0">
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={() => refetch()}
-                  disabled={isLoading}
+                  onClick={() => {
+                    resetForm();
+                    setActiveTab("view");
+                  }}
+                  className="px-4 sm:px-5 h-9 text-sm"
                 >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreate}
+                  disabled={pending}
+                  className="bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all duration-200 px-4 sm:px-5 h-9 text-sm"
+                >
+                  {pending ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Creating...
+                    </>
                   ) : (
-                    "Refresh"
+                    <>
+                      <CheckCircle className="w-3.5 h-3.5 mr-2" />
+                      Create Book
+                    </>
                   )}
                 </Button>
               </div>
+            </TabsContent>
 
-              {/* Loading State */}
-              {isLoading && (
-                <div className="flex justify-center items-center py-16">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              )}
+            {/* View Tab */}
+            <TabsContent value="view" className="mt-4">
+              <div className="p-4 sm:p-6 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-40">
+                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : books.length === 0 ? (
+                  <div className="text-center py-12">
+                    <BookOpen className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+                    <p className="text-slate-500 dark:text-slate-400">
+                      No books created yet
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="mt-3"
+                      onClick={() => setActiveTab("create")}
+                    >
+                      Create Your First Book
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {books.map((book: any) => (
+                      <div
+                        key={book.id}
+                        className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 dark:hover:border-blue-800"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            {/* Title with icon */}
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-slate-900 dark:text-white text-base truncate">
+                                {book.title}
+                              </h3>
+                              {book.ebook && typeof book.ebook === "object" && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-medium rounded">
+                                  <BookOpen className="w-3 h-3" />
+                                  PDF
+                                </span>
+                              )}
+                            </div>
 
-              {/* Error State */}
-              {error && !isLoading && (
-                <div className="text-center py-12 bg-red-50 dark:bg-red-950/20 rounded-xl border border-red-200 dark:border-red-800">
-                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
-                  <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">
-                    Failed to Load Books
-                  </h3>
-                  <p className="text-xs text-red-600 dark:text-red-300 mt-1">
-                    {error.message}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4"
-                    onClick={() => refetch()}
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              )}
+                            {/* Author */}
+                            <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                              <span className="text-slate-400 dark:text-slate-500">
+                                by
+                              </span>
+                              <span className="font-medium text-slate-700 dark:text-slate-300">
+                                {typeof book.author === "object"
+                                  ? book.author.name
+                                  : book.author}
+                              </span>
+                            </p>
 
-              {/* Books Grid */}
-              {!isLoading && !error && (
-                <>
-                  {books.length === 0 ? (
-                    <div className="text-center py-16 bg-muted/20 rounded-xl border border-dashed border-border/60">
-                      <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                      <h3 className="text-sm font-semibold text-foreground">
-                        {searchTerm
-                          ? "No Books Found"
-                          : "No Books Uploaded Yet"}
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                        {searchTerm
-                          ? "No books match your search criteria"
-                          : "Upload your first book to start building your collection"}
-                      </p>
-                      {searchTerm && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="mt-4"
-                          onClick={() => setSearchTerm("")}
-                        >
-                          Clear Search
-                        </Button>
-                      )}
-                      {!searchTerm && (
-                        <Button
-                          className="mt-4"
-                          onClick={() => setActiveTab("upload")}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Upload Your First Book
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {books.map((book) => (
-                          <div
-                            key={book.id}
-                            className="group border border-border/60 rounded-xl p-4 hover:shadow-lg transition-all duration-200 bg-card hover:border-primary/20"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1 min-w-0">
-                                {/* Title */}
-                                <h4 className="font-semibold text-sm text-foreground line-clamp-1">
-                                  {book.title}
-                                </h4>
-
-                                {/* Author */}
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  by {book.author.name}
-                                </p>
-
-                                {/* ISBN */}
-                                <p className="text-xs text-muted-foreground">
-                                  ISBN: {book.isbn}
-                                </p>
-
-                                {/* Category & Type */}
-                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                  {book.category && (
-                                    <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/10">
-                                      {book.category.name}
-                                    </span>
-                                  )}
-                                  {book.ebook ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
-                                      <FileText className="h-2.5 w-2.5" />
-                                      E-Book
-                                      {book.ebook.semester && (
-                                        <span className="ml-0.5">
-                                          • {book.ebook.semester}
-                                        </span>
-                                      )}
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-                                      <Book className="h-2.5 w-2.5" />
-                                      Physical
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Status & Copies */}
-                                <div className="flex items-center gap-3 mt-2 text-xs">
-                                  <span className="text-muted-foreground">
-                                    Copies: {book._count.copies}
+                            {/* Metadata grid */}
+                            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                  ISBN
+                                </span>
+                                <span className="text-xs text-slate-600 dark:text-slate-400 font-mono">
+                                  {book.isbn}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                  Category
+                                </span>
+                                <span className="text-xs text-slate-600 dark:text-slate-400">
+                                  {typeof book.category === "object"
+                                    ? book.category.name
+                                    : book.category}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                  Copies
+                                </span>
+                                <span className="text-xs text-slate-600 dark:text-slate-400">
+                                  {book._count?.copies ||
+                                    (Array.isArray(book.copies)
+                                      ? book.copies.length
+                                      : 0)}
+                                </span>
+                              </div>
+                              {book.publisher && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                    Publisher
                                   </span>
-                                  <span
-                                    className={`px-2 py-0.5 rounded-full font-medium ${getStatusColor(book.status)}`}
-                                  >
-                                    {book.status.charAt(0).toUpperCase() +
-                                      book.status.slice(1)}
+                                  <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                    {book.publisher}
                                   </span>
                                 </div>
+                              )}
+                            </div>
 
-                                {/* Availability */}
-                                {book.availability && (
-                                  <div className="flex items-center gap-3 mt-1 text-xs">
-                                    <span className="text-emerald-600 dark:text-emerald-400">
-                                      Available: {book.availability.available}
+                            {/* Description */}
+                            {book.description && (
+                              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 line-clamp-2 italic">
+                                "{book.description}"
+                              </p>
+                            )}
+
+                            {/* Additional info chips */}
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              {book.copies &&
+                                Array.isArray(book.copies) &&
+                                book.copies[0]?.shelfLocation && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] rounded-full">
+                                    <span className="text-slate-400 dark:text-slate-500">
+                                      📍
                                     </span>
-                                    <span className="text-blue-600 dark:text-blue-400">
-                                      Borrowed: {book.availability.borrowed}
-                                    </span>
-                                  </div>
+                                    {book.copies[0].shelfLocation}
+                                  </span>
                                 )}
-
-                                {/* Upload Date */}
-                                <p className="text-[10px] text-muted-foreground mt-2">
-                                  Uploaded:{" "}
-                                  {new Date(book.createdAt).toLocaleDateString(
-                                    "en-US",
-                                    {
-                                      month: "short",
-                                      day: "numeric",
-                                      year: "numeric",
-                                    },
-                                  )}
-                                </p>
-                              </div>
-
-                              {/* Actions */}
-                              <div className="flex gap-1 ml-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-                                  onClick={() => handleEditBook(book.id)}
-                                >
-                                  <Edit className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                  onClick={() => handleDeleteBook(book.id)}
-                                  disabled={deletingId === book.id}
-                                >
-                                  {deletingId === book.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-3.5 w-3.5 text-red-500 dark:text-red-400" />
-                                  )}
-                                </Button>
-                              </div>
+                              {book.ebook &&
+                                typeof book.ebook === "object" &&
+                                book.ebook.semester && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-[10px] rounded-full">
+                                    <span className="text-purple-400 dark:text-purple-500">
+                                      📚
+                                    </span>
+                                    {book.ebook.semester}
+                                  </span>
+                                )}
+                              {book.publicationYear && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] rounded-full">
+                                  <span className="text-blue-400 dark:text-blue-500">
+                                    📅
+                                  </span>
+                                  {book.publicationYear}
+                                </span>
+                              )}
+                              {book.language && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] rounded-full">
+                                  <span className="text-amber-400 dark:text-amber-500">
+                                    🌐
+                                  </span>
+                                  {book.language}
+                                </span>
+                              )}
                             </div>
                           </div>
-                        ))}
-                      </div>
 
-                      {/* Pagination */}
-                      {totalPages > 1 && (
-                        <div className="flex items-center justify-between pt-4 border-t border-border/40">
-                          <p className="text-sm text-muted-foreground">
-                            Showing {books.length} of {totalBooks} books
-                          </p>
-                          <div className="flex items-center gap-2">
+                          {/* Action buttons */}
+                          <div className="flex flex-col gap-1.5 ml-4 shrink-0">
                             <Button
-                              variant="outline"
                               size="sm"
-                              onClick={() => goToPage(currentPage - 1)}
-                              disabled={currentPage === 1}
+                              variant="outline"
+                              onClick={() => handleEditBook(book)}
+                              className="h-8 w-8 p-0 rounded-lg border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 group-hover:border-blue-300"
                             >
-                              <ChevronLeft className="h-4 w-4" />
+                              <Pencil className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
                             </Button>
-                            <span className="text-sm text-muted-foreground">
-                              Page {currentPage} of {totalPages}
-                            </span>
                             <Button
-                              variant="outline"
                               size="sm"
-                              onClick={() => goToPage(currentPage + 1)}
-                              disabled={currentPage === totalPages}
+                              variant="destructive"
+                              onClick={() => handleDeleteBook(book.id)}
+                              className="h-8 w-8 p-0 rounded-lg hover:bg-red-600 hover:scale-105 transition-all duration-200"
                             >
-                              <ChevronRight className="h-4 w-4" />
+                              <X className="w-3.5 h-3.5" />
                             </Button>
                           </div>
                         </div>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
-            <TabsContent value="upload" className="mt-4">
-              {/* Integrate your existing CreateBookModal here */}
-              <div className="bg-muted/20 rounded-xl border border-dashed border-border/60 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Upload New Book
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Fill in the details below to add a new book to your
-                      collection
+            {/* Edit Tab */}
+            <TabsContent value="edit" className="mt-4">
+              <div className="p-4 sm:p-6 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                {selectedBook && (
+                  <>
+                    <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        Editing: <strong>{selectedBook.title}</strong>
+                      </p>
+                      {existingEbookName && (
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                          ✓ Current ebook: {existingEbookName}
+                        </p>
+                      )}
+                      {!existingEbookName && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          No ebook attached. Upload one if needed.
+                        </p>
+                      )}
+                      {existingSemester && (
+                        <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                          📚 Current semester:{" "}
+                          <strong>{existingSemester}</strong>
+                        </p>
+                      )}
+                      {!existingSemester && existingEbookName && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          No semester assigned to this ebook
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Ebook and Semester Info Box */}
+                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                        📄 Ebook & Semester Information
+                      </p>
+                      {existingEbookName ? (
+                        <>
+                          <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                            <strong>File:</strong> {existingEbookName}
+                          </p>
+                          {existingSemester && (
+                            <p className="text-sm text-green-700 dark:text-green-300">
+                              <strong>Semester:</strong> {existingSemester}
+                            </p>
+                          )}
+                          {!existingSemester && (
+                            <p className="text-sm text-amber-600 dark:text-amber-400">
+                              <strong>Semester:</strong> Not assigned
+                            </p>
+                          )}
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                            Upload a new ebook file to replace it, or update the
+                            semester below
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-amber-600 dark:text-amber-400">
+                          No ebook attached. Upload one and assign a semester
+                          below.
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                <BookFormFields
+                  form={form}
+                  setForm={setForm}
+                  coverPreview={coverPreview}
+                  handleCoverChange={handleCoverChange}
+                  ebook={ebook}
+                  setEbook={setEbook}
+                  semester={semester}
+                  setSemester={setSemester}
+                  copies={copies}
+                  setCopies={setCopies}
+                  shelfLocation={shelfLocation}
+                  setShelfLocation={setShelfLocation}
+                />
+
+                {/* Show new ebook selection info */}
+                {ebook && (
+                  <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      📄 New ebook selected: <strong>{ebook.name}</strong>
+                    </p>
+                    {semester && (
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        📚 With semester: <strong>{semester}</strong>
+                      </p>
+                    )}
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      This will replace the existing ebook when you update
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setActiveTab("my-books")}
-                  >
-                    Cancel
-                  </Button>
-                </div>
+                )}
+              </div>
 
-                {/* Render your CreateBookModal content here */}
-                {/* Since CreateBookModal is a modal itself, we need to adapt it */}
-                <div className="mt-2">
-                  <Button
-                    className="w-full"
-                    onClick={() => setIsCreateModalOpen(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Open Upload Form
-                  </Button>
-                  <p className="text-[10px] text-muted-foreground text-center mt-2">
-                    Click the button above to open the book upload form
-                  </p>
-                </div>
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 sm:gap-3 px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 rounded-b-xl shrink-0">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    resetForm();
+                    setActiveTab("view");
+                  }}
+                  className="px-4 sm:px-5 h-9 text-sm"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdate}
+                  disabled={pending}
+                  className="bg-linear-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-sm transition-all duration-200 px-4 sm:px-5 h-9 text-sm"
+                >
+                  {pending ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-3.5 h-3.5 mr-2" />
+                      Update Book
+                    </>
+                  )}
+                </Button>
               </div>
             </TabsContent>
           </Tabs>
-        </DialogContent>
-      </Dialog>
-
-      {/* CreateBookModal - rendered outside the main dialog */}
-      <CreateBookModal
-        isOpen={isCreateModalOpen}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          // Optionally switch back to my-books tab
-          setActiveTab("my-books");
-        }}
-        onSuccess={handleBookCreated}
-      />
-    </>
+        </div>
+      </div>
+    </div>
   );
-};
-
-export default BookManagementModal;
+}

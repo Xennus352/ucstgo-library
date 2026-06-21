@@ -4,6 +4,7 @@ import unzipper from "unzipper";
 import { writeFile, mkdir } from "fs/promises";
 import { join, resolve } from "path";
 import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 
 import {
   generateBarcode,
@@ -45,6 +46,24 @@ function sanitizeFileName(name: string) {
 
 export async function POST(req: Request) {
   try {
+    /* -----------------------------
+       AUTH & ROLE VERIFICATION
+    ----------------------------- */
+    const session = await auth.api.getSession({ headers: req.headers });
+
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Role check (fallback to empty string avoids the TypeScript compilation error)
+    const allowedRoles = ["LECTURER", "LIBRARIAN", "ADMIN"];
+    if (!allowedRoles.includes(session.user.role ?? "")) {
+      return NextResponse.json(
+        { error: "Forbidden: You do not have permission to import books." },
+        { status: 403 },
+      );
+    }
+
     const formData = await req.formData();
     const zipFile = formData.get("file") as File;
 
@@ -114,7 +133,6 @@ export async function POST(req: Request) {
       }
 
       const normalize = (p: string) => p.replace(/\\/g, "/").toLowerCase();
-
       const coverKey = normalize(`covers/${coverFile}`);
 
       const coverBuffer =
@@ -140,7 +158,6 @@ export async function POST(req: Request) {
          SAVE EBOOK (optional)
       ----------------------------- */
       let ebookDbPath: string | null = null;
-
       const ebookFile = row.ebook_file;
 
       if (ebookFile) {
@@ -183,6 +200,7 @@ export async function POST(req: Request) {
             donate: row.donate ? String(row.donate) : null,
             publicationYear: row.year ? Number(row.year) : null,
             language: row.language || "English",
+            createdById: session.user.id,
           },
         });
 

@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path, { join } from "path";
 import prisma from "@/lib/prisma";
 import { Semester } from "@/app/generated/prisma/enums";
+import { auth } from "@/lib/auth";
 
 /* -----------------------------
    Upload Helpers (Decoupled Sandbox Model)
@@ -160,7 +161,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-
     if (type === "ebook") {
       where.ebook = {
         isNot: null,
@@ -307,6 +307,25 @@ export async function GET(req: NextRequest) {
 ----------------------------- */
 export async function POST(req: NextRequest) {
   try {
+    /* -----------------------------
+       AUTH & ROLE VERIFICATION
+    ----------------------------- */
+    // 1. Fetch current session using request headers
+    const session = await auth.api.getSession({ headers: req.headers });
+
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 2. Safeguard: Block anyone who isn't a LECTURER, LIBRARIAN, or ADMIN
+    const allowedRoles = ["LECTURER", "LIBRARIAN", "ADMIN"];
+    if (!session.user.role || !allowedRoles.includes(session.user.role ?? "")) {
+      return NextResponse.json(
+        { error: "Forbidden: You do not have permission to add books." },
+        { status: 403 },
+      );
+    }
+
     const formData = await req.formData();
 
     const title = formData.get("title") as string;
@@ -381,9 +400,10 @@ export async function POST(req: NextRequest) {
           ? Number(formData.get("publicationYear"))
           : null,
         language: (formData.get("language") as string) || "English",
-        coverImage: coverDbPath, // Implicitly accepts string paths or null
+        coverImage: coverDbPath,
         categoryId: category.id,
         authorId: author.id,
+        createdById: session.user.id,
       },
     });
 
@@ -410,8 +430,17 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: book }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("API Error:", error);
+
+    // Friendly reminder handler for duplicate ISBN entries
+    if (error.code === "P2002") {
+      return NextResponse.json(
+        { error: "A book with this ISBN already exists in the system." },
+        { status: 400 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to create book" },
       { status: 500 },

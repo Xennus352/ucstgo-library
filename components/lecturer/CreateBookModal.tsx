@@ -12,7 +12,7 @@ interface CreateBookModalProps {
   onSuccess?: () => void;
 }
 
-export default function CreateBookModal({
+export default function BookManagementModal({
   isOpen,
   onClose,
   onSuccess,
@@ -85,7 +85,7 @@ export default function CreateBookModal({
 
     startTransition(async () => {
       try {
-        const res = await fetch("/api/books", {
+        const res = await fetch("/api/books/lecturer", {
           method: "POST",
           body: fd,
         });

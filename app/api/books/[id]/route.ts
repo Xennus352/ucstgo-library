@@ -2,25 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import path, { join } from "path";
 import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 
 import {
-  ensureUploadDir,
+
   generateBarcode,
   getOrCreateAuthor,
   getOrCreateCategory,
-  getUploadPath,
+ 
 } from "@/lib/upload";
 import { Semester } from "@/app/generated/prisma/enums";
-
-// Helper to determine absolute file resolution path inside decoupled sandbox
-// function getAbsoluteStoragePath(dbRelativePath: string): string {
-//   const baseStorageDir = path.resolve(
-//     process.cwd(),
-//     "..",
-//     "ucstgo-library-storage",
-//   );
-//   return join(baseStorageDir, dbRelativePath);
-// }
 
 /* -----------------------------
    GET /api/books/[id]
@@ -141,7 +132,57 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    /* =========================
+       1. AUTH & ROLE GATEKEEPING
+    ========================== */
+    const session = await auth.api.getSession({ headers: req.headers });
+
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentUserRole = session.user.role ?? "";
+    const allowedRoles = ["LECTURER", "LIBRARIAN", "ADMIN"];
+
+    if (!allowedRoles.includes(currentUserRole)) {
+      return NextResponse.json(
+        {
+          error:
+            "Forbidden: You do not have permission to modify catalog items.",
+        },
+        { status: 403 },
+      );
+    }
+
     const { id } = await context.params;
+
+    // Fetch existing book record up front for target validation
+    const existingBook = await prisma.book.findUnique({
+      where: { id },
+      include: { ebook: true },
+    });
+
+    if (!existingBook) {
+      return NextResponse.json({ error: "Book not found" }, { status: 404 });
+    }
+
+    /* =========================
+       2. SECURE OWNERSHIP CHECK
+    ========================== */
+    // Safeguard: Lecturers can only update the specific books they personally created.
+    if (
+      currentUserRole === "LECTURER" &&
+      existingBook.createdById !== session.user.id
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Forbidden: Lecturers can only modify catalog items they originally created.",
+        },
+        { status: 403 },
+      );
+    }
+
     const formData = await req.formData();
 
     const title = String(formData.get("title") || "");
@@ -197,17 +238,8 @@ export async function PATCH(
       getOrCreateCategory(categoryName),
     ]);
 
-    const existingBook = await prisma.book.findUnique({
-      where: { id },
-      include: { ebook: true },
-    });
-
-    if (!existingBook) {
-      return NextResponse.json({ error: "Book not found" }, { status: 404 });
-    }
-
     /* =========================
-       COVER UPDATE (FIXED)
+       COVER UPDATE
     ========================== */
     let coverImage = existingBook.coverImage;
 
@@ -235,7 +267,7 @@ export async function PATCH(
     }
 
     /* =========================
-       EBOOK UPDATE (FIXED)
+       EBOOK UPDATE
     ========================== */
     let ebookDbPath: string | null = existingBook.ebook?.filePath || null;
 

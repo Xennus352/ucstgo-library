@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import { pdfjs } from "react-pdf";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import PdfCanvasView from "./PdfCanvasView";
 import {
   ChevronLeft,
@@ -12,146 +12,87 @@ import {
   Minimize2,
 } from "lucide-react";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
-interface EbookReaderProps {
-  fileUrl: string;
-  onClose: () => void;
-  title?: string;
-  author?: string;
-}
+const BASE_PAGE_HEIGHT = 1200;
 
 export default function EbookReaderContainer({
   fileUrl,
   onClose,
   title = "Document",
   author = "University Library",
-}: EbookReaderProps) {
+}: any) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [pageInput, setPageInput] = useState<string>("1"); // Holds the typed search text
+  const [pageInput, setPageInput] = useState<string>("1");
   const [loading, setLoading] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [scale, setScale] = useState<number>(1);
   const [showControls, setShowControls] = useState<boolean>(true);
+  const [isScrolling, setIsScrolling] = useState<boolean>(false);
 
   const readerRef = useRef<HTMLDivElement>(null);
-  // Ref to block IntersectionObserver updates during custom button smooth scrolling animations
-  const isProgrammaticScrolling = useRef<boolean>(false);
+  const parentRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync the text input whenever the active scroll position settles on a stable page number
-  useEffect(() => {
-    setPageInput(pageNumber.toString());
-  }, [pageNumber]);
-
-  // Clean up any lingering timers on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-    };
-  }, []);
-
-  // Safe wrapper for managing page changes via scroll observation
-  const handlePageScrollUpdate: React.Dispatch<React.SetStateAction<number>> =
-    useCallback((value) => {
-      if (!isProgrammaticScrolling.current) {
-        if (typeof value === "function") {
-          setPageNumber((prev) => {
-            const resolvedValue = value(prev);
-            return resolvedValue;
-          });
-        } else {
-          setPageNumber(value);
-        }
+  // Memoize the virtualizer to prevent recreation
+  const rowVirtualizer = useVirtualizer({
+    count: numPages || 0,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => BASE_PAGE_HEIGHT * scale,
+    overscan: 2,
+    onChange: (instance) => {
+      const [firstVisible] = instance.getVirtualItems();
+      if (firstVisible && !isScrolling) {
+        setPageNumber(firstVisible.index + 1);
       }
-    }, []);
+    },
+  });
 
-  // Function to smoothly scroll to a specific page element with proper header offsets
+  // Scroll to page function
   const scrollToPage = useCallback(
     (targetPage: number) => {
       if (!numPages || targetPage < 1 || targetPage > numPages) return;
 
-      const pageElement = document.getElementById(
-        `pdf-page-wrapper-${targetPage}`,
-      );
-      const scrollContainer = pageElement?.closest(".overflow-y-auto");
+      setIsScrolling(true);
 
-      if (pageElement && scrollContainer) {
-        // Clear any old timers if buttons are clicked rapidly
-        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-
-        // Turn lock on: Ignore observer events while sliding
-        isProgrammaticScrolling.current = true;
-        setPageNumber(targetPage); // Instantly set state target to lock buttons correctly
-
-        const headerElement = readerRef.current?.querySelector("header");
-        const headerHeight = headerElement ? headerElement.clientHeight : 64;
-        const elementTop = pageElement.offsetTop;
-
-        scrollContainer.scrollTo({
-          top: elementTop - headerHeight - 16,
-          behavior: "smooth",
-        });
-
-        // Release the scroll observation lock once the slide animation finishes (~500ms)
-        scrollTimeoutRef.current = setTimeout(() => {
-          isProgrammaticScrolling.current = false;
-        }, 500);
+      // Clear any existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
       }
+
+      // Scroll to the target page
+      rowVirtualizer.scrollToIndex(targetPage - 1, { align: "start" });
+      setPageNumber(targetPage);
+
+      // Reset scrolling flag after animation completes
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsScrolling(false);
+      }, 300);
     },
-    [numPages],
+    [numPages, rowVirtualizer],
   );
 
-  // Handle manual input search submission (Shared by desktop and mobile forms)
   const handlePageSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const parsedPage = parseInt(pageInput, 10);
-    if (
-      !isNaN(parsedPage) &&
-      numPages &&
-      parsedPage >= 1 &&
-      parsedPage <= numPages
-    ) {
+    if (!isNaN(parsedPage) && parsedPage > 0 && parsedPage <= (numPages || 0)) {
       scrollToPage(parsedPage);
-      // Blur the currently active input to close mobile keyboard layout automatically
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
     } else {
       setPageInput(pageNumber.toString());
     }
   };
 
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (document.activeElement?.tagName === "INPUT") return;
+    setPageInput(pageNumber.toString());
+  }, [pageNumber]);
 
-      if (e.key === "Escape") {
-        if (isFullscreen) toggleFullscreen();
-        else onClose();
-      }
-      if (e.key === "ArrowLeft" && pageNumber > 1) {
-        scrollToPage(pageNumber - 1);
-      }
-      if (e.key === "ArrowRight" && numPages && pageNumber < numPages) {
-        scrollToPage(pageNumber + 1);
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
       }
     };
-
-    document.addEventListener("keydown", handleKeyPress);
-    return () => document.removeEventListener("keydown", handleKeyPress);
-  }, [isFullscreen, pageNumber, numPages, scrollToPage]);
-
-  const handleDocumentLoadSuccess = useCallback(
-    ({ numPages }: { numPages: number }) => {
-      setNumPages(numPages);
-      setPageNumber(1);
-      setPageInput("1");
-      setLoading(false);
-    },
-    [],
-  );
+  }, []);
 
   const toggleFullscreen = async () => {
     if (!readerRef.current) return;
@@ -179,12 +120,26 @@ export default function EbookReaderContainer({
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        scrollToPage(pageNumber - 1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        scrollToPage(pageNumber + 1);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [pageNumber, scrollToPage]);
+
   return (
     <div
       ref={readerRef}
-      className="fixed inset-0 bg-slate-950 z-50 flex flex-col h-screen w-screen overflow-hidden select-none antialiased text-slate-200"
-      onMouseMove={() => setShowControls(true)}
-      onMouseLeave={() => setShowControls(false)}
+      className="fixed inset-0 bg-slate-950 z-50 flex flex-col h-screen w-screen overflow-hidden"
     >
       {/* Dynamic Header Controls */}
       <header
@@ -313,25 +268,20 @@ export default function EbookReaderContainer({
         </div>
       </header>
 
-      {/* Main Viewport Container Frame */}
-      <div className="flex-1 overflow-hidden bg-slate-950 relative flex items-center justify-center">
+      <div className="flex-1 overflow-hidden relative flex items-center justify-center">
         <PdfCanvasView
           fileUrl={fileUrl}
-          numPages={numPages}
-          setPageNumber={handlePageScrollUpdate}
-          onDocumentLoadSuccess={handleDocumentLoadSuccess}
+          onDocumentLoadSuccess={({ numPages }) => {
+            setNumPages(numPages);
+            setLoading(false);
+          }}
           scale={scale}
-          setScale={setScale}
+          rowVirtualizer={rowVirtualizer}
+          parentRef={parentRef}
         />
-
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 backdrop-blur-xs z-30">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm font-medium text-slate-400">
-                Opening Ebook...
-              </p>
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 z-30">
+            Loading...
           </div>
         )}
 
