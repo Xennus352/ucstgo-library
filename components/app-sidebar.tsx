@@ -63,18 +63,18 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
         email: isLoading ? "Please wait..." : "Failed to load details",
         image: "/images/avatar.png",
 
-        // FIX 1: Cast the string to the Role enum, or set to your default STUDENT role
+        //  Cast the string to the Role enum, or set to your default STUDENT role
         role: "STUDENT" as const,
 
         studentId: "N/A",
         faculty: "N/A",
         phone: "N/A",
 
-        // FIX 2: Pass an actual Date object instead of a string
+        // Pass an actual Date object instead of a string
         createdAt: new Date(),
         updatedAt: new Date(),
 
-        // FIX 3: Pass a boolean (false) instead of null
+        // Pass a boolean (false) instead of null
         emailVerified: false,
         banned: false,
       };

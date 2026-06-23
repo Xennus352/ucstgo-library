@@ -7,6 +7,7 @@ import { SearchBar } from "../ui/SearchBar";
 
 import { TabConfig, TabId } from "../types";
 import Image from "next/image";
+import NotificationBell from "@/components/NotificationBell";
 
 interface TopNavProps {
   tabs: TabConfig[];
@@ -94,14 +95,13 @@ export const TopNav: React.FC<TopNavProps> = ({
           })}
         </nav>
 
+        <NotificationBell />
         {/* SEARCH  */}
         <SearchBar
           value={searchValue}
           onChange={onSearch}
           className="sm:flex"
         />
-
-      
       </div>
     </motion.header>
   );

@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { AiFloatingWidget } from "@/components/ai/AiFloatingWidget";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import PushInit from "@/components/PushInit";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,8 +35,8 @@ export default async function RootLayout({
   });
 
   // Extract user ID if available, otherwise fallback to guest tracking
-  const currentUserId = session?.user?.id || "guest-id";
-
+  const currentUserId = session?.user?.id;
+  console.log(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
   return (
     <html
       lang="en"
@@ -43,10 +45,12 @@ export default async function RootLayout({
       <body className="min-h-screen">
         <TooltipProvider>
           <div className="min-h-screen bg-linear-to-br from-[#a5bad3] via-[#b7ceeb] to-[#bfd6f0]">
+            {/* <ServiceWorkerRegister />
+            <PushInit /> */}
             {children}
 
             {/* Global freely draggable AI Co-Pilot Widget */}
-            <AiFloatingWidget userId={currentUserId} />
+            {currentUserId && <AiFloatingWidget userId={currentUserId} />}
           </div>
 
           <Toaster richColors position="top-right" />

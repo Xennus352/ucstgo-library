@@ -25,7 +25,7 @@ export async function proxy(req: Request) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
-  //  GLOBAL BAN CHECK 
+  //  GLOBAL BAN CHECK
   if (user.banned) {
     return NextResponse.redirect(new URL("/blocked", req.url));
   }

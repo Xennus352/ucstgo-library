@@ -22,6 +22,7 @@ import { ReservationStatus } from "@/app/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
 import BookManagementModal from "@/components/lecturer/BookManagementModal";
 import { toast } from "sonner";
+import { LogoutButton } from "@/components/LogOutButton";
 
 interface ProfileBorrowRecord extends BorrowRecord {
   copy: {
@@ -368,17 +369,37 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                 </div>
               )}
 
-              {user.role === "LECTURER" && (
-                <div className="w-full flex justify-end">
-                  <Button
-                    variant="secondary"
-                    className="cursor-pointer"
-                    onClick={() => setIsModalOpen(true)}
-                  >
-                    Ebook Management
-                  </Button>
+              <div className="mt-6 rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-5 shadow-lg">
+                <div className="space-y-3">
+                  {user.role === "LECTURER" && (
+                    <Button
+                      variant="default"
+                      className="w-full h-11 rounded-xl font-medium shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer flex items-center justify-center gap-2"
+                      onClick={() => setIsModalOpen(true)}
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      Ebook Management
+                    </Button>
+                  )}
+
+                  {user.role === "LECTURER" && (
+                    <div className="relative py-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-border/60" />
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-card px-3 text-xs text-muted-foreground">
+                          Account
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-xl border border-border/50 bg-muted/20 p-2">
+                    <LogoutButton />
+                  </div>
                 </div>
-              )}
+              </div>
 
               {/* multi-tab BookManagementModal */}
               <BookManagementModal
