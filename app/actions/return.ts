@@ -59,7 +59,7 @@ export async function returnBookAction(borrowRecordId: string) {
       const nextReservation = await tx.reservation.findFirst({
         where: {
           bookId: bookId,
-          status: ReservationStatus.PENDING,
+          status: ReservationStatus.ACTIVE,
         },
         orderBy: { reservedAt: "asc" },
       });
@@ -98,6 +98,7 @@ export async function returnBookAction(borrowRecordId: string) {
     revalidatePath("/librarian/books");
     revalidatePath("/admin/books");
     revalidatePath("/students/dashboard"); 
+    revalidatePath("/lecturer/dashboard"); 
 
     return {
       success: true,
