@@ -278,12 +278,12 @@ export const BookCard: React.FC<BookCardProps> = ({
                 </span>
               )}
               {book.publicationYear && (
-                <span className="text-[9px] text-white/50">
+                <span className="text-[9px] text-white">
                   {book.publicationYear}
                 </span>
               )}
               {book.language && (
-                <span className="text-[9px] text-white/50">
+                <span className="text-[9px] text-white">
                   • {book.language}
                 </span>
               )}
@@ -297,10 +297,10 @@ export const BookCard: React.FC<BookCardProps> = ({
               {/* ISBN */}
               {book.isbn && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[8px] uppercase tracking-wider text-white/40 font-semibold">
+                  <span className="text-[8px] uppercase tracking-wider text-white font-semibold">
                     ISBN
                   </span>
-                  <span className="text-[10px] text-white/70 truncate">
+                  <span className="text-[10px] text-white truncate">
                     {book.isbn}
                   </span>
                 </div>
@@ -309,10 +309,10 @@ export const BookCard: React.FC<BookCardProps> = ({
               {/* Copies Available */}
               {showAvailability && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[8px] uppercase tracking-wider text-white/40 font-semibold">
+                  <span className="text-[8px] uppercase tracking-wider text-white font-semibold">
                     Copies
                   </span>
-                  <span className="text-[10px] text-white/70">
+                  <span className="text-[10px] text-white">
                     {availableCopies.length} available
                   </span>
                 </div>

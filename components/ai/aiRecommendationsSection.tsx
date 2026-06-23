@@ -44,7 +44,16 @@ export function RecommendationsSection({ userId }: { userId: string }) {
     );
   }
 
-  if (books.length === 0) return null;
+  if (books.length === 0) {
+    return (
+      <div className="w-full max-w-4xl mx-auto text-center py-8">
+        <p className="text-slate-400">
+          No recommendations available right now. Start reading more books to
+          get personalized suggestions!
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-4">

@@ -157,7 +157,7 @@ export const PhysicalBookDetailsModal: React.FC<
             onClick={() => onBorrow(book.id)}
             className="flex-1 h-9.5 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
           >
-            {isBorrowing ? (
+            {isBorrowing ? ( 
               <>
                 <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 Borrowing...
@@ -172,7 +172,7 @@ export const PhysicalBookDetailsModal: React.FC<
             )}
           </button>
 
-          {/* Reserve Button - Secondary Action */}
+          {/* Reserve Button - Secondary Action*/}
           <button
             disabled={isAvailable || isReserving || isBorrowing}
             onClick={() => onReserve(book.id)}

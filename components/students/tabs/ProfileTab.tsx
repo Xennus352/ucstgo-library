@@ -10,6 +10,8 @@ import {
   BookOpen,
   Clock,
   IdCard,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +21,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { ReservationStatus } from "@/app/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
 import BookManagementModal from "@/components/lecturer/BookManagementModal";
+import { toast } from "sonner";
 
 interface ProfileBorrowRecord extends BorrowRecord {
   copy: {
@@ -47,6 +50,7 @@ interface ProfileBorrowRecord extends BorrowRecord {
 interface ProfileReservation {
   id: string;
   reservedAt: Date;
+  expiresAt: Date | null;
   status: ReservationStatus;
 
   book: {
@@ -67,17 +71,25 @@ interface ProfileReservation {
 interface ProfileTabProps {
   borrowRecords?: ProfileBorrowRecord[];
   reservations?: ProfileReservation[];
+  onReservationUpdate?: () => void;
+  onCancelReservation?: (reservationId: string) => Promise<boolean>;
 }
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({
   borrowRecords = [],
   reservations = [],
+  onReservationUpdate,
+  onCancelReservation,
 }) => {
   const { user, isLoading, error } = useCurrentUser();
   const [activityTab, setActivityTab] = useState<
     "borrows" | "reservations" | "history"
   >("borrows");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [cancellingReservationId, setCancellingReservationId] = useState<
+    string | null
+  >(null);
+
   // Loading State (Skeleton Feedback)
   if (isLoading) {
     return (
@@ -103,6 +115,64 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       />
     );
   }
+
+  // Handle cancel reservation
+  const handleCancelReservation = async (reservationId: string) => {
+    if (
+      !confirm(
+        "Are you sure you want to cancel this reservation? This action cannot be undone.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setCancellingReservationId(reservationId);
+
+      // If onCancelReservation prop is provided, use it
+      if (onCancelReservation) {
+        const success = await onCancelReservation(reservationId);
+        if (success && onReservationUpdate) {
+          onReservationUpdate();
+        }
+        return;
+      }
+
+      // Fallback: Direct API call
+      const response = await fetch(
+        `/api/reservations/${reservationId}/cancel`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to cancel reservation");
+      }
+
+      toast.success(data.message || "Reservation cancelled successfully!");
+
+      // Refresh reservations list
+      if (onReservationUpdate) {
+        onReservationUpdate();
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to cancel reservation");
+    } finally {
+      setCancellingReservationId(null);
+    }
+  };
+
+  // Check if reservation is expired
+  const isReservationExpired = (reservation: ProfileReservation) => {
+    if (!reservation.expiresAt) return false;
+    return new Date(reservation.expiresAt) < new Date();
+  };
 
   // Categorize activity logs
   const activeBorrows = borrowRecords.filter((b) => b.status === "BORROWED");
@@ -303,7 +373,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                   <Button
                     variant="secondary"
                     className="cursor-pointer"
-                    onClick={() => setIsModalOpen(true)} 
+                    onClick={() => setIsModalOpen(true)}
                   >
                     Ebook Management
                   </Button>
@@ -511,44 +581,106 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                       description="There are no books currently held in your queue."
                     />
                   ) : (
-                    activeReservations.map((res) => (
-                      <div
-                        key={res.id}
-                        className="group bg-card border border-border/50 rounded-2xl p-4 flex items-center justify-between shadow-xs transition-all hover:border-emerald-400/40"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/5">
-                            <BookOpen className="h-4 w-4" />
+                    activeReservations.map((res) => {
+                      const isExpired = isReservationExpired(res);
+                      return (
+                        <div
+                          key={res.id}
+                          className={`group bg-card border rounded-2xl p-4 flex items-center justify-between shadow-xs transition-all ${
+                            isExpired
+                              ? "border-red-400/60 hover:border-red-500"
+                              : "border-border/50 hover:border-emerald-400/40"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div
+                              className={`p-2.5 rounded-xl border ${
+                                isExpired
+                                  ? "bg-red-500/10 text-red-600 border-red-500/10"
+                                  : "bg-emerald-500/10 text-emerald-600 border-emerald-500/5"
+                              }`}
+                            >
+                              <BookOpen className="h-4 w-4" />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <h5 className="text-xs font-bold text-foreground truncate">
+                                {res.book.title}
+                              </h5>
+
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                {res.book.author.name} •{" "}
+                                {res.book.category?.name}
+                              </p>
+
+                              <div className="flex items-center gap-3 mt-1">
+                                <p className="text-[11px] text-muted-foreground">
+                                  Reserved on{" "}
+                                  {new Date(res.reservedAt).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    },
+                                  )}
+                                </p>
+                                {res.expiresAt && (
+                                  <>
+                                    <span className="w-1 h-1 rounded-full bg-gray-300" />
+                                    <p
+                                      className={`text-[11px] ${
+                                        isExpired
+                                          ? "text-red-500 font-semibold"
+                                          : "text-muted-foreground"
+                                      }`}
+                                    >
+                                      Expires{" "}
+                                      {new Date(
+                                        res.expiresAt,
+                                      ).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      })}
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="min-w-0">
-                            <h5 className="text-xs font-bold text-foreground truncate">
-                              {res.book.title}
-                            </h5>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {/* Status Badge */}
+                            <span
+                              className={`text-[10px] font-bold tracking-wide uppercase px-2.5 py-0.5 rounded-full border ${
+                                isExpired
+                                  ? "bg-red-500/10 text-red-600 border-red-500/20"
+                                  : "bg-emerald-500/10 text-emerald-600 border-emerald-500/10"
+                              }`}
+                            >
+                              {isExpired ? "Expired" : "On Hold"}
+                            </span>
 
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              {res.book.author.name} • {res.book.category?.name}
-                            </p>
-
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              Reserved on{" "}
-                              {new Date(res.reservedAt).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                },
-                              )}
-                            </p>
+                            {/* Cancel Button - Only show if not expired */}
+                            {!isExpired && (
+                              <button
+                                onClick={() => handleCancelReservation(res.id)}
+                                disabled={cancellingReservationId === res.id}
+                                className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                                title="Cancel reservation"
+                              >
+                                {cancellingReservationId === res.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                                )}
+                              </button>
+                            )}
                           </div>
                         </div>
-
-                        <span className="text-[10px] font-bold tracking-wide uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/10">
-                          On Hold
-                        </span>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </>
               )}
@@ -688,26 +820,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                                 </span>
                               )}
                             </div>
-
-                            {/* View Details Button */}
-                            {/* <button
-                              onClick={() => handleViewHistoryDetail(log.id)}
-                              className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/60 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-200 group/btn"
-                            >
-                              <svg
-                                className="w-4 h-4 group-hover/btn:scale-110 transition-transform"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M13 7l5 5m0 0l-5 5m5-5H6"
-                                />
-                              </svg>
-                            </button> */}
                           </div>
                         </div>
 

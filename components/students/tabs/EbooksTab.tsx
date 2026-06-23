@@ -38,7 +38,6 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
   viewMode = "grid",
 }) => {
   const [openYears, setOpenYears] = useState<Record<string, boolean>>(() => {
-    // Dynamically set first year as open if it exists
     const firstYear = Object.keys(
       books.reduce(
         (acc, book) => {
@@ -59,7 +58,6 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
 
   const [openSemesters, setOpenSemesters] = useState<Record<string, boolean>>(
     () => {
-      // Dynamically set first semester as open if it exists
       const firstSemester = books.reduce(
         (acc, book) => {
           if (book.ebook) {
@@ -110,14 +108,15 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
   };
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-in fade-in duration-300 w-full max-w-full overflow-hidden px-2 sm:px-4">
+    /* Changed: Restrained max width to 6xl (or 7xl depending on preference) and centered layout using mx-auto */
+    <div className="space-y-4 md:space-y-6 animate-in fade-in duration-300 w-full max-w-6xl mx-auto overflow-hidden px-3 sm:px-6 lg:px-8 py-4">
       {/* Header Panel */}
       <div className="flex flex-row items-center justify-between gap-3 mb-2 md:mb-4 px-1">
         <div className="space-y-0.5 min-w-0 flex-1">
-          <h2 className="text-sm md:text-base font-bold text-foreground tracking-tight truncate">
+          <h2 className="text-base md:text-xl font-bold text-foreground tracking-tight truncate">
             eBooks Collection
           </h2>
-          <p className="text-[11px] md:text-xs text-muted-foreground truncate">
+          <p className="text-xs md:text-sm text-muted-foreground truncate">
             {ebooksCount} available titles
           </p>
         </div>
@@ -128,7 +127,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
             onValueChange={(value) => onViewChange(value as ViewMode)}
             className="shrink-0"
           >
-            <TabsList className="grid grid-cols-2 h-8 md:h-9 w-24 md:w-36 p-1 bg-muted/60 rounded-lg border border-border/40 relative select-none">
+            <TabsList className="grid grid-cols-2 h-8 md:h-9 w-20 md:w-28 p-1 bg-muted/60 rounded-lg border border-border/40 relative select-none">
               <TabsTrigger
                 value="grid"
                 className="relative flex items-center justify-center rounded-md transition-colors duration-200 data-[state=active]:text-foreground text-muted-foreground z-10 cursor-pointer shadow-none data-[state=active]:bg-transparent p-1"
@@ -162,7 +161,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
       </div>
 
       {/* Main Accordion Flow */}
-      <div className="space-y-3 md:space-y-4 w-full">
+      <div className="space-y-4 w-full">
         {sortedYears.map((yearKey) => {
           const isYearOpen = !!openYears[yearKey];
           const semesterGroup = nestedGroups[yearKey];
@@ -175,27 +174,29 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
           return (
             <div
               key={yearKey}
-              className="bg-white rounded-xl md:rounded-3xl border border-muted-foreground/10 shadow-2xs overflow-hidden transition-all duration-200 w-full"
+              className="bg-white rounded-xl lg:rounded-2xl border border-muted-foreground/10 shadow-xs overflow-hidden transition-all duration-200 w-full"
             >
               {/* LEVEL 1: Year Accordion Trigger */}
-              <Button variant={'outline'}
+              <Button
+                variant="ghost"
                 id={yearHeaderId}
                 aria-expanded={isYearOpen}
                 aria-controls={yearContentId}
                 onClick={() => toggleYear(yearKey)}
-                className="w-full flex items-center justify-between px-4 py-3.5 md:px-5 md:py-4 border-b border-muted-foreground/10 text-left cursor-pointer hover:bg-slate-50/50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 select-none gap-2"
+                /* Changed: Cleaned up paddings/height restrictions to allow seamless responsiveness */
+                className="w-full h-auto flex items-center justify-between px-4 py-4 md:px-6 md:py-5 text-left cursor-pointer hover:bg-slate-50/80 rounded-none border-b border-muted-foreground/5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 select-none gap-2"
               >
-                <h3 className="text-sm font-bold text-[#1e3a8a] tracking-wide flex items-center gap-2 min-w-0">
+                <h3 className="text-sm md:text-base font-bold text-[#1e3a8a] tracking-wide flex items-center gap-2 min-w-0">
                   <span className="truncate">
                     {yearKey === "UNASSIGNED"
                       ? "Other Titles"
                       : getYearLabel(yearKey)}
                   </span>
-                  <span className="text-[10px] md:text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-semibold shrink-0">
+                  <span className="text-[10px] md:text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-semibold shrink-0">
                     {yearCount}
                   </span>
                 </h3>
-                <div className="p-1 md:p-1.5 bg-muted/40 rounded-full text-muted-foreground shrink-0">
+                <div className="p-1 md:p-1.5 bg-muted/60 rounded-full text-muted-foreground shrink-0">
                   {isYearOpen ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
@@ -215,9 +216,9 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2, ease: "easeInOut" }}
-                    className="overflow-hidden bg-[#f8fafc] p-2 sm:p-4 md:p-5"
+                    className="overflow-hidden bg-[#f8fafc] p-3 sm:p-5 lg:p-6"
                   >
-                    <div className="space-y-3 w-full">
+                    <div className="space-y-4 w-full">
                       {sortedSemesters.map((semesterKey) => {
                         const semesterBooks = semesterGroup[semesterKey];
                         const isSemOpen = !!openSemesters[semesterKey];
@@ -229,25 +230,26 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                         return (
                           <div
                             key={semesterKey}
-                            className="border border-muted-foreground/10 rounded-lg md:rounded-2xl bg-white overflow-hidden shadow-3xs w-full"
+                            className="border border-muted-foreground/10 rounded-xl bg-white overflow-hidden shadow-2xs w-full"
                           >
                             {/* LEVEL 2: Semester Accordion Trigger */}
                             <Button
-                            variant={'outline'}
+                              variant="ghost"
                               id={semHeaderId}
                               aria-expanded={isSemOpen}
                               aria-controls={semContentId}
                               onClick={() => toggleSemester(semesterKey)}
-                              className="w-full flex items-center justify-between p-3 md:px-4 md:py-3 bg-slate-50/70 text-left cursor-pointer hover:bg-slate-100/60 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 select-none gap-2"
+                              /* Changed: Replaced standard outline style parameters to maintain full width flex grid safety */
+                              className="w-full h-auto flex items-center justify-between p-4 bg-slate-50/50 text-left cursor-pointer hover:bg-slate-100/50 rounded-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 select-none gap-2"
                             >
                               <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className="bg-[#f5bf35] text-white text-[10px] md:text-xs font-black px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full tracking-wider uppercase shrink-0">
+                                <span className="bg-[#f5bf35] text-white text-[10px] md:text-xs font-extrabold px-2.5 py-1 rounded-md tracking-wider uppercase shrink-0">
                                   {formatSemesterLabel(semesterKey).replace(
                                     /FIRST YEAR |SECOND YEAR |THIRD YEAR |FOURTH YEAR /g,
                                     "",
                                   )}
                                 </span>
-                                <span className="text-[11px] md:text-xs font-bold text-slate-400 shrink-0">
+                                <span className="text-[11px] md:text-xs font-semibold text-slate-500 shrink-0">
                                   ({semesterCount}{" "}
                                   {semesterCount === 1 ? "book" : "books"})
                                 </span>
@@ -275,7 +277,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                                     duration: 0.2,
                                     ease: "easeInOut",
                                   }}
-                                  className="overflow-hidden p-3 md:p-4 bg-white border-t border-slate-100 w-full"
+                                  className="overflow-hidden p-4 sm:p-5 bg-white border-t border-slate-100 w-full"
                                 >
                                   <AnimatePresence mode="wait">
                                     <motion.div
@@ -286,18 +288,15 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                                       transition={{ duration: 0.15 }}
                                       className="w-full h-full"
                                     >
-                                      {/* BookGrid with centering on small devices */}
-                                      <div className="flex justify-center w-full min-w-0 overflow-visible">
-                                        <div className="w-full max-w-full">
-                                          <BookGrid
-                                            books={semesterBooks}
-                                            variant={viewMode}
-                                            onBookClick={onBookClick}
-                                            showProgress={true}
-                                            showRating={true}
-                                            showAvailability={true}
-                                          />
-                                        </div>
+                                      <div className="w-full min-w-0">
+                                        <BookGrid
+                                          books={semesterBooks}
+                                          variant={viewMode}
+                                          onBookClick={onBookClick}
+                                          showProgress={true}
+                                          showRating={true}
+                                          showAvailability={true}
+                                        />
                                       </div>
                                     </motion.div>
                                   </AnimatePresence>

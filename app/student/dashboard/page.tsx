@@ -9,8 +9,6 @@ import {
   ViewMode,
 } from "@/components/students/types";
 
-import { BorrowStatus, ReservationStatus } from "@/types/Role";
-
 import { ExploreTab } from "@/components/students/tabs/ExploreTab";
 import { EbooksTab } from "@/components/students/tabs/EbooksTab";
 import { PhysicalTab } from "@/components/students/tabs/PhysicalTab";
@@ -34,7 +32,6 @@ const EbookReaderContainer = dynamic(
   { ssr: false },
 );
 
-
 const tabsConfig = [
   { id: "Explore", label: "Explorer", icon: BookOpen },
   { id: "eBooks", label: "Ebooks", icon: Tablet },
@@ -57,7 +54,6 @@ export default function LibraryApp() {
   // FOR BORROWING
   const [isBorrowing, setIsBorrowing] = useState(false);
 
-  // 1. Add state hooks inside your LibraryApp function component:
   const [profileData, setProfileData] = useState<{
     borrowRecords: any[];
     reservations: any[];
