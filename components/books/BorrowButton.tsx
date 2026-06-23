@@ -4,11 +4,11 @@ import { useState, useTransition } from "react";
 import { borrowBookAction } from "@/app/actions/borrow";
 
 interface BorrowButtonProps {
-  userId: string;
+  userId?: string;
   bookId: string;
 }
 
-export default function BorrowButton({ userId, bookId }: BorrowButtonProps) {
+export default function BorrowButton({ bookId }: BorrowButtonProps) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -19,7 +19,7 @@ export default function BorrowButton({ userId, bookId }: BorrowButtonProps) {
     setMessage(null);
 
     startTransition(async () => {
-      const response = await borrowBookAction(userId, bookId);
+      const response = await borrowBookAction( bookId);
 
       if (response.success) {
         setMessage({ type: "success", text: response.message || "Success!" });
