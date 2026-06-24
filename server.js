@@ -6,6 +6,8 @@ const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
 const handler = app.getRequestHandler();
 
+const PORT = process.env.PORT || 3000;
+
 let io;
 
 app.prepare().then(() => {
@@ -37,6 +39,6 @@ app.prepare().then(() => {
   global.io = io;
 
   httpServer.listen(3000, () => {
-    console.log("🚀 Server running on http://localhost:3000");
+    console.log(`🚀 Server running on port ${PORT}`);
   });
 });

@@ -97,8 +97,8 @@ export async function returnBookAction(borrowRecordId: string) {
     // 4. Clean paths cache
     revalidatePath("/librarian/books");
     revalidatePath("/admin/books");
-    revalidatePath("/students/dashboard"); 
-    revalidatePath("/lecturer/dashboard"); 
+    revalidatePath("/students/dashboard");
+    revalidatePath("/lecturer/dashboard");
 
     return {
       success: true,

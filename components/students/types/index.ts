@@ -170,4 +170,4 @@ export interface TabConfig {
 }
 
 export type ViewMode = "grid" | "list";
-export type TabId = "Explore" | "eBooks" | "Physical" | "Profile";
+export type TabId = "Home" | "eBooks" | "Physical" | "Profile";

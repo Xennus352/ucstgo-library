@@ -1,21 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-export async function proxy(req: Request) {
+export async function proxy(req: NextRequest) {
   const session = await auth.api.getSession({
     headers: req.headers,
   });
 
-  const url = new URL(req.url);
+  const url = req.nextUrl;
   const path = url.pathname;
 
-  // not logged in
   if (!session?.user) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
-  // get real user from DB
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { role: true, banned: true },
@@ -25,14 +23,9 @@ export async function proxy(req: Request) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
-  //  GLOBAL BAN CHECK
-  if (user.banned) {
-    return NextResponse.redirect(new URL("/blocked", req.url));
-  }
-
   const role = user.role;
 
-  // ROLE PROTECTION MAP
+  // ROLE PROTECTION ONLY
   if (path.startsWith("/admin") && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/403", req.url));
   }
@@ -51,13 +44,3 @@ export async function proxy(req: Request) {
 
   return NextResponse.next();
 }
-
-// Apply only to protected routes
-export const config = {
-  matcher: [
-    "/admin/:path*",
-    "/student/:path*",
-    "/librarian/:path*",
-    "/lecturer/:path*",
-  ],
-};

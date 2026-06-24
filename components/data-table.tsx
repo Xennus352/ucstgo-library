@@ -35,19 +35,13 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
+
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Drawer,
@@ -103,11 +97,20 @@ import {
   AlertTriangleIcon,
   BookmarkIcon,
 } from "lucide-react";
+import { returnBookAction } from "@/app/actions/return";
+import { banUserAction } from "@/app/actions/banUserAction";
+import { issueWarningAction } from "@/app/actions/issueWarningAction";
 
 export const schema = z.object({
-  id: z.string(),
+  id: z.string(), // borrowRecordId
+
+  bookId: z.string(),
+  copyId: z.string(),
+  userId: z.string(),
+
   bookTitle: z.string(),
   borrower: z.string(),
+
   role: z.string(),
   status: z.string(),
   date: z.string(),
@@ -258,24 +261,57 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem
-            onClick={() =>
-              toast.success(`Marked ${row.original.id} as Returned!`)
-            }
+            className="text-emerald-600 dark:text-emerald-400 focus:bg-emerald-50 dark:focus:bg-emerald-950/40 focus:text-emerald-700 dark:focus:text-emerald-300 font-medium cursor-pointer"
+            onClick={async () => {
+              const res = await returnBookAction(row.original.id);
+
+              if (res.success) {
+                toast.success(res.message);
+              } else {
+                toast.error(res.error);
+              }
+            }}
           >
             Mark as Returned
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() =>
-              toast.info(
-                `Reminder alert dispatched to ${row.original.borrower}`,
-              )
-            }
+            className="text-amber-600 dark:text-amber-400 focus:bg-amber-50 dark:focus:bg-amber-950/40 focus:text-amber-700 dark:focus:text-amber-300 font-medium cursor-pointer"
+            onClick={async () => {
+              const res = await issueWarningAction(
+                row.original.userId,
+                row.original.bookTitle,
+              );
+
+              if (res.success) {
+                toast.success(
+                  `Warning alert dispatched to ${row.original.borrower}`,
+                );
+              } else {
+                toast.error(
+                  res.error || "Failed to transmit real-time warning.",
+                );
+              }
+            }}
           >
             Issue Warning Alert
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">
-            Renew Loan Period
+          <DropdownMenuItem
+            className="text-rose-600 dark:text-rose-400 focus:bg-rose-500 dark:focus:bg-rose-600 focus:text-white dark:focus:text-white font-medium cursor-pointer"
+            variant="destructive"
+            onClick={async () => {
+              const res = await banUserAction(row.original.userId);
+
+              if (res.success) {
+                toast.success(
+                  `User account (${row.original.borrower}) is now restricted.`,
+                );
+              } else {
+                toast.error(res.error);
+              }
+            }}
+          >
+            Banned!
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -328,7 +364,6 @@ export function DataTable({
 
   const [currentTab, setCurrentTab] = React.useState("all-loans");
   const [loading, setLoading] = React.useState(true);
-
   // Simulate network pipeline latency delay or mount synchronization lifecycle
   React.useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 850);
@@ -710,22 +745,6 @@ export function DataTable({
   );
 }
 
-const chartData = [
-  { month: "Jan", checkouts: 94 },
-  { month: "Feb", checkouts: 142 },
-  { month: "Mar", checkouts: 204 },
-  { month: "Apr", checkouts: 110 },
-  { month: "May", checkouts: 165 },
-  { month: "Jun", checkouts: 232 },
-];
-
-const chartConfig = {
-  checkouts: {
-    label: "Checkouts",
-    color: "var(--primary)",
-  },
-} satisfies ChartConfig;
-
 function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
   const isMobile = useIsMobile();
 
@@ -748,49 +767,6 @@ function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
           </DrawerDescription>
         </DrawerHeader>
         <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
-          {!isMobile && (
-            <>
-              <ChartContainer config={chartConfig} className="h-32 w-full">
-                <AreaChart
-                  data={chartData}
-                  margin={{ left: 10, right: 10, top: 10 }}
-                >
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={4}
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent indicator="line" />}
-                  />
-                  <Area
-                    dataKey="checkouts"
-                    type="monotone"
-                    fill="var(--chart-1)"
-                    fillOpacity={0.2}
-                    stroke="var(--chart-1)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ChartContainer>
-              <Separator />
-              <div className="grid gap-1">
-                <div className="flex gap-2 items-center font-medium text-xs text-muted-foreground uppercase tracking-wider">
-                  <TrendingUpIcon className="size-3.5 text-emerald-500" />
-                  Circulation Popularity Trends
-                </div>
-                <div className="text-muted-foreground text-xs leading-relaxed mt-1">
-                  This volume demonstrates high circulation indexes inside
-                  engineering structures this semester. Ensure strict buffer
-                  return policies before examination segments start.
-                </div>
-              </div>
-              <Separator />
-            </>
-          )}
           <form
             className="flex flex-col gap-4"
             onSubmit={(e) => e.preventDefault()}

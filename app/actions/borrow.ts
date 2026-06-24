@@ -2,11 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth"; 
+import { auth } from "@/lib/auth";
 import { BorrowStatus, CopyStatus } from "../generated/prisma/enums";
 import prisma from "@/lib/prisma";
 
-// Notice we REMOVED userId from the parameters entirely!
 export async function borrowBookAction(bookId: string) {
   try {
     // 1. Resolve the logged-in user on the server securely
@@ -22,6 +21,20 @@ export async function borrowBookAction(bookId: string) {
     }
 
     const userId = session.user.id;
+
+    // 🔒 NEW: Check if the user is soft-banned / restricted from borrowing
+    const userStatus = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { banned: true },
+    });
+
+    if (userStatus?.banned) {
+      return {
+        success: false,
+        error:
+          "Your account is temporarily restricted from borrowing books. Please contact the librarian.",
+      };
+    }
 
     // 2. Check user's current active borrow count
     const activeBorrowsCount = await prisma.borrowRecord.count({
@@ -89,7 +102,7 @@ export async function borrowBookAction(bookId: string) {
 
     revalidatePath("/student/dashboard");
     revalidatePath("/teacher/dashboard");
-    
+
     return {
       success: true,
       message: "Book successfully borrowed! Enjoy your reading.",

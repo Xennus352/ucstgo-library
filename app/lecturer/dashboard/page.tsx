@@ -9,7 +9,6 @@ import {
   ViewMode,
 } from "@/components/students/types";
 
-import { ExploreTab } from "@/components/students/tabs/ExploreTab";
 import { EbooksTab } from "@/components/students/tabs/EbooksTab";
 import { PhysicalTab } from "@/components/students/tabs/PhysicalTab";
 import { ProfileTab } from "@/components/students/tabs/ProfileTab";
@@ -26,22 +25,22 @@ import { PhysicalBookDetailsModal } from "@/components/students/modals/PhysicalB
 import { borrowBookAction } from "@/app/actions/borrow";
 import { fetchEbookOfflineSafe } from "@/lib/ebookCache";
 import { getUserProfileData } from "@/app/actions/profile";
+import { LibraryHome } from "@/components/students/tabs/HomeTab";
 
 const EbookReaderContainer = dynamic(
   () => import("@/components/reader/EbookReaderContainer"),
   { ssr: false },
 );
 
-
 const tabsConfig = [
-  { id: "Explore", label: "Explorer", icon: BookOpen },
+  { id: "Home", label: "Home", icon: BookOpen },
   { id: "eBooks", label: "Ebooks", icon: Tablet },
   { id: "Physical", label: "Books", icon: Book },
   { id: "Profile", label: "Profile", icon: User },
 ] as const satisfies TabConfig[];
 
 export default function LibraryApp() {
-  const [activeTab, setActiveTab] = useState<TabId>("Explore");
+  const [activeTab, setActiveTab] = useState<TabId>("Home");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -55,7 +54,6 @@ export default function LibraryApp() {
   // FOR BORROWING
   const [isBorrowing, setIsBorrowing] = useState(false);
 
-  
   const [profileData, setProfileData] = useState<{
     borrowRecords: any[];
     reservations: any[];
@@ -88,6 +86,11 @@ export default function LibraryApp() {
       loadProfileDetails();
     }
   }, [activeTab, loadProfileDetails]);
+
+  // OPTIMIZATION: Ensure profile data is updated silently behind the scenes on init so restriction lists are ready
+  useEffect(() => {
+    loadProfileDetails();
+  }, [loadProfileDetails]);
 
   const apiType = useMemo(() => {
     if (activeTab === "eBooks") return "ebook";
@@ -181,8 +184,18 @@ export default function LibraryApp() {
     }
   };
 
-  // IMPLEMENT THE BORROW HANDLER
+  // IMPLEMENT THE BORROW HANDLER (WITH BORROW RESTRICTION)
   const handleBorrowBook = async (bookId: string) => {
+    // 1. Check if the book matches an active, unreturned item in user history logs
+    const hasAlreadyBorrowed = profileData.borrowRecords.some(
+      (record) => record.bookId === bookId && !record.returnedAt && record.status !== "RETURNED"
+    );
+
+    if (hasAlreadyBorrowed) {
+      toast.error("You have already checked out this book. Please return it before borrowing another copy.");
+      return;
+    }
+
     try {
       setIsBorrowing(true);
 
@@ -199,6 +212,8 @@ export default function LibraryApp() {
 
       // Refresh cache dynamically upon checkout completion
       mutate();
+      // Re-fetch profile stats to update the restriction check immediately
+      loadProfileDetails();
     } catch (err: any) {
       toast.error(err.message || "Unexpected borrow error");
     } finally {
@@ -267,16 +282,8 @@ export default function LibraryApp() {
     }
 
     switch (activeTab) {
-      case "Explore":
-        return (
-          <ExploreTab
-            reservedBooks={reservedBooks}
-            catalogBooks={filteredBooks}
-            onViewChange={setViewMode}
-            viewMode={viewMode}
-            onBookClick={handleBookClick}
-          />
-        );
+      case "Home":
+        return <LibraryHome />;
 
       case "eBooks":
         return (
@@ -325,6 +332,8 @@ export default function LibraryApp() {
     isLoading,
     error,
     liveBooks,
+    isProfileLoading,
+    profileData,
   ]);
 
   return (

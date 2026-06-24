@@ -30,7 +30,10 @@ export async function getLiveCirculationData() {
 
     // Remap your DB relations into your flat DataTable UI structure
     const formattedData = records.map((record) => ({
-      id: record.id.slice(0, 8).toUpperCase(), // Clean short id string variant (e.g., "TX-9021")
+      id: record.id,
+      bookId: record.copy.bookId,
+      copyId: record.copyId,
+      userId: record.userId,
       borrower: record.user.name,
       role:
         record.user.role.charAt(0) + record.user.role.slice(1).toLowerCase(), // Formats 'STUDENT' to 'Student'
