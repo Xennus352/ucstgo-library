@@ -4,21 +4,21 @@ import { useState, useRef, useEffect } from "react";
 import {
   Brain,
   X,
-  Search,
+  CatIcon,
   Sparkles,
   BookOpen,
   Move,
   ChevronDown,
 } from "lucide-react";
-import { SearchSection } from "./aiSearchBooks";
+import { ChatSection } from "./aiChat";
 import { RecommendationsSection } from "./aiRecommendationsSection";
 import { BookSummarizer } from "./aiBookSummarizer";
 
-type TabType = "search" | "recommendations" | "summarize";
+type TabType = "chat" | "recommendations" | "summarize";
 
 export function AiFloatingWidget({ userId }: { userId: string }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>("search");
+  const [activeTab, setActiveTab] = useState<TabType>("chat");
   const [position, setPosition] = useState({ x: 24, y: 24 });
   const [isDragging, setIsDragging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -211,7 +211,7 @@ export function AiFloatingWidget({ userId }: { userId: string }) {
           {/* Tab Navigation Menu */}
           <div className="grid grid-cols-3 gap-1 p-2 bg-slate-900/40 border-b border-white/5 flex-shrink-0">
             {[
-              { id: "search", icon: Search, label: "Search", color: "cyan" },
+              { id: "chat", icon: CatIcon, label: "Chat", color: "cyan" },
               {
                 id: "recommendations",
                 icon: Sparkles,
@@ -257,7 +257,7 @@ export function AiFloatingWidget({ userId }: { userId: string }) {
           {/* Content Scroll Viewport with native inline scroll tracking */}
           <div className="flex-1 overflow-y-auto p-4 text-left bg-slate-950/20 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-250 h-full">
-              {activeTab === "search" && <SearchSection />}
+              {activeTab === "chat" && <ChatSection />}
               {activeTab === "recommendations" && (
                 <RecommendationsSection userId={userId} />
               )}

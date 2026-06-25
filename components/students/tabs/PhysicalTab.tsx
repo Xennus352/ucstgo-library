@@ -36,6 +36,22 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
     return ["All", ...categoryResponse.data.map((cat: any) => cat.name)];
   }, [categoryResponse]);
 
+  // 2.5 Calculate item counts for each category dynamically
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      All: physicalBooks.length,
+    };
+
+    physicalBooks.forEach((book) => {
+      const catName = book.category?.name;
+      if (catName) {
+        counts[catName] = (counts[catName] || 0) + 1;
+      }
+    });
+
+    return counts;
+  }, [physicalBooks]);
+
   // 3. Filter down books based on selection
   const filteredBooks = useMemo(() => {
     if (selectedCategory === "All") return physicalBooks;
@@ -132,7 +148,7 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
             backdrop-blur-sm
             ${
               isActive
-                ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105 font-semibold"
+                ? "bg-linear-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105 font-semibold"
                 : "bg-background/50 text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:scale-105 border border-border/50"
             }
           `}
@@ -145,7 +161,7 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
                   </span>
                 )}
 
-                {/* Category emoji/icon - optional enhancement */}
+                {/* Category emoji/icon  enhancement */}
                 <span className="mr-1.5">
                   {category === "All"
                     ? "✨"
@@ -155,17 +171,26 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
                         ? "🆕"
                         : category === "Featured"
                           ? "⭐"
-                          : "📌"}
+                          : ""}
                 </span>
+                {/* Category text */}
+                <span>{category}</span>
 
-                {category}
-
-                {/* Optional count badge - if you have counts */}
-                {/* {categoryCounts[category] && (
-            <span className="ml-1.5 text-xs opacity-70">
-              {categoryCounts[category]}
-            </span>
-          )} */}
+                {/* Clean, dynamic count badge */}
+                {categoryCounts[category] !== undefined && (
+                  <span
+                    className={`
+      ml-2 text-[10px] px-1.5 py-0.5 rounded-md transition-colors duration-300
+      ${
+        isActive
+          ? "bg-primary-foreground/20 text-primary-foreground font-bold"
+          : "bg-muted text-muted-foreground group-hover:bg-accent group-hover:text-foreground"
+      }
+    `}
+                  >
+                    {categoryCounts[category]}
+                  </span>
+                )}
               </button>
             );
           })}

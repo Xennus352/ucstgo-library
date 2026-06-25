@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { BookGrid } from "../books/BookGrid";
 import { BookWithDetails, ViewMode } from "../types";
 import {
@@ -11,6 +11,7 @@ import {
   Filter,
   X,
   SlidersHorizontal,
+  BookOpen,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
@@ -73,7 +74,9 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
     useState<string>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [isFiltered, setIsFiltered] = useState(false);
 
+  // Auto-expand first year and semester on mount
   const [openYears, setOpenYears] = useState<Record<string, boolean>>(() => {
     const firstYear = Object.keys(
       books.reduce(
@@ -159,8 +162,9 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
     return Array.from(categories).sort();
   }, [books]);
 
+  // Filter books based on all criteria
   const { ebooksCount, sortedYears, nestedGroups } = useMemo(() => {
-    // Apply filters
+    // Start with all ebooks
     let filteredEbooks = books.filter(
       (b) => b.ebook !== null && b.ebook !== undefined,
     );
@@ -211,6 +215,15 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
     };
   }, [books, activeCategoryFilter, activeYearFilter, activeSemesterFilter]);
 
+  // Check if any filter is active
+  useEffect(() => {
+    const hasFilters =
+      activeCategoryFilter !== "all" ||
+      activeYearFilter !== "all" ||
+      activeSemesterFilter !== "all";
+    setIsFiltered(hasFilters);
+  }, [activeCategoryFilter, activeYearFilter, activeSemesterFilter]);
+
   const toggleYear = (year: string) => {
     setOpenYears((prev) => ({ ...prev, [year]: !prev[year] }));
   };
@@ -245,12 +258,6 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
     }).length;
   };
 
-  // Check if any filter is active
-  const hasActiveFilters =
-    activeCategoryFilter !== "all" ||
-    activeYearFilter !== "all" ||
-    activeSemesterFilter !== "all";
-
   // Get active filter count for badge
   const activeFilterCount = [
     activeCategoryFilter !== "all",
@@ -265,26 +272,112 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
     setActiveSemesterFilter("all");
   };
 
+  // Clear individual filter
+  const clearFilter = (type: string) => {
+    switch (type) {
+      case "category":
+        setActiveCategoryFilter("all");
+        break;
+      case "year":
+        setActiveYearFilter("all");
+        break;
+      case "semester":
+        setActiveSemesterFilter("all");
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Active filters display component
+  const ActiveFiltersDisplay = () => {
+    const activeFilters = [];
+
+    if (activeCategoryFilter !== "all") {
+      const categoryName =
+        filterCategories.find(
+          (c) => c.toLowerCase() === activeCategoryFilter.toLowerCase(),
+        ) || activeCategoryFilter;
+      activeFilters.push({
+        id: "category",
+        label: `Category: ${categoryName}`,
+        type: "category",
+      });
+    }
+
+    if (activeYearFilter !== "all") {
+      activeFilters.push({
+        id: "year",
+        label: `Year: ${getYearLabel(activeYearFilter)}`,
+        type: "year",
+      });
+    }
+
+    if (activeSemesterFilter !== "all") {
+      activeFilters.push({
+        id: "semester",
+        label: activeSemesterFilter.replace("SEM", "Semester "),
+        type: "semester",
+      });
+    }
+
+    if (activeFilters.length === 0) return null;
+
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 py-1 px-0.5">
+        <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">
+          Active filters:
+        </span>
+        {activeFilters.map((filter) => (
+          <Badge
+            key={filter.id}
+            variant="secondary"
+            className="flex items-center gap-1 text-xs py-1 px-2.5 bg-primary/5 hover:bg-primary/10 border-primary/10 text-black"
+          >
+            <span className="text-black">{filter.label}</span>
+            <button
+              onClick={() => clearFilter(filter.type)}
+              className="hover:text-foreground ml-0.5 text-black hover:text-destructive transition-colors"
+              aria-label={`Remove ${filter.type} filter`}
+            >
+              <X className="h-3 w-3 text-black" />
+            </button>
+          </Badge>
+        ))}
+        {activeFilters.length > 1 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearAllFilters}
+            className="h-6 text-xs text-black hover:text-foreground px-2 hover:bg-destructive/10"
+          >
+            Clear all
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   // Filter pills component (reusable)
   const FilterPills = ({ className = "" }: { className?: string }) => (
-    <div className={`space-y-3 ${className}`}>
+    <div className={`space-y-4 ${className}`}>
       {/* Category Filters */}
       <div>
         <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground mb-2">
-          <Filter className="h-3.5 w-3.5" />
-          <span className="font-medium">Type:</span>
+          <Filter className="h-3.5 w-3.5 text-black" />
+          <span className="font-medium text-black">Category:</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
           <Button
-            variant={activeCategoryFilter === "all" ? "default" : "outline"}
+            variant={activeCategoryFilter === "all" ? "secondary" : "outline"}
             size="sm"
             onClick={() => setActiveCategoryFilter("all")}
-            className="h-7 md:h-8 text-xs md:text-sm rounded-full px-3"
+            className="h-7 md:h-8 text-xs rounded-full px-3 text-black"
           >
             All
             <Badge
-              variant="secondary"
-              className="ml-1.5 h-4 min-w-4 px-1 text-[10px]"
+              variant="default"
+              className="ml-1.5 h-4 min-w-4 px-1 text-[10px] text-gray-200"
             >
               {books.filter((b) => b.ebook).length}
             </Badge>
@@ -300,12 +393,12 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
               }
               size="sm"
               onClick={() => setActiveCategoryFilter(category.toLowerCase())}
-              className="h-7 md:h-8 text-xs md:text-sm rounded-full px-3"
+              className="h-7 md:h-8 text-xs rounded-full px-3 text-black"
             >
               {category}
               <Badge
                 variant="secondary"
-                className="ml-1.5 h-4 min-w-4 px-1 text-[10px]"
+                className="ml-1.5 h-4 min-w-4 px-1 text-[10px] text-black"
               >
                 {getCategoryCount(category)}
               </Badge>
@@ -314,84 +407,67 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
         </div>
       </div>
 
-      {/* Year Filters */}
-      <div>
-        <span className="text-xs md:text-sm text-muted-foreground font-medium mb-2 block">
-          Year:
-        </span>
-        <div className="flex flex-wrap gap-1.5">
-          <Button
-            variant={activeYearFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveYearFilter("all")}
-            className="h-7 md:h-8 text-xs md:text-sm rounded-full px-3"
-          >
-            All Years
-          </Button>
+      {/* Year & Semester Filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <span className="text-xs md:text-sm text-muted-foreground font-medium mb-2 block text-black">
+            Year:
+          </span>
+          <Select value={activeYearFilter} onValueChange={setActiveYearFilter}>
+            <SelectTrigger className="w-full h-9 text-sm text-black">
+              <SelectValue placeholder="All Years" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-black">
+                All Years ({books.filter((b) => b.ebook).length})
+              </SelectItem>
+              {availableYears.map((year) => (
+                <SelectItem key={year} value={year} className="text-black">
+                  {getYearLabel(year)} ({getYearCount(year)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          {availableYears.map((year) => (
-            <Button
-              key={year}
-              variant={activeYearFilter === year ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveYearFilter(year)}
-              className="h-7 md:h-8 text-xs md:text-sm rounded-full px-3"
-            >
-              {getYearLabel(year)}
-              <Badge
-                variant="secondary"
-                className="ml-1.5 h-4 min-w-4 px-1 text-[10px]"
-              >
-                {getYearCount(year)}
-              </Badge>
-            </Button>
-          ))}
+        <div>
+          <span className="text-xs md:text-sm text-muted-foreground font-medium mb-2 block text-black">
+            Semester:
+          </span>
+          <Select
+            value={activeSemesterFilter}
+            onValueChange={setActiveSemesterFilter}
+          >
+            <SelectTrigger className="w-full h-9 text-sm text-black">
+              <SelectValue placeholder="All Semesters" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-black">
+                All Semesters
+              </SelectItem>
+              {uniqueSemesterTypes.map((semType) => (
+                <SelectItem
+                  key={semType}
+                  value={semType}
+                  className="text-black"
+                >
+                  {semType.replace("SEM", "Semester ")} (
+                  {getSemesterTypeCount(semType)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Semester Filters */}
-      <div>
-        <span className="text-xs md:text-sm text-muted-foreground font-medium mb-2 block">
-          Semester:
-        </span>
-        <div className="flex flex-wrap gap-1.5">
-          <Button
-            variant={activeSemesterFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveSemesterFilter("all")}
-            className="h-7 md:h-8 text-xs md:text-sm rounded-full px-3"
-          >
-            All Semesters
-          </Button>
-
-          {uniqueSemesterTypes.map((semType) => (
-            <Button
-              key={semType}
-              variant={activeSemesterFilter === semType ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveSemesterFilter(semType)}
-              className="h-7 md:h-8 text-xs md:text-sm rounded-full px-3"
-            >
-              {semType.replace("SEM", "Semester ")}
-              <Badge
-                variant="secondary"
-                className="ml-1.5 h-4 min-w-4 px-1 text-[10px]"
-              >
-                {getSemesterTypeCount(semType)}
-              </Badge>
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {hasActiveFilters && (
+      {isFiltered && (
         <Button
           variant="ghost"
           size="sm"
           onClick={clearAllFilters}
-          className="h-7 md:h-8 text-xs md:text-sm text-muted-foreground hover:text-foreground"
+          className="h-8 text-sm text-black hover:text-foreground w-full sm:w-auto"
         >
-          <X className="h-3 w-3 mr-1" />
+          <X className="h-3.5 w-3.5 mr-1.5 text-black" />
           Clear All Filters
         </Button>
       )}
@@ -399,125 +475,152 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
   );
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-in fade-in duration-300 w-full max-w-6xl mx-auto overflow-hidden px-3 sm:px-6 lg:px-8 py-4">
+    <div className="space-y-4 md:space-y-6 animate-in fade-in duration-300 w-full max-w-7xl mx-auto overflow-hidden px-3 sm:px-4 lg:px-6 py-4">
       {/* Header Panel */}
-      <div className="flex flex-row items-center justify-between gap-3 mb-2 md:mb-4 px-1">
-        <div className="space-y-0.5 min-w-0 flex-1">
-          <h2 className="text-base md:text-xl font-bold text-foreground tracking-tight truncate">
-            eBooks Collection
-          </h2>
-          <p className="text-xs md:text-sm text-muted-foreground truncate">
-            {ebooksCount} available titles
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Mobile Filter Button */}
-          <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="lg:hidden h-8 md:h-9 relative"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
-                Filters
-                {activeFilterCount > 0 && (
-                  <Badge
-                    variant="secondary"
-                    className="ml-1.5 h-4 min-w-4 px-1 text-[10px] absolute -top-1.5 -right-1.5"
-                  >
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              className="w-[300px] sm:w-[400px] overflow-y-auto"
-            >
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <Filter className="h-4 w-4" />
-                  Filters
-                </SheetTitle>
-              </SheetHeader>
-              <div className="mt-6">
-                <FilterPills />
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          {/* Desktop Filter Toggle */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setFiltersOpen(!filtersOpen)}
-            className="hidden lg:flex h-8 md:h-9 relative"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
-            Filters
-            {activeFilterCount > 0 && (
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-row items-center justify-between gap-3">
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <h2 className="text-base md:text-xl lg:text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary flex-shrink-0" />
+              <span className="truncate">eBooks Collection</span>
               <Badge
                 variant="secondary"
-                className="ml-1.5 h-4 min-w-4 px-1 text-[10px]"
+                className="ml-1 text-xs flex-shrink-0 text-black"
               >
-                {activeFilterCount}
+                {ebooksCount}
               </Badge>
-            )}
-            {filtersOpen ? (
-              <ChevronUp className="h-3.5 w-3.5 ml-1.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 ml-1.5" />
-            )}
-          </Button>
+            </h2>
+          </div>
 
-          {onViewChange && (
-            <Tabs
-              value={viewMode}
-              onValueChange={(value) => onViewChange(value as ViewMode)}
-              className="shrink-0"
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Mobile Filter Button */}
+            <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="lg:hidden h-8 md:h-9 relative text-black"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-1.5 text-black" />
+                  <span className="hidden sm:inline text-black">Filters</span>
+                  {isFiltered && (
+                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" />
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="bottom"
+                className="h-[85vh] rounded-t-xl overflow-y-auto px-4 py-6"
+              >
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2 text-lg text-black">
+                    <Filter className="h-4 w-4 text-black" />
+                    Filters
+                    {isFiltered && (
+                      <Badge variant="secondary" className="ml-auto text-black">
+                        {activeFilterCount} active
+                      </Badge>
+                    )}
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="mt-6">
+                  <FilterPills />
+                  <div className="mt-6 flex gap-3">
+                    <Button
+                      onClick={() => setMobileFiltersOpen(false)}
+                      className="flex-1 text-black"
+                    >
+                      Apply Filters
+                    </Button>
+                    {isFiltered && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          clearAllFilters();
+                          setMobileFiltersOpen(false);
+                        }}
+                        className="flex-1 text-black"
+                      >
+                        Clear All
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            {/* Desktop Filter Toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className="hidden lg:flex h-8 md:h-9 relative text-black"
             >
-              <TabsList className="grid grid-cols-2 h-8 md:h-9 w-20 md:w-28 p-1 bg-muted/60 rounded-lg border border-border/40 relative select-none">
-                <TabsTrigger
-                  value="grid"
-                  className="relative flex items-center justify-center rounded-md transition-colors duration-200 data-[state=active]:text-foreground text-muted-foreground z-10 cursor-pointer shadow-none data-[state=active]:bg-transparent p-1"
-                >
-                  {viewMode === "grid" && (
-                    <motion.div
-                      layoutId="ebooks-view-pill"
-                      className="absolute inset-0 bg-card rounded-md shadow-xs border border-border/10 -z-10"
-                      transition={{
-                        type: "spring",
-                        stiffness: 380,
-                        damping: 30,
-                      }}
-                    />
-                  )}
-                  <Grid className="h-3.5 w-3.5" />
-                </TabsTrigger>
+              <Filter className="h-3.5 w-3.5 mr-1.5 text-black" />
+              <span className="text-black">Filters</span>
+              {isFiltered && (
+                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" />
+              )}
+              {filtersOpen ? (
+                <ChevronUp className="h-3.5 w-3.5 ml-1.5 text-black" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 ml-1.5 text-black" />
+              )}
+            </Button>
 
-                <TabsTrigger
-                  value="list"
-                  className="relative flex items-center justify-center rounded-md transition-colors duration-200 data-[state=active]:text-foreground text-muted-foreground z-10 cursor-pointer shadow-none data-[state=active]:bg-transparent p-1"
-                >
-                  {viewMode === "list" && (
-                    <motion.div
-                      layoutId="ebooks-view-pill"
-                      className="absolute inset-0 bg-card rounded-md shadow-xs border border-border/10 -z-10"
-                      transition={{
-                        type: "spring",
-                        stiffness: 380,
-                        damping: 30,
-                      }}
-                    />
-                  )}
-                  <List className="h-3.5 w-3.5" />
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
+            {/* View toggle */}
+            {onViewChange && (
+              <Tabs
+                value={viewMode}
+                onValueChange={(value) => onViewChange(value as ViewMode)}
+                className="shrink-0"
+              >
+                <TabsList className="grid grid-cols-2 h-8 md:h-9 w-16 sm:w-20 md:w-28 p-0.5 bg-muted/60 rounded-lg border border-border/40 relative select-none">
+                  <TabsTrigger
+                    value="grid"
+                    className="relative flex items-center justify-center rounded-md transition-colors duration-200 data-[state=active]:text-foreground text-muted-foreground z-10 cursor-pointer shadow-none data-[state=active]:bg-transparent p-1 text-black"
+                  >
+                    {viewMode === "grid" && (
+                      <motion.div
+                        layoutId="ebooks-view-pill"
+                        className="absolute inset-0 bg-card rounded-md shadow-xs border border-border/10 -z-10"
+                        transition={{
+                          type: "spring",
+                          stiffness: 380,
+                          damping: 30,
+                        }}
+                      />
+                    )}
+                    <Grid className="h-3.5 w-3.5 text-black" />
+                    <span className="sr-only">Grid view</span>
+                  </TabsTrigger>
+
+                  <TabsTrigger
+                    value="list"
+                    className="relative flex items-center justify-center rounded-md transition-colors duration-200 data-[state=active]:text-foreground text-muted-foreground z-10 cursor-pointer shadow-none data-[state=active]:bg-transparent p-1 text-black"
+                  >
+                    {viewMode === "list" && (
+                      <motion.div
+                        layoutId="ebooks-view-pill"
+                        className="absolute inset-0 bg-card rounded-md shadow-xs border border-border/10 -z-10"
+                        transition={{
+                          type: "spring",
+                          stiffness: 380,
+                          damping: 30,
+                        }}
+                      />
+                    )}
+                    <List className="h-3.5 w-3.5 text-black" />
+                    <span className="sr-only">List view</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+          </div>
         </div>
+
+        {/* Active filters display */}
+        <ActiveFiltersDisplay />
       </div>
 
       {/* Desktop Filter Section (Collapsible) */}
@@ -537,6 +640,26 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
         </Collapsible>
       </div>
 
+      {/* Results count */}
+      <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground border-b pb-2">
+        <span className="text-black">
+          Showing{" "}
+          <span className="font-semibold text-black">{ebooksCount}</span> eBooks
+          {isFiltered && <span className="text-black"> (filtered)</span>}
+        </span>
+        {isFiltered && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearAllFilters}
+            className="h-7 text-xs text-black hover:text-foreground"
+          >
+            <X className="h-3 w-3 mr-1 text-black" />
+            Clear filters
+          </Button>
+        )}
+      </div>
+
       {/* Main Accordion Flow */}
       <div className="space-y-3 md:space-y-4 w-full">
         {sortedYears.map((yearKey) => {
@@ -551,7 +674,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
           return (
             <div
               key={yearKey}
-              className="bg-white rounded-xl lg:rounded-2xl border border-muted-foreground/10 shadow-xs overflow-hidden transition-all duration-200 w-full"
+              className="bg-white dark:bg-gray-950 rounded-xl lg:rounded-2xl border border-muted-foreground/10 shadow-xs overflow-hidden transition-all duration-200 w-full"
             >
               {/* LEVEL 1: Year Accordion Trigger */}
               <Button
@@ -560,23 +683,23 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                 aria-expanded={isYearOpen}
                 aria-controls={yearContentId}
                 onClick={() => toggleYear(yearKey)}
-                className="w-full h-auto flex items-center justify-between px-3 py-3.5 sm:px-4 sm:py-4 md:px-6 md:py-5 text-left cursor-pointer hover:bg-slate-50/80 rounded-none border-b border-muted-foreground/5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 select-none gap-2"
+                className="w-full h-auto flex items-center justify-between px-3 py-3.5 sm:px-4 sm:py-4 md:px-6 md:py-5 text-left cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50 rounded-none border-b border-muted-foreground/5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary select-none gap-2"
               >
-                <h3 className="text-sm md:text-base font-bold text-[#1e3a8a] tracking-wide flex items-center gap-2 min-w-0">
+                <h3 className="text-sm md:text-base font-bold text-[#1e3a8a] dark:text-blue-400 tracking-wide flex items-center gap-2 min-w-0">
                   <span className="truncate">
                     {yearKey === "UNASSIGNED"
                       ? "Other Titles"
                       : getYearLabel(yearKey)}
                   </span>
-                  <span className="text-[10px] md:text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold shrink-0">
+                  <span className="text-[10px] md:text-xs bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300 px-2 py-0.5 rounded-full font-semibold shrink-0">
                     {yearCount}
                   </span>
                 </h3>
                 <div className="p-1 md:p-1.5 bg-muted/60 rounded-full text-muted-foreground shrink-0">
                   {isYearOpen ? (
-                    <ChevronUp className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                    <ChevronUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-black" />
                   ) : (
-                    <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                    <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4 text-black" />
                   )}
                 </div>
               </Button>
@@ -592,7 +715,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2, ease: "easeInOut" }}
-                    className="overflow-hidden bg-[#f8fafc] p-2 sm:p-3 md:p-5 lg:p-6"
+                    className="overflow-hidden bg-[#f8fafc] dark:bg-gray-900/50 p-2 sm:p-3 md:p-5 lg:p-6"
                   >
                     <div className="space-y-3 md:space-y-4 w-full">
                       {sortedSemesters.map((semesterKey) => {
@@ -606,7 +729,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                         return (
                           <div
                             key={semesterKey}
-                            className="border border-muted-foreground/10 rounded-lg md:rounded-xl bg-white overflow-hidden shadow-2xs w-full"
+                            className="border border-muted-foreground/10 rounded-lg md:rounded-xl bg-white dark:bg-gray-950 overflow-hidden shadow-2xs w-full"
                           >
                             {/* LEVEL 2: Semester Accordion Trigger */}
                             <Button
@@ -615,7 +738,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                               aria-expanded={isSemOpen}
                               aria-controls={semContentId}
                               onClick={() => toggleSemester(semesterKey)}
-                              className="w-full h-auto flex items-center justify-between p-3 sm:p-4 bg-slate-50/50 text-left cursor-pointer hover:bg-slate-100/50 rounded-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 select-none gap-2"
+                              className="w-full h-auto flex items-center justify-between p-3 sm:p-4 bg-slate-50/50 dark:bg-gray-800/30 text-left cursor-pointer hover:bg-slate-100/50 dark:hover:bg-gray-800/50 rounded-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary select-none gap-2"
                             >
                               <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <span className="bg-[#f5bf35] text-white text-[9px] sm:text-[10px] md:text-xs font-extrabold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md tracking-wider uppercase shrink-0">
@@ -624,16 +747,16 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                                     "",
                                   )}
                                 </span>
-                                <span className="text-[10px] sm:text-[11px] md:text-xs font-semibold text-slate-500 shrink-0">
+                                <span className="text-[10px] sm:text-[11px] md:text-xs font-semibold text-slate-500 dark:text-gray-400 shrink-0">
                                   ({semesterCount}{" "}
                                   {semesterCount === 1 ? "book" : "books"})
                                 </span>
                               </div>
-                              <div className="text-slate-400 shrink-0">
+                              <div className="text-slate-400 dark:text-gray-500 shrink-0">
                                 {isSemOpen ? (
-                                  <ChevronUp className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                  <ChevronUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-black" />
                                 ) : (
-                                  <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                  <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4 text-black" />
                                 )}
                               </div>
                             </Button>
@@ -652,7 +775,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                                     duration: 0.2,
                                     ease: "easeInOut",
                                   }}
-                                  className="overflow-hidden p-2 sm:p-3 md:p-4 lg:p-5 bg-white border-t border-slate-100 w-full"
+                                  className="overflow-hidden p-2 sm:p-3 md:p-4 lg:p-5 bg-white dark:bg-gray-950 border-t border-slate-100 dark:border-gray-800 w-full"
                                 >
                                   <AnimatePresence mode="wait">
                                     <motion.div
@@ -691,13 +814,34 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
 
         {/* No results message */}
         {sortedYears.length === 0 && (
-          <div className="text-center py-8 md:py-12 text-muted-foreground">
-            <Filter className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-3 md:mb-4 opacity-50" />
-            <p className="text-base md:text-lg font-medium">No ebooks found</p>
-            <p className="text-xs md:text-sm mt-1">
-              Try adjusting your filters
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-12 md:py-16 text-muted-foreground"
+          >
+            <div className="bg-muted/30 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <Filter className="h-8 w-8 opacity-50 text-black" />
+            </div>
+            <p className="text-base md:text-lg font-medium text-black">
+              No eBooks found
             </p>
-          </div>
+            <p className="text-xs md:text-sm mt-1 max-w-sm mx-auto text-black">
+              {isFiltered
+                ? "Try adjusting your filters"
+                : "No eBooks are available at the moment"}
+            </p>
+            {isFiltered && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllFilters}
+                className="mt-4 text-black"
+              >
+                <X className="h-3.5 w-3.5 mr-1.5 text-black" />
+                Clear all filters
+              </Button>
+            )}
+          </motion.div>
         )}
       </div>
     </div>
