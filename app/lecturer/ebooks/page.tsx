@@ -3,14 +3,15 @@
 import { EbooksTab } from "@/components/students/tabs/EbooksTab";
 import { useBooksInfinite } from "@/hooks/useBooksInfinite";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-
-// Assuming you are also passing view controls down to the existing tab
+import { useSearchParams } from "next/navigation"; 
 type ViewMode = "grid" | "list";
 
 const EbookPage = () => {
-  // 1. Manage search and view state if they are not coming from a layout context
-  const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  // 2. Read search state directly from the URL query string
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
 
   const {
     books: liveBooks,
@@ -20,6 +21,7 @@ const EbookPage = () => {
     hasMore,
   } = useBooksInfinite("ebook");
 
+  // 3. Filters books automatically based on URL search adjustments
   const filteredBooks = useMemo(() => {
     if (!searchQuery) return liveBooks;
     const q = searchQuery.toLowerCase();
@@ -52,15 +54,12 @@ const EbookPage = () => {
     return () => observer.disconnect();
   }, [setSize, hasMore, isLoading]);
 
-  // Handle standard callback actions (e.g. clicking a book card)
   const handleBookClick = (book: any) => {
-    // Forwarded execution block to trigger your reader or modal logic
     console.log("Book clicked:", book);
   };
 
   return (
     <div className="w-full">
-      {/* 2. Forward your split state and fetched array to the reused component */}
       <EbooksTab
         books={filteredBooks}
         viewMode={viewMode}
@@ -68,7 +67,6 @@ const EbookPage = () => {
         onBookClick={handleBookClick}
       />
 
-      {/* 3. Infinite scroll anchor element placed right beneath the tab view layout */}
       {hasMore && (
         <div
           ref={loadMoreRef}

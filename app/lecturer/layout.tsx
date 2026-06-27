@@ -19,7 +19,7 @@ export default function AdminLayout({
       }
     >
       {/* The Sidebar stays persistent across tabs */}
-      <AppSidebar variant="floating" navData={navData}/>
+      <AppSidebar variant="sidebar" navData={navData}/>
 
       <SidebarInset >
         {/* The Top Header stays persistent across tabs */}

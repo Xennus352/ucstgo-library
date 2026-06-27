@@ -254,10 +254,11 @@ export const BookCard: React.FC<BookCardProps> = ({
 
         {/* Sliding Details Panel - Redesigned */}
         <div
-          className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-black/20
-             text-white p-5 flex flex-col justify-end
-             translate-y-full group-hover:translate-y-0
-             transition-transform duration-300 ease-out z-20"
+          className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/80 to-black/50
+           text-white p-5 flex flex-col justify-end
+           translate-y-full group-hover:translate-y-0
+           transition-all duration-300 ease-out z-20
+           backdrop-blur-md"
         >
           <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 delay-75">
             {/* Book Title */}
@@ -266,7 +267,7 @@ export const BookCard: React.FC<BookCardProps> = ({
             </h3>
 
             {/* Author */}
-            <p className="text-xs text-white/80 line-clamp-1 mb-1.5">
+            <p className="text-xs text-white line-clamp-1 mb-1.5">
               by {book.author?.name || "Unknown Author"}
             </p>
 
@@ -283,9 +284,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                 </span>
               )}
               {book.language && (
-                <span className="text-[9px] text-white">
-                  • {book.language}
-                </span>
+                <span className="text-[9px] text-white">• {book.language}</span>
               )}
             </div>
 

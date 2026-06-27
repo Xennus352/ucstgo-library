@@ -3,13 +3,16 @@
 import { PhysicalTab } from "@/components/students/tabs/PhysicalTab";
 import { useBooksInfinite } from "@/hooks/useBooksInfinite";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation"; // 1. Import hooks
 
 type ViewMode = "grid" | "list";
 
 const PhysicalBooks = () => {
-  // 1. Manage search, view controls, and modal state streams
-  const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  // 2. Read search state directly from the URL query string
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
 
   const {
     books: liveBooks,
@@ -20,6 +23,7 @@ const PhysicalBooks = () => {
     mutate,
   } = useBooksInfinite("physical");
 
+  // 3. Your existing filter logic stays exactly the same! It automatically reruns when searchQuery changes.
   const filteredBooks = useMemo(() => {
     if (!searchQuery) return liveBooks;
     const q = searchQuery.toLowerCase();
@@ -52,14 +56,12 @@ const PhysicalBooks = () => {
     return () => observer.disconnect();
   }, [setSize, hasMore, isLoading]);
 
-  // Handle standard callback actions (e.g. triggering your inventory/checkout drawer)
   const handleBookClick = (book: any) => {
     console.log("Physical book selected:", book);
   };
 
   return (
     <div className="w-full">
-      {/* 2. Pass your split states and filtered array into your existing UI view */}
       <PhysicalTab
         books={filteredBooks}
         viewMode={viewMode}
@@ -67,7 +69,6 @@ const PhysicalBooks = () => {
         onBookClick={handleBookClick}
       />
 
-      {/* 3. The infinite scrolling boundary hook layout element */}
       {hasMore && (
         <div
           ref={loadMoreRef}

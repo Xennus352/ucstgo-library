@@ -78,7 +78,7 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <a href="/teacher/dashboard">
+              <a href="/lecturer/home">
                 <BookSearch />
                 <span className="text-base font-semibold">UCSTgo Library</span>
               </a>
