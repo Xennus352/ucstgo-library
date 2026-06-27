@@ -1,7 +1,6 @@
-
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import {navData} from '@/components/lecturer/NavData'
+import { navData } from "@/components/lecturer/NavData";
 import { AppSidebar } from "@/components/lecturer/App-sidebar";
 
 export default function AdminLayout({
@@ -19,9 +18,9 @@ export default function AdminLayout({
       }
     >
       {/* The Sidebar stays persistent across tabs */}
-      <AppSidebar variant="sidebar" navData={navData}/>
+      <AppSidebar variant="inset" navData={navData} />
 
-      <SidebarInset >
+      <SidebarInset>
         {/* The Top Header stays persistent across tabs */}
         <SiteHeader />
 
