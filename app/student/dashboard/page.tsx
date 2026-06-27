@@ -27,6 +27,13 @@ import { fetchEbookOfflineSafe } from "@/lib/ebookCache";
 import { getUserProfileData } from "@/app/actions/profile";
 import { LibraryHome } from "@/components/students/tabs/HomeTab";
 
+// ✅ IMPORT SERVER ACTIONS FOR HOME TAB
+import {
+  getLibraryDashboardMetrics,
+  LibraryMetrics,
+} from "@/app/actions/libraryStats";
+import { getLatestBooks } from "@/app/actions/library";
+
 const EbookReaderContainer = dynamic(
   () => import("@/components/reader/EbookReaderContainer"),
   { ssr: false },
@@ -54,6 +61,12 @@ export default function LibraryApp() {
   // FOR BORROWING
   const [isBorrowing, setIsBorrowing] = useState(false);
 
+  // ✅ ADD STATES FOR HOME TAB LIVE DATA
+  const [homeMetrics, setHomeMetrics] = useState<LibraryMetrics | undefined>(
+    undefined,
+  );
+  const [latestBooks, setLatestBooks] = useState<any[]>([]);
+
   const [profileData, setProfileData] = useState<{
     borrowRecords: any[];
     reservations: any[];
@@ -80,6 +93,25 @@ export default function LibraryApp() {
     }
   }, []);
 
+  // ✅ HANDLER TO LOAD HOME DATA COHESIVELY ONCE AT BOOTSTRAP
+  const loadHomeDashboardData = useCallback(async () => {
+    try {
+      const [metricsRes, booksRes] = await Promise.all([
+        getLibraryDashboardMetrics(),
+        getLatestBooks(),
+      ]);
+
+      if (metricsRes.success && metricsRes.data) {
+        setHomeMetrics(metricsRes.data);
+      }
+      if (booksRes.success && booksRes.books) {
+        setLatestBooks(booksRes.books);
+      }
+    } catch (err) {
+      console.error("Failed downloading landing page records:", err);
+    }
+  }, []);
+
   // 3. Trigger data download whenever the user selects the profile view segment:
   useEffect(() => {
     if (activeTab === "Profile") {
@@ -87,10 +119,11 @@ export default function LibraryApp() {
     }
   }, [activeTab, loadProfileDetails]);
 
-  // OPTIMIZATION: Ensure profile data is updated silently behind the scenes on init so restriction lists are ready
+  // OPTIMIZATION: Ensure profile and home metrics are updated simultaneously on initialization
   useEffect(() => {
     loadProfileDetails();
-  }, [loadProfileDetails]);
+    loadHomeDashboardData();
+  }, [loadProfileDetails, loadHomeDashboardData]);
 
   const apiType = useMemo(() => {
     if (activeTab === "eBooks") return "ebook";
@@ -270,7 +303,8 @@ export default function LibraryApp() {
   }, []);
 
   const renderTabContent = useCallback(() => {
-    if (isLoading && liveBooks.length === 0) {
+    // If we're loading general items but have explicitly opened "Home", don't block layout processing
+    if (isLoading && liveBooks.length === 0 && activeTab !== "Home") {
       return (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-pulse">
           📖 Loading library...
@@ -278,7 +312,7 @@ export default function LibraryApp() {
       );
     }
 
-    if (error) {
+    if (error && activeTab !== "Home") {
       return (
         <div className="bg-red-50 text-red-700 p-4 rounded-xl">
           ⚠️ {error.message}
@@ -288,7 +322,22 @@ export default function LibraryApp() {
 
     switch (activeTab) {
       case "Home":
-        return <LibraryHome />;
+        // ✅ PASS DATA DOWN DYNAMICALLY INSIDE SWITCH SEGMENT
+        return (
+          <LibraryHome
+            initialCounts={homeMetrics}
+            initialLatestBooks={latestBooks}
+            onNavigate={(route) => {
+              if (route === "borrow-books" || route === "search-catalog") {
+                setActiveTab("Physical");
+              } else if (route === "e-books") {
+                setActiveTab("eBooks");
+              } else if (route === "study-rooms") {
+                toast.info("Study room reservation feature coming soon!");
+              }
+            }}
+          />
+        );
 
       case "eBooks":
         return (
@@ -331,7 +380,6 @@ export default function LibraryApp() {
   }, [
     activeTab,
     filteredBooks,
-    reservedBooks,
     viewMode,
     handleBookClick,
     isLoading,
@@ -339,6 +387,8 @@ export default function LibraryApp() {
     liveBooks,
     isProfileLoading,
     profileData,
+    homeMetrics,
+    latestBooks,
   ]);
 
   return (
@@ -354,7 +404,7 @@ export default function LibraryApp() {
       <main className="flex-1 px-4 md:px-12 pt-6 pb-28 md:pb-6">
         {renderTabContent()}
 
-        {activeTab !== "Profile" && hasMore && (
+        {activeTab !== "Home" && activeTab !== "Profile" && hasMore && (
           <div ref={loadMoreRef} className="py-12 text-center">
             {isLoading ? "Loading..." : "Scroll to load more"}
           </div>

@@ -6,7 +6,7 @@ import { getLibraryStats } from "@/app/actions/bookStatus";
 
 type StatItem = {
   label: string;
-  value: string;
+  value: number;
   color: string;
   icon: React.ComponentType<any>;
 };

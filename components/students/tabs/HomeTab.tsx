@@ -1,15 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BookOpen,
   Search,
-  Bookmark,
-  Download,
   Library,
   Users,
-  Clock,
-  ShieldCheck,
   GraduationCap,
   ChevronRight,
   Bell,
@@ -21,7 +17,10 @@ import {
   ArrowRight,
   Sparkles,
   TrendingUp,
-  Award,
+  Clock,
+  Layers,
+  PenTool,
+  NotepadText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,15 +55,47 @@ interface LibraryPhoto {
   category: "interior" | "shelf" | "study" | "exterior";
 }
 
-interface HomePageProps {
-  onNavigate?: (route: string) => void;
+interface LibraryMetrics {
+  totalBooks: number;
+  students: number;
+  totalCategories: number;
+  totalAuthors: number;
 }
 
-export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
+interface HomePageProps {
+  onNavigate?: (route: string) => void;
+  initialCounts?: LibraryMetrics;
+  initialLatestBooks?: Book[];
+}
+
+export const LibraryHome: React.FC<HomePageProps> = ({
+  onNavigate,
+  initialCounts,
+  initialLatestBooks,
+}) => {
   const [time, setTime] = useState("");
   const [greeting, setGreeting] = useState("");
-
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  // State initialized with fallback defaults if initialCounts hasn't loaded yet
+  const [counts, setCounts] = useState({
+    totalBooks: initialCounts?.totalBooks ?? 50000,
+    students: initialCounts?.students ?? 15000,
+    totalCategories: initialCounts?.totalCategories ?? 100000,
+    totalAuthors: initialCounts?.totalAuthors ?? 1240,
+  });
+
+  // Keep internal state updated if initialCounts changes asynchronously
+  useEffect(() => {
+    if (initialCounts) {
+      setCounts({
+        totalBooks: initialCounts.totalBooks,
+        students: initialCounts.students,
+        totalCategories: initialCounts.totalCategories,
+        totalAuthors: initialCounts.totalAuthors,
+      });
+    }
+  }, [initialCounts]);
 
   useEffect(() => {
     const update = () => {
@@ -90,13 +121,33 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
   }, []);
 
   // ===============================
-  // STATS
+  // STATS MATRIX CONFIGURATION
   // ===============================
   const stats = [
-    { label: "Total Books", value: 50000, icon: BookOpen, color: "blue" },
-    { label: "Students", value: 15000, icon: GraduationCap, color: "purple" },
-    { label: "E-Resources", value: 100000, icon: Download, color: "green" },
-    { label: "Daily Visitors", value: 2000, icon: Users, color: "orange" },
+    {
+      label: "Total Books",
+      value: counts.totalBooks,
+      icon: BookOpen,
+      color: "blue",
+    },
+    {
+      label: "Students",
+      value: counts.students,
+      icon: GraduationCap,
+      color: "purple",
+    },
+    {
+      label: "Total Category",
+      value: counts.totalCategories,
+      icon: Layers,
+      color: "green",
+    },
+    {
+      label: "Authors Total Count",
+      value: counts.totalAuthors,
+      icon: PenTool,
+      color: "orange",
+    },
   ];
 
   // ===============================
@@ -105,10 +156,10 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
   const libraryPhotos: LibraryPhoto[] = [
     {
       id: 1,
-      title: "Main Reading Hall",
+      title: "Main Hall",
       description: "Spacious reading area with natural lighting",
       imageUrl:
-        "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=600&h=400&fit=crop",
+        "/images/library.jpg",
       category: "interior",
     },
     {
@@ -165,7 +216,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
         "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=400&h=300&fit=crop",
     },
     {
-      icon: Download,
+      icon: NotepadText,
       title: "E-Books",
       desc: "Access digital books & journals",
       imageUrl:
@@ -187,36 +238,34 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
     },
   ];
 
-  // ===============================
-  // FEATURED BOOKS
-  // ===============================
-  const books: Book[] = [
-    {
-      title: "Advanced Mathematics",
-      author: "Dr. Smith",
-      year: "2024",
-      imageUrl:
-        "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
-    },
-    {
-      title: "Data Science Essentials",
-      author: "Prof. Johnson",
-      year: "2023",
-      imageUrl:
-        "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
-    },
-    {
-      title: "Physics for Engineers",
-      author: "Dr. Williams",
-      year: "2024",
-      imageUrl:
-        "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
-    },
-  ];
+  // Fall back to UI mockup states seamlessly if zero data records match from DB
+  const displayBooks =
+    initialLatestBooks && initialLatestBooks.length > 0
+      ? initialLatestBooks
+      : [
+          {
+            title: "Advanced Mathematics",
+            author: "Dr. Smith",
+            year: "2026",
+            imageUrl:
+              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
+          },
+          {
+            title: "Data Science Essentials",
+            author: "Prof. Johnson",
+            year: "2026",
+            imageUrl:
+              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
+          },
+          {
+            title: "Physics for Engineers",
+            author: "Dr. Williams",
+            year: "2025",
+            imageUrl:
+              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
+          },
+        ];
 
-  // ===============================
-  // AMENITIES
-  // ===============================
   const amenities = [
     { icon: Wifi, label: "Free WiFi" },
     { icon: Coffee, label: "Cafeteria" },
@@ -230,7 +279,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
       : libraryPhotos.filter((p) => p.category === selectedCategory);
 
   return (
-    <div className="min-h-screen text-slate-900 ">
+    <div className="min-h-screen text-slate-900">
       {/* HERO BACKGROUND WITH OVERLAY */}
       <div className="mx-4 rounded-2xl overflow-hidden">
         <div
@@ -239,11 +288,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
             backgroundImage: `url('https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=1600&h=800&fit=crop')`,
           }}
         >
-          {/* Dark Overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70"></div>
 
           <div className="relative max-w-7xl mx-auto px-4 py-12 space-y-8">
-            {/* HERO CONTENT */}
             <section className="text-center space-y-6 py-12">
               <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 px-4 py-1.5">
                 <Sparkles className="w-3 h-3 mr-1.5" />
@@ -273,7 +320,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
                 Access books, e-resources, and academic materials in one place.
               </p>
 
-              {/* Amenities Quick View */}
               <div className="flex flex-wrap justify-center gap-3 mt-6">
                 {amenities.map((item, i) => (
                   <div
@@ -292,7 +338,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
 
       {/* MAIN CONTENT */}
       <div className="max-w-7xl mx-auto px-4 py-12 space-y-14">
-        {/* STATS */}
+        {/* STATS SECTION */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4 -mt-8 relative z-10">
           {stats.map((s, i) => {
             const Icon = s.icon;
@@ -315,13 +361,13 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
                 <div className="text-2xl font-bold text-slate-800">
                   <Counter value={s.value} />
                 </div>
-                <p className="text-sm text-slate-500">{s.label}</p>
+                <p className="text-sm text-slate-500 font-medium">{s.label}</p>
               </div>
             );
           })}
         </section>
 
-        {/* LIBRARY GALLERY SECTION */}
+        {/* GALLERY */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -376,16 +422,14 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
           </div>
         </section>
 
-        {/* SERVICES WITH IMAGES */}
+        {/* SERVICES */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
               <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
               Library Services
             </h2>
-            <Button variant="ghost" size="sm" className="text-blue-600 gap-1">
-              View All <ArrowRight className="w-4 h-4" />
-            </Button>
+           
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -404,7 +448,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
                 <div className="p-4">
                   <div className="inline-flex p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg shadow-blue-500/20 mb-2">
@@ -420,34 +463,36 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
           </div>
         </section>
 
-        {/* FEATURED BOOKS */}
+        {/* LATEST BOOKS SECTION */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <Award className="w-6 h-6 text-yellow-500" />
-              Featured Books
-              <Badge className="ml-2 bg-yellow-100 text-yellow-700">New</Badge>
+              <Clock className="w-6 h-6 text-blue-600" />
+              Latest Arrivals
+              <Badge className="ml-2 bg-blue-100 text-blue-700 font-medium">
+                Recent
+              </Badge>
             </h2>
-            <Button variant="ghost" size="sm" className="text-blue-600 gap-1">
-              See All <ChevronRight className="w-4 h-4" />
-            </Button>
+           
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {books.map((b, i) => (
+            {displayBooks.map((b, i) => (
               <div
                 key={i}
                 className="group bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
               >
                 <div className="h-56 bg-gradient-to-br from-blue-50 to-purple-50 overflow-hidden relative">
                   <img
-                    src={b.imageUrl}
+                    src={"/api/files/" + b.imageUrl}
                     alt={b.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-blue-600 text-white">#{i + 1}</Badge>
+                    <Badge className="bg-blue-600 text-white font-normal">
+                      New
+                    </Badge>
                   </div>
                 </div>
                 <div className="p-4">
@@ -456,15 +501,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({ onNavigate }) => {
                   </h3>
                   <p className="text-sm text-slate-500">{b.author}</p>
                   <div className="flex items-center justify-between mt-3">
-                    <span className="text-xs text-slate-400">{b.year}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-blue-600 group-hover:bg-blue-50"
-                    >
-                      Details{" "}
-                      <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                    </Button>
+                    <span className="text-xs text-slate-400">
+                      Published: {b.year}
+                    </span>
                   </div>
                 </div>
               </div>
