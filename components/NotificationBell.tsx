@@ -71,6 +71,14 @@ export default function NotificationBell() {
     loadNotifications();
   }, [loadNotifications]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadNotifications();
+    }, 30000); // every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
+
   // Real-time notifications
   useEffect(() => {
     if (!user?.id) return;
@@ -80,13 +88,18 @@ export default function NotificationBell() {
     socket.emit("join", user.id);
 
     socket.on("new-notification", (notification: Notification) => {
-      setNotifications((prev) => [
-        {
-          ...notification,
-          isRead: false,
-        },
-        ...prev,
-      ]);
+      setNotifications((prev) => {
+        const exists = prev.some((n) => n.id === notification.id);
+        if (exists) return prev;
+
+        return [
+          {
+            ...notification,
+            isRead: false,
+          },
+          ...prev,
+        ];
+      });
     });
 
     return () => {

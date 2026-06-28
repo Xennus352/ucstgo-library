@@ -8,6 +8,7 @@ import { SearchBar } from "../ui/SearchBar";
 import { TabConfig, TabId } from "../types";
 import Image from "next/image";
 import NotificationBell from "@/components/NotificationBell";
+import { brandConfig } from "@/config/brand";
 
 interface TopNavProps {
   tabs: TabConfig[];
@@ -23,7 +24,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   activeTab,
   onTabChange,
   onSearch,
-  brandName = "UCSTGO Digital Library",
+  brandName,
   searchValue = "",
 }) => {
   return (
@@ -42,8 +43,8 @@ export const TopNav: React.FC<TopNavProps> = ({
         >
           <div className="relative h-10 w-10 overflow-hidden flex items-center justify-center">
             <Image
-              src="/images/brand.png"
-              alt={`${brandName} Logo`}
+              src={brandConfig.logo}
+              alt={`${brandConfig.name} Logo`}
               width={40}
               height={40}
               className="object-contain"
