@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Loader2, Power, ArrowRight } from "lucide-react";
+import { Loader2, Power, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   HoverCard,
   HoverCardContent,
@@ -13,17 +14,31 @@ import {
 
 export function LogoutButton() {
   const router = useRouter();
+  const { refreshUser } = useCurrentUser();
   const [isLoading, setIsLoading] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   const handleLogout = async () => {
+    if (isLoading) return;
+
     try {
       setIsLoading(true);
-      await signOut();
-      router.push("/sign-in");
-      router.refresh();
-    } catch (error) {
-      console.error("Failed to log out:", error);
+
+      await signOut({
+        fetchOptions: {
+          onSuccess: async () => {
+            await refreshUser(undefined, {
+              revalidate: false,
+            });
+
+            window.location.href = "/";
+            router.refresh();
+          },
+          onError: (ctx) => {
+            console.error(ctx.error);
+          },
+        },
+      });
     } finally {
       setIsLoading(false);
     }

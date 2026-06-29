@@ -17,6 +17,7 @@ import { TopNav } from "@/components/students/layout/TopNav";
 import BottomNav from "@/components/students/layout/BottomNav";
 
 import { useBooksInfinite } from "@/hooks/useBooksInfinite";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
 
@@ -27,12 +28,12 @@ import { fetchEbookOfflineSafe } from "@/lib/ebookCache";
 import { getUserProfileData } from "@/app/actions/profile";
 import { LibraryHome } from "@/components/students/tabs/HomeTab";
 
-// ✅ IMPORT SERVER ACTIONS FOR HOME TAB
 import {
   getLibraryDashboardMetrics,
   LibraryMetrics,
 } from "@/app/actions/libraryStats";
 import { getLatestBooks } from "@/app/actions/library";
+import LoginDialog from "@/components/LoginDialog";
 
 const EbookReaderContainer = dynamic(
   () => import("@/components/reader/EbookReaderContainer"),
@@ -47,21 +48,22 @@ const tabsConfig = [
 ] as const satisfies TabConfig[];
 
 export default function LibraryApp() {
+  const { user, isLoading: isUserLoading } = useCurrentUser();
+  const isLoggedIn = !!user;
+
   const [activeTab, setActiveTab] = useState<TabId>("Home");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const [activeEbookUrl, setActiveEbookUrl] = useState<string | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // 👈 State to handle global login prompt
 
   const [selectedPhysicalBook, setSelectedPhysicalBook] =
     useState<BookWithDetails | null>(null);
   const [isPhysicalModalOpen, setIsPhysicalModalOpen] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
-
-  // FOR BORROWING
   const [isBorrowing, setIsBorrowing] = useState(false);
 
-  // ✅ ADD STATES FOR HOME TAB LIVE DATA
   const [homeMetrics, setHomeMetrics] = useState<LibraryMetrics | undefined>(
     undefined,
   );
@@ -76,8 +78,15 @@ export default function LibraryApp() {
   });
   const [isProfileLoading, setIsProfileLoading] = useState(false);
 
-  // 2. Create a handler to fetch profile information dynamically:
+  const visibleTabs = useMemo(() => {
+    if (!isLoggedIn) {
+      return tabsConfig.filter((tab) => tab.id !== "Profile");
+    }
+    return tabsConfig;
+  }, [isLoggedIn]);
+
   const loadProfileDetails = useCallback(async () => {
+    if (!isLoggedIn) return;
     try {
       setIsProfileLoading(true);
       const res = await getUserProfileData();
@@ -91,9 +100,8 @@ export default function LibraryApp() {
     } finally {
       setIsProfileLoading(false);
     }
-  }, []);
+  }, [isLoggedIn]);
 
-  // ✅ HANDLER TO LOAD HOME DATA COHESIVELY ONCE AT BOOTSTRAP
   const loadHomeDashboardData = useCallback(async () => {
     try {
       const [metricsRes, booksRes] = await Promise.all([
@@ -112,18 +120,24 @@ export default function LibraryApp() {
     }
   }, []);
 
-  // 3. Trigger data download whenever the user selects the profile view segment:
   useEffect(() => {
     if (activeTab === "Profile") {
       loadProfileDetails();
     }
   }, [activeTab, loadProfileDetails]);
 
-  // OPTIMIZATION: Ensure profile and home metrics are updated simultaneously on initialization
   useEffect(() => {
-    loadProfileDetails();
+    if (isLoggedIn) {
+      loadProfileDetails();
+    }
     loadHomeDashboardData();
-  }, [loadProfileDetails, loadHomeDashboardData]);
+  }, [loadProfileDetails, loadHomeDashboardData, isLoggedIn]);
+
+  useEffect(() => {
+    if (!isUserLoading && !isLoggedIn && activeTab === "Profile") {
+      setActiveTab("Home");
+    }
+  }, [isLoggedIn, isUserLoading, activeTab]);
 
   const apiType = useMemo(() => {
     if (activeTab === "eBooks") return "ebook";
@@ -133,7 +147,7 @@ export default function LibraryApp() {
 
   const {
     books: liveBooks,
-    isLoading,
+    isLoading: isBooksLoading,
     error,
     setSize,
     hasMore,
@@ -153,18 +167,11 @@ export default function LibraryApp() {
     );
   }, [searchQuery, liveBooks]);
 
-  const reservedBooks = useMemo(() => {
-    return filteredBooks.filter((b) => {
-      const progress = b.readingProgress ?? 0;
-      return b.isReserved || (progress > 0 && progress < 100);
-    });
-  }, [filteredBooks]);
-
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const el = loadMoreRef.current;
-    if (!el || !hasMore || isLoading) return;
+    if (!el || !hasMore || isBooksLoading) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -176,22 +183,32 @@ export default function LibraryApp() {
     );
 
     observer.observe(el);
-
     return () => observer.disconnect();
-  }, [setSize, hasMore, isLoading]);
+  }, [setSize, hasMore, isBooksLoading]);
 
-  const handleTabChange = useCallback((tabId: TabId) => {
-    setActiveTab(tabId);
-  }, []);
+  // 💡 Open login modal if guest targets non-home assets
+  const handleTabChange = useCallback(
+    (tabId: TabId) => {
+      if (!isLoggedIn && tabId !== "Home") {
+        setIsAuthModalOpen(true);
+        return;
+      }
+      setActiveTab(tabId);
+    },
+    [isLoggedIn],
+  );
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
   }, []);
 
   const handleReserveBook = async (bookId: string) => {
+    if (!isLoggedIn) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     try {
       setIsReserving(true);
-
       const response = await fetch("/api/reservations/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -199,7 +216,6 @@ export default function LibraryApp() {
       });
 
       const json = await response.json();
-
       if (!response.ok || !json.success) {
         throw new Error(json.error || "Reservation failed");
       }
@@ -207,8 +223,6 @@ export default function LibraryApp() {
       toast.success("Reservation successful!");
       setIsPhysicalModalOpen(false);
       setSelectedPhysicalBook(null);
-
-      // Sync client state immediately across SWR book array segments
       mutate();
     } catch (err: any) {
       toast.error(err.message || "Unexpected error");
@@ -217,9 +231,11 @@ export default function LibraryApp() {
     }
   };
 
-  // IMPLEMENT THE BORROW HANDLER (WITH BORROW RESTRICTION)
   const handleBorrowBook = async (bookId: string) => {
-    // 1. Check if the book matches an active, unreturned item in user history logs
+    if (!isLoggedIn) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     const hasAlreadyBorrowed = profileData.borrowRecords.some(
       (record) =>
         record.bookId === bookId &&
@@ -236,8 +252,6 @@ export default function LibraryApp() {
 
     try {
       setIsBorrowing(true);
-
-      // Call the secure backend action
       const response = await borrowBookAction(bookId);
 
       if (!response.success) {
@@ -248,9 +262,7 @@ export default function LibraryApp() {
       setIsPhysicalModalOpen(false);
       setSelectedPhysicalBook(null);
 
-      // Refresh cache dynamically upon checkout completion
       mutate();
-      // Re-fetch profile stats to update the restriction check immediately
       loadProfileDetails();
     } catch (err: any) {
       toast.error(err.message || "Unexpected borrow error");
@@ -259,54 +271,66 @@ export default function LibraryApp() {
     }
   };
 
-  const handleBookClick = useCallback(async (book: BookWithDetails) => {
-    const rawPath = book.ebook?.filePath;
+  // 💡 Open login modal if guest clicks a book card
+  const handleBookClick = useCallback(
+    async (book: BookWithDetails) => {
+      if (!isLoggedIn) {
+        setIsAuthModalOpen(true);
+        return;
+      }
+      const rawPath = book.ebook?.filePath;
 
-    // E-book execution block containing IndexedDB routing hooks
-    if (rawPath) {
-      const cleanPath = rawPath.startsWith("http")
-        ? rawPath
-        : rawPath.replace(/^storage\//, "/");
+      if (rawPath) {
+        const cleanPath = rawPath.startsWith("http")
+          ? rawPath
+          : rawPath.replace(/^storage\//, "/");
 
-      const loadingToastId = toast.loading(
-        "Preparing e-book for offline reading...",
-      );
+        const loadingToastId = toast.loading(
+          "Preparing e-book for offline reading...",
+        );
+        try {
+          const offlineBlobUrl = await fetchEbookOfflineSafe(cleanPath);
+          setActiveEbookUrl(offlineBlobUrl);
+          toast.dismiss(loadingToastId);
+        } catch (cacheError) {
+          toast.dismiss(loadingToastId);
+          setActiveEbookUrl(cleanPath);
+        }
+        return;
+      }
+
       try {
-        // OPTIMIZATION: Pass paths down directly through your IndexedDB cache layer
-        const offlineBlobUrl = await fetchEbookOfflineSafe(cleanPath);
-        setActiveEbookUrl(offlineBlobUrl);
-        toast.dismiss(loadingToastId);
-      } catch (cacheError) {
-        // Fallback gracefully to live stream URLs if browser IndexedDB space quotas fail
-        toast.dismiss(loadingToastId);
-        setActiveEbookUrl(cleanPath);
+        const loadToast = toast.loading("Checking inventory...");
+        const response = await fetch(`/api/books/${book.id}`);
+        const json = await response.json();
+
+        toast.dismiss(loadToast);
+
+        if (!response.ok || !json.success) {
+          throw new Error(json.error || "Failed to load book");
+        }
+
+        setSelectedPhysicalBook(json.data);
+        setIsPhysicalModalOpen(true);
+      } catch (err: any) {
+        toast.error(err.message || "Error loading book");
       }
-      return;
-    }
-
-    try {
-      const loadToast = toast.loading("Checking inventory...");
-      const response = await fetch(`/api/books/${book.id}`);
-      const json = await response.json();
-
-      toast.dismiss(loadToast);
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Failed to load book");
-      }
-
-      setSelectedPhysicalBook(json.data);
-      setIsPhysicalModalOpen(true);
-    } catch (err: any) {
-      toast.error(err.message || "Error loading book");
-    }
-  }, []);
+    },
+    [isLoggedIn],
+  );
 
   const renderTabContent = useCallback(() => {
-    // If we're loading general items but have explicitly opened "Home", don't block layout processing
-    if (isLoading && liveBooks.length === 0 && activeTab !== "Home") {
+    if (isUserLoading) {
       return (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-pulse">
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-pulse px-4 md:px-12">
+          🔒 Verifying identity parameters...
+        </div>
+      );
+    }
+
+    if (isBooksLoading && liveBooks.length === 0 && activeTab !== "Home") {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-pulse px-4 md:px-12">
           📖 Loading library...
         </div>
       );
@@ -314,7 +338,7 @@ export default function LibraryApp() {
 
     if (error && activeTab !== "Home") {
       return (
-        <div className="bg-red-50 text-red-700 p-4 rounded-xl">
+        <div className="mx-4 md:mx-12 my-6 bg-red-50 text-red-700 p-4 rounded-xl">
           ⚠️ {error.message}
         </div>
       );
@@ -322,12 +346,15 @@ export default function LibraryApp() {
 
     switch (activeTab) {
       case "Home":
-        // ✅ PASS DATA DOWN DYNAMICALLY INSIDE SWITCH SEGMENT
         return (
           <LibraryHome
             initialCounts={homeMetrics}
             initialLatestBooks={latestBooks}
             onNavigate={(route) => {
+              if (!isLoggedIn) {
+                setIsAuthModalOpen(true); // 👈 Open login dialog on dashboard navigation attempt
+                return;
+              }
               if (route === "borrow-books" || route === "search-catalog") {
                 setActiveTab("Physical");
               } else if (route === "e-books") {
@@ -341,37 +368,43 @@ export default function LibraryApp() {
 
       case "eBooks":
         return (
-          <EbooksTab
-            books={filteredBooks}
-            onViewChange={setViewMode}
-            viewMode={viewMode}
-            onBookClick={handleBookClick}
-          />
+          <div className="px-4 md:px-12 w-full">
+            <EbooksTab
+              books={filteredBooks}
+              onViewChange={setViewMode}
+              viewMode={viewMode}
+              onBookClick={handleBookClick}
+            />
+          </div>
         );
 
       case "Physical":
         return (
-          <PhysicalTab
-            books={filteredBooks}
-            onViewChange={setViewMode}
-            viewMode={viewMode}
-            onBookClick={handleBookClick}
-          />
+          <div className="px-4 md:px-12 w-full">
+            <PhysicalTab
+              books={filteredBooks}
+              onViewChange={setViewMode}
+              viewMode={viewMode}
+              onBookClick={handleBookClick}
+            />
+          </div>
         );
 
       case "Profile":
         if (isProfileLoading) {
           return (
-            <div className="text-center py-20 text-muted-foreground animate-pulse">
+            <div className="text-center py-20 text-muted-foreground animate-pulse px-4 md:px-12">
               Checking your dashboard logs...
             </div>
           );
         }
         return (
-          <ProfileTab
-            borrowRecords={profileData.borrowRecords}
-            reservations={profileData.reservations}
-          />
+          <div className="px-4 md:px-12 w-full">
+            <ProfileTab
+              borrowRecords={profileData.borrowRecords}
+              reservations={profileData.reservations}
+            />
+          </div>
         );
 
       default:
@@ -382,37 +415,40 @@ export default function LibraryApp() {
     filteredBooks,
     viewMode,
     handleBookClick,
-    isLoading,
+    isBooksLoading,
     error,
     liveBooks,
     isProfileLoading,
     profileData,
     homeMetrics,
     latestBooks,
+    isLoggedIn,
+    isUserLoading,
   ]);
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground flex flex-col">
       <TopNav
-        tabs={tabsConfig as any}
+        tabs={visibleTabs as any}
         activeTab={activeTab}
         onTabChange={handleTabChange}
         onSearch={handleSearch}
+        isLoggedIn={isLoggedIn}
         searchValue={searchQuery}
       />
 
-      <main className="flex-1 px-4 md:px-12 pt-6 pb-28 md:pb-6">
+      <main className="flex-1 pt-6 pb-28 md:pb-6 w-full">
         {renderTabContent()}
 
         {activeTab !== "Home" && activeTab !== "Profile" && hasMore && (
           <div ref={loadMoreRef} className="py-12 text-center">
-            {isLoading ? "Loading..." : "Scroll to load more"}
+            {isBooksLoading ? "Loading..." : "Scroll to load more"}
           </div>
         )}
       </main>
 
       <BottomNav
-        tabs={tabsConfig as any}
+        tabs={visibleTabs as any}
         activeTab={activeTab}
         onTabChange={handleTabChange}
       />
@@ -435,6 +471,13 @@ export default function LibraryApp() {
         }}
         onReserve={handleReserveBook}
         onBorrow={handleBorrowBook}
+      />
+
+      {/* 🔐 Controlled instances of LoginDialog */}
+      <LoginDialog
+        isOpen={isAuthModalOpen}
+        onOpenChange={setIsAuthModalOpen}
+        showTrigger={false}
       />
     </div>
   );

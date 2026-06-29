@@ -16,6 +16,7 @@ interface TopNavProps {
   onTabChange: (tabId: TabId) => void;
   onSearch?: (query: string) => void;
   brandName?: string;
+  isLoggedIn?: boolean;
   searchValue?: string;
 }
 
@@ -25,6 +26,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   onTabChange,
   onSearch,
   brandName,
+  isLoggedIn = false,
   searchValue = "",
 }) => {
   return (
@@ -96,7 +98,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           })}
         </nav>
 
-        <NotificationBell />
+      {isLoggedIn && <NotificationBell />}
         {/* SEARCH  */}
         <SearchBar
           value={searchValue}

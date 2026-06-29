@@ -13,7 +13,10 @@ export async function proxy(req: Request) {
 
   // not logged in
   if (!session?.user) {
-    return NextResponse.redirect(new URL("/sign-in", req.url));
+    if (path === "/student" || path === "/student/dashboard") {
+      return NextResponse.next();
+    }
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   // get real user from DB
@@ -23,7 +26,7 @@ export async function proxy(req: Request) {
   });
 
   if (!user) {
-    return NextResponse.redirect(new URL("/sign-in", req.url));
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   // 🔒 ROLE PROTECTION MAP

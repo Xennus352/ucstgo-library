@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import SplashScreen from "@/components/animations/Splash";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import LoginDialog from "@/components/LoginDialog";
 
 export default function Home() {
@@ -26,14 +25,19 @@ export default function Home() {
     handleResize();
 
     window.addEventListener("resize", handleResize);
-    const t = setTimeout(() => setShowSplash(false), 3000);
+
+    // ✅ FIXED: Instead of setting local state false, push to the dashboard route
+    const t = setTimeout(() => {
+      router.push("/student/dashboard");
+    }, 3000);
 
     return () => {
       window.removeEventListener("resize", handleResize);
       clearTimeout(t);
     };
-  }, []);
+  }, [router]); // Added router to dependency array safely
 
+  // Keep showing the splash screen while the timer ticks down and Next.js switches paths
   if (showSplash) {
     return <SplashScreen />;
   }
@@ -56,15 +60,13 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center bg-transparent text-slate-900 selection:bg-blue-500/20 px-4 overflow-hidden">
-      {/*  RESPONSIVE FLOATING MEDIA ELEMENTS */}
+      {/* RESPONSIVE FLOATING MEDIA ELEMENTS */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         {items.map((emoji, i) => {
-          // MOBILE BEHAVIOR: Securely fixed near edges to completely clear the center app card
           const mobileLeft =
             i % 2 === 0 ? `${(i * 3) % 12}%` : `${85 + (i % 3) * 4}%`;
           const mobileTop = `${((i * 8) % 90) + 5}%`;
 
-          // DESKTOP BEHAVIOR: Dynamic spread math
           const desktopLeft = Math.random() * (dimensions.width - 120);
           const desktopTop = Math.random() * (dimensions.height - 120);
 

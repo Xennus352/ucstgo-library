@@ -1,4 +1,4 @@
 export const brandConfig = {
-  name: "UCSTGO Digital Library",
+  name: "UCSTaungoo Digital Library",
   logo: "/images/brand.png",
 };
