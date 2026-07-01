@@ -3,6 +3,7 @@ import {
   DatabaseIcon,
   GraduationCapIcon,
   LayoutDashboardIcon,
+  Settings,
   ShieldCheckIcon,
   UserCheckIcon,
 } from "lucide-react";
@@ -28,6 +29,11 @@ export const navData = {
       title: "Teacher Management",
       url: "/admin/teachers",
       icon: <UserCheckIcon />,
+    },
+    {
+      title: "System Configuration",
+      url: "/admin/sys-config",
+      icon: <Settings />,
     },
     {
       title: "Library Management",

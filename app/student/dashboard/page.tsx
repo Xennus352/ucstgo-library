@@ -34,6 +34,7 @@ import {
 } from "@/app/actions/libraryStats";
 import { getLatestBooks } from "@/app/actions/library";
 import LoginDialog from "@/components/LoginDialog";
+import { getLibrarySettings, LibrarySettings } from "@/app/actions/settings"; // 👈 Added LibrarySettings type import
 
 const EbookReaderContainer = dynamic(
   () => import("@/components/reader/EbookReaderContainer"),
@@ -56,13 +57,18 @@ export default function LibraryApp() {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const [activeEbookUrl, setActiveEbookUrl] = useState<string | null>(null);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // 👈 State to handle global login prompt
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const [selectedPhysicalBook, setSelectedPhysicalBook] =
     useState<BookWithDetails | null>(null);
   const [isPhysicalModalOpen, setIsPhysicalModalOpen] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
   const [isBorrowing, setIsBorrowing] = useState(false);
+
+  // 1. ⚙️ Define a client state to store your system configuration settings safely
+  const [dynamicSettings, setDynamicSettings] = useState<
+    LibrarySettings | undefined
+  >(undefined);
 
   const [homeMetrics, setHomeMetrics] = useState<LibraryMetrics | undefined>(
     undefined,
@@ -104,9 +110,11 @@ export default function LibraryApp() {
 
   const loadHomeDashboardData = useCallback(async () => {
     try {
-      const [metricsRes, booksRes] = await Promise.all([
+      // 2. ⚡ Added getLibrarySettings here inside your parallel async thread handler
+      const [metricsRes, booksRes, settingsRes] = await Promise.all([
         getLibraryDashboardMetrics(),
         getLatestBooks(),
+        getLibrarySettings(),
       ]);
 
       if (metricsRes.success && metricsRes.data) {
@@ -114,6 +122,10 @@ export default function LibraryApp() {
       }
       if (booksRes.success && booksRes.books) {
         setLatestBooks(booksRes.books);
+      }
+      // Store settings data to trigger layout updates seamlessly
+      if (settingsRes) {
+        setDynamicSettings(settingsRes);
       }
     } catch (err) {
       console.error("Failed downloading landing page records:", err);
@@ -186,7 +198,6 @@ export default function LibraryApp() {
     return () => observer.disconnect();
   }, [setSize, hasMore, isBooksLoading]);
 
-  // 💡 Open login modal if guest targets non-home assets
   const handleTabChange = useCallback(
     (tabId: TabId) => {
       if (!isLoggedIn && tabId !== "Home") {
@@ -271,7 +282,6 @@ export default function LibraryApp() {
     }
   };
 
-  // 💡 Open login modal if guest clicks a book card
   const handleBookClick = useCallback(
     async (book: BookWithDetails) => {
       if (!isLoggedIn) {
@@ -348,11 +358,12 @@ export default function LibraryApp() {
       case "Home":
         return (
           <LibraryHome
+            dynamicSettings={dynamicSettings} // 👈 Correctly distributed here
             initialCounts={homeMetrics}
             initialLatestBooks={latestBooks}
             onNavigate={(route) => {
               if (!isLoggedIn) {
-                setIsAuthModalOpen(true); // 👈 Open login dialog on dashboard navigation attempt
+                setIsAuthModalOpen(true);
                 return;
               }
               if (route === "borrow-books" || route === "search-catalog") {
@@ -424,6 +435,7 @@ export default function LibraryApp() {
     latestBooks,
     isLoggedIn,
     isUserLoading,
+    dynamicSettings, // 👈 Added dependency tracking mapping
   ]);
 
   return (
@@ -473,7 +485,6 @@ export default function LibraryApp() {
         onBorrow={handleBorrowBook}
       />
 
-      {/* 🔐 Controlled instances of LoginDialog */}
       <LoginDialog
         isOpen={isAuthModalOpen}
         onOpenChange={setIsAuthModalOpen}

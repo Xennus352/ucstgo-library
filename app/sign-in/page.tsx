@@ -8,6 +8,8 @@ import { roleRoutes } from "@/lib/role-routes";
 import { User } from "@/types/UserType";
 import { LoginFormValues, loginSchema } from "@/lib/validations/auth";
 import TextToSvgComponent from "@/components/animations/TextToSvg";
+import Image from "next/image";
+import { brandConfig } from "@/config/brand";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -168,19 +170,58 @@ export default function SignInPage() {
           {/* Base Premium Dark Gradients */}
           <div className="absolute inset-0 bg-gradient-to-br from-blue-950 via-slate-900 to-indigo-950 z-0" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#60A5FA33,transparent_40%),radial-gradient(circle_at_bottom_right,#A855F733,transparent_40%)] z-0" />
+          <div className="relative z-10 my-auto w-full max-w-md rounded-3xl border border-white/20 bg-white/10 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.35)] overflow-hidden">
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-blue-500/10 pointer-events-none" />
 
-          {/* Glass Overlay Card for TextToSvg Layout */}
-          <div className="relative z-10 my-auto w-full max-w-sm p-8 backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl shadow-2xl">
-            <div className="space-y-6">
-              <TextToSvgComponent fill="#3B82F6" />
-              <div className="space-y-2">
-                <h2 className="text-xl font-semibold tracking-tight text-white">
-                  University Library Portal
-                </h2>
-                <p className="text-sm text-slate-300 max-w-xs mx-auto">
-                  Search academic catalogs, manage physical holds, and access
-                  digital journals.
-                </p>
+            <div className="relative flex flex-col items-center px-10 py-12 text-center">
+              {/* Logo */}
+              <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 border border-white/20 shadow-lg">
+                <Image
+                  src={brandConfig.logo}
+                  alt={`${brandConfig.name} Logo`}
+                  width={70}
+                  height={70}
+                  className="object-contain"
+                  priority
+                />
+              </div>
+
+              {/* Badge */}
+              <span className="mb-4 rounded-full border border-blue-400/30 bg-blue-500/15 px-4 py-1 text-xs font-medium uppercase tracking-[0.25em] text-blue-200">
+                Digital Library
+              </span>
+
+              {/* Title */}
+              <h2 className="text-3xl font-bold tracking-tight text-white">
+                {brandConfig.name}
+              </h2>
+
+              <p className="mt-2 text-lg font-medium text-blue-200">Portal</p>
+
+              {/* Description */}
+              <p className="mt-6 max-w-sm leading-7 text-slate-300">
+                Search academic catalogs, borrow physical books, read digital
+                resources, and manage your library account from one place.
+              </p>
+
+              {/* Divider */}
+              <div className="my-8 h-px w-20 bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+
+              {/* Features */}
+              <div className="grid grid-cols-2 gap-3 text-sm text-slate-300">
+                <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                  📚 E-Books
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                  📖 Catalog
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                  🔖 Reservations
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                  🎓 Research
+                </div>
               </div>
             </div>
           </div>

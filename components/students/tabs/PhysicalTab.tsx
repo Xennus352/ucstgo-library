@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { BookGrid } from "../books/BookGrid";
 import { BookWithDetails, ViewMode } from "../types";
-import { Grid, List } from "lucide-react";
+import { Grid, List, Layers, User as UserIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCategories } from "@/hooks/use-categories";
@@ -22,6 +22,7 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
   viewMode = "grid",
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [selectedAuthor, setSelectedAuthor] = useState<string>("All");
 
   // 1. Fetch categories using your SWR hook
   const { data: categoryResponse } = useCategories();
@@ -36,7 +37,18 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
     return ["All", ...categoryResponse.data.map((cat: any) => cat.name)];
   }, [categoryResponse]);
 
-  // 2.5 Calculate item counts for each category dynamically
+  // 3. Extract authors dynamically from available physical books
+  const authors = useMemo(() => {
+    const uniqueAuthors = new Set<string>();
+    physicalBooks.forEach((book) => {
+      if (book.author?.name) {
+        uniqueAuthors.add(book.author.name);
+      }
+    });
+    return ["All", ...Array.from(uniqueAuthors)];
+  }, [physicalBooks]);
+
+  // 4. Calculate item counts for each category dynamically
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {
       All: physicalBooks.length,
@@ -52,27 +64,47 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
     return counts;
   }, [physicalBooks]);
 
-  // 3. Filter down books based on selection
+  // 5. Calculate item counts for each author dynamically
+  const authorCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      All: physicalBooks.length,
+    };
+
+    physicalBooks.forEach((book) => {
+      const authorName = book.author?.name;
+      if (authorName) {
+        counts[authorName] = (counts[authorName] || 0) + 1;
+      }
+    });
+
+    return counts;
+  }, [physicalBooks]);
+
+  // 6. Filter down books based on both category and author selections
   const filteredBooks = useMemo(() => {
-    if (selectedCategory === "All") return physicalBooks;
-    return physicalBooks.filter((b) => b.category?.name === selectedCategory);
-  }, [selectedCategory, physicalBooks]);
+    return physicalBooks.filter((b) => {
+      const matchesCategory =
+        selectedCategory === "All" || b.category?.name === selectedCategory;
+      const matchesAuthor =
+        selectedAuthor === "All" || b.author?.name === selectedAuthor;
+      return matchesCategory && matchesAuthor;
+    });
+  }, [selectedCategory, selectedAuthor, physicalBooks]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Strict Horizontal Layout: Title Left, Animated Switcher Right */}
-      <div className="flex flex-row items-center justify-between gap-4 mb-6 px-1">
-        {/* LEFT: Heading + Total Count Subtitle */}
+      {/* Top Header Row */}
+      <div className="flex flex-row items-center justify-between gap-4 px-1">
         <div className="space-y-0.5 min-w-0">
           <h2 className="text-sm md:text-base font-bold text-foreground tracking-tight truncate">
             Physical Books
           </h2>
           <p className="text-[11px] md:text-xs text-muted-foreground truncate">
-            {filteredBooks.length} available copies
+            {filteredBooks.length} matches found
           </p>
         </div>
 
-        {/* RIGHT: Modern Tabs Selector with Smooth Sliding Pill */}
+        {/* View Switcher Toggle */}
         {onViewChange && (
           <Tabs
             value={viewMode}
@@ -80,7 +112,6 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
             className="shrink-0"
           >
             <TabsList className="grid grid-cols-2 h-9 w-37.5 md:w-42.5 p-1 bg-muted/60 rounded-xl border border-border/40 relative select-none">
-              {/* GRID TRIGGER */}
               <TabsTrigger
                 value="grid"
                 className="relative flex items-center justify-center gap-1.5 text-xs font-medium rounded-lg transition-colors duration-200 data-[state=active]:text-foreground text-muted-foreground z-10 cursor-pointer shadow-none data-[state=active]:bg-transparent"
@@ -96,7 +127,6 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
                 <span>Grid</span>
               </TabsTrigger>
 
-              {/* LIST TRIGGER */}
               <TabsTrigger
                 value="list"
                 className="relative flex items-center justify-center gap-1.5 text-xs font-medium rounded-lg transition-colors duration-200 data-[state=active]:text-foreground text-muted-foreground z-10 cursor-pointer shadow-none data-[state=active]:bg-transparent"
@@ -116,107 +146,132 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
         )}
       </div>
 
-      {/* HORIZONTAL CATEGORY ROW (Directly below switcher row) */}
-      {categories.length > 1 && (
-        <div
-          className="
-  flex items-center gap-2 overflow-x-auto pb-3 -mt-2 px-1 select-none py-2 scroll-smooth
+      {/* Responsive Two-Column Grid Layout */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        {/* LEFT COLUMN: Categories Filter Only */}
+        <aside className="w-full lg:w-64 shrink-0 lg:sticky lg:top-6">
+          {categories.length > 1 && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 px-1">
+                <Layers className="h-3.5 w-3.5" /> Categories
+              </h3>
+              <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 scrollbar-none select-none">
+                {categories.map((category) => {
+                  const isActive = selectedCategory === category;
+                  return (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      className={`
+                        w-auto lg:w-full flex items-center justify-between gap-3 px-3.5 py-2 text-xs font-medium rounded-xl 
+                        transition-all duration-200 ease-out whitespace-nowrap cursor-pointer backdrop-blur-sm border
+                        ${
+                          isActive
+                            ? "bg-linear-to-r from-primary to-primary/80 text-primary-foreground border-transparent shadow-md shadow-primary/20 font-semibold scale-[1.02]"
+                            : "bg-background/50 text-muted-foreground border-border/40 hover:text-foreground hover:bg-accent/50 hover:border-border"
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {category === "All"
+                            ? "✨"
+                            : category === "Popular"
+                              ? "🔥"
+                              : category === "New"
+                                ? "🚀"
+                                : category === "Featured"
+                                  ? "⭐"
+                                  : "📚"}
+                        </span>
+                        <span>{category}</span>
+                      </div>
+                      {categoryCounts[category] !== undefined && (
+                        <span
+                          className={`
+                            text-[10px] px-1.5 py-0.5 rounded-md min-w-[20px] text-center
+                            ${isActive ? "bg-primary-foreground/20 text-primary-foreground font-bold" : "bg-muted text-muted-foreground"}
+                          `}
+                        >
+                          {categoryCounts[category]}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </aside>
 
-  /* Firefox scrollbar */
-  [scrollbar-width:thin]
-  [scrollbar-color:theme(colors.blue.400) theme(colors.blue.300)]
-
-  /* Chrome / Safari scrollbar */
-  [&::-webkit-scrollbar]:h-1
-  [&::-webkit-scrollbar-track]:bg-blue-300
-  [&::-webkit-scrollbar-track]:rounded-full
-  [&::-webkit-scrollbar-thumb]:bg-blue-400
-  [&::-webkit-scrollbar-thumb]:rounded-full
-  hover:[&::-webkit-scrollbar-thumb]:bg-blue-400/70
-"
-        >
-          {categories.map((category) => {
-            const isActive = selectedCategory === category;
-            return (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`
-            relative px-4 py-2 text-sm font-medium rounded-full 
-            transition-all duration-300 ease-out 
-            whitespace-nowrap cursor-pointer
-            backdrop-blur-sm
+        {/* RIGHT COLUMN: Author Filter & Book Results Grid */}
+        <main className="flex-1 w-full min-w-0 space-y-6">
+          {/* Author Filter Row */}
+          <div className="space-y-2 pb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 px-1">
+              <UserIcon className="h-3.5 w-3.5" /> Authors
+            </h3>
+            <div className="flex flex-row gap-1.5 overflow-x-auto pb-2 scrollbar-none select-none max-w-full">
+              {authors.map((author) => {
+                const isActive = selectedAuthor === author;
+                return (
+                  <button
+                    key={author}
+                    onClick={() => setSelectedAuthor(author)}
+                    className={`
+            flex items-center justify-between gap-3 px-3.5 py-2 text-xs font-medium rounded-xl 
+            transition-all duration-200 ease-out whitespace-nowrap cursor-pointer backdrop-blur-sm border shrink-0
             ${
               isActive
-                ? "bg-linear-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105 font-semibold"
-                : "bg-background/50 text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:scale-105 border border-border/50"
+                ? "bg-linear-to-r from-primary to-primary/80 text-primary-foreground border-transparent shadow-md shadow-primary/20 font-semibold scale-[1.02]"
+                : "bg-background/50 text-muted-foreground border-border/40 hover:text-foreground hover:bg-accent/50 hover:border-border"
             }
           `}
-              >
-                {/* Active indicator dot */}
-                {isActive && (
-                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/60 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
-                  </span>
-                )}
-
-                {/* Category emoji/icon  enhancement */}
-                <span className="mr-1.5">
-                  {category === "All"
-                    ? "✨"
-                    : category === "Popular"
-                      ? "🔥"
-                      : category === "New"
-                        ? "🆕"
-                        : category === "Featured"
-                          ? "⭐"
-                          : ""}
-                </span>
-                {/* Category text */}
-                <span>{category}</span>
-
-                {/* Clean, dynamic count badge */}
-                {categoryCounts[category] !== undefined && (
-                  <span
-                    className={`
-      ml-2 text-[10px] px-1.5 py-0.5 rounded-md transition-colors duration-300
-      ${
-        isActive
-          ? "bg-primary-foreground/20 text-primary-foreground font-bold"
-          : "bg-muted text-muted-foreground group-hover:bg-accent group-hover:text-foreground"
-      }
-    `}
                   >
-                    {categoryCounts[category]}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+                    <span>{author === "All" ? "All Authors" : author}</span>
 
-      {/* Animated content fading container for layout switches */}
-      <AnimatePresence mode="wait">
-        {/* Dynamic combined key guarantees smooth fading when changing categories OR grid layouts */}
-        <motion.div
-          key={`${viewMode}-${selectedCategory}`}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.15, ease: "easeInOut" }}
-        >
-          <BookGrid
-            books={filteredBooks}
-            variant={viewMode}
-            onBookClick={onBookClick}
-            showLocation={true}
-            showRating={true}
-            showAvailability={true}
-          />
-        </motion.div>
-      </AnimatePresence>
+                    {/* Dynamic Book Count Badge */}
+                    {authorCounts[author] !== undefined && (
+                      <span
+                        className={`
+                text-[10px] px-1.5 py-0.5 rounded-md min-w-[20px] text-center transition-colors
+                ${
+                  isActive
+                    ? "bg-primary-foreground/20 text-primary-foreground font-bold"
+                    : "bg-muted text-muted-foreground"
+                }
+              `}
+                      >
+                        {authorCounts[author]}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Results Grid Display */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${viewMode}-${selectedCategory}-${selectedAuthor}`}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15, ease: "easeInOut" }}
+            >
+              <BookGrid
+                books={filteredBooks}
+                variant={viewMode}
+                onBookClick={onBookClick}
+                showLocation={true}
+                showRating={true}
+                showAvailability={true}
+              />
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   );
 };

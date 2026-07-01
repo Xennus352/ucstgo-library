@@ -31,31 +31,31 @@ export async function proxy(req: Request) {
 
   // 🔒 ROLE PROTECTION MAP
   const roleRules: Record<string, string> = {
-    ADMIN: "/admin",
-    STUDENT: "/student",
-    LIBRARIAN: "/librarian",
-    LECTURER: "/lecturer",
+    ADMIN: "/admin/dashboard",
+    STUDENT: "/student/dashboard",
+    LIBRARIAN: "/librarian/dashboard",
+    LECTURER: "/lecturer/home",
   };
   const role = user.role;
 
   // check route access
   // ROLE PROTECTION MAP
+  // Redirect user to their own dashboard if they access another role's route
   if (path.startsWith("/admin") && role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/403", req.url));
+    return NextResponse.redirect(new URL(roleRules[role], req.url));
   }
 
   if (path.startsWith("/student") && role !== "STUDENT") {
-    return NextResponse.redirect(new URL("/403", req.url));
+    return NextResponse.redirect(new URL(roleRules[role], req.url));
   }
 
   if (path.startsWith("/librarian") && role !== "LIBRARIAN") {
-    return NextResponse.redirect(new URL("/403", req.url));
+    return NextResponse.redirect(new URL(roleRules[role], req.url));
   }
 
   if (path.startsWith("/lecturer") && role !== "LECTURER") {
-    return NextResponse.redirect(new URL("/403", req.url));
+    return NextResponse.redirect(new URL(roleRules[role], req.url));
   }
-
   return NextResponse.next();
 }
 

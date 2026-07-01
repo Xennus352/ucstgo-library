@@ -21,26 +21,21 @@ import {
   Globe,
   Phone,
   Mail,
+  PhoneCall,
+  MailIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import TextType from "@/components/TextType";
 import Stack from "@/components/Stack";
+import { LibrarySettings } from "@/app/actions/settings";
+import Image from "next/image";
+import { brandConfig } from "@/config/brand";
 
 const Counter = ({ value }: { value: number }) => (
   <span>{value.toLocaleString()}</span>
 );
-
-// ===============================
-// TYPES
-// ===============================
-interface FeatureCard {
-  title: string;
-  desc: string;
-  icon: any;
-  imageUrl?: string;
-}
 
 interface Book {
   title: string;
@@ -68,12 +63,14 @@ interface HomePageProps {
   onNavigate?: (route: string) => void;
   initialCounts?: LibraryMetrics;
   initialLatestBooks?: Book[];
+  dynamicSettings?: LibrarySettings;
 }
 
 export const LibraryHome: React.FC<HomePageProps> = ({
   onNavigate,
   initialCounts,
   initialLatestBooks,
+  dynamicSettings,
 }) => {
   const [time, setTime] = useState("");
   const [greeting, setGreeting] = useState("");
@@ -81,7 +78,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
-  // State initialized with fallback defaults if initialCounts hasn't loaded yet
   const [counts, setCounts] = useState({
     totalBooks: initialCounts?.totalBooks ?? 50000,
     students: initialCounts?.students ?? 15000,
@@ -89,7 +85,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({
     totalAuthors: initialCounts?.totalAuthors ?? 1240,
   });
 
-  // Keep internal state updated if initialCounts changes asynchronously
   useEffect(() => {
     if (initialCounts) {
       setCounts({
@@ -107,7 +102,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({
     "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1600&h=900&fit=crop",
   ];
 
-  // Clock & Greeting
   useEffect(() => {
     const update = () => {
       const now = new Date();
@@ -131,9 +125,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // ===============================
-  // LIBRARY PHOTOS
-  // ===============================
   const libraryPhotos: LibraryPhoto[] = [
     {
       id: 1,
@@ -170,7 +161,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({
     },
   ];
 
-  // Carousel auto-play logic
   useEffect(() => {
     if (!isAutoPlaying) return;
 
@@ -263,7 +253,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
 
   const slideContent = [
     {
-      title: "Welcome to University Library",
+      title: "Welcome to UCSTgo Library",
       subtitle:
         "Access books, e-resources, and academic materials in one place",
       badge: "Library Digital System",
@@ -287,7 +277,11 @@ export const LibraryHome: React.FC<HomePageProps> = ({
   ];
 
   return (
-    <div className="min-h-screen text-slate-900 bg-gray-50 flex flex-col">
+    // Added scroll-smooth style to ensure beautiful transition scroll behavior
+    <div
+      className="min-h-screen text-slate-900 bg-gray-50 flex flex-col scroll-smooth"
+      style={{ scrollBehavior: "smooth" }}
+    >
       {/* HEADER HERO CAROUSEL */}
       <div className="relative w-full h-[500px] sm:h-[600px] md:h-[700px] overflow-hidden">
         <AnimatePresence mode="wait">
@@ -412,10 +406,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({
 
       {/* MAIN LAYOUT WRAPPER */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-14 w-full flex-grow">
-        {/* ABOUT SECTION */}
-        <section className="py-4 sm:py-8">
+        {/* ABOUT SECTION (id="about") */}
+        <section className="py-4 sm:py-8" id="about">
           <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-center">
-            {/* FIXED SIZE LAYER FOR THE STACK LAYER */}
             <div className="w-full md:w-1/2 relative flex justify-center">
               <div className="w-[280px] h-[340px] sm:w-[340px] sm:h-[420px] md:w-[380px] md:h-[460px] aspect-[3/4]">
                 <Stack
@@ -442,7 +435,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({
               </div>
             </div>
 
-            {/* TEXT DESC BLOCK */}
             <div className="w-full md:w-1/2">
               <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-4">
                 <TextType
@@ -460,24 +452,19 @@ export const LibraryHome: React.FC<HomePageProps> = ({
               </h2>
               <div className="w-12 h-1 bg-blue-600 mb-6 rounded-full"></div>
               <p className="text-base sm:text-lg text-slate-600 leading-relaxed mb-4">
-                University of Computer Studies (Taungoo) Library launched as
-                soon as the university was established in 2007. It was then
-                situated on 1st floor of building No. D. At that time there were
-                1300 volumes of books.
+                {dynamicSettings?.about_p1 ||
+                  "University of Computer Studies (Taungoo) Library launched..."}
               </p>
               <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-                Digital software has been used to record the library collections
-                since 2013 supported by the Ministry of Science and Technology
-                (MOST). eCatalogues are provided at the website. The users can
-                search e-catalogue by author, title, subject, keyword search and
-                advanced search.
+                {dynamicSettings?.about_p2 ||
+                  "eCatalogues are provided at the website..."}
               </p>
             </div>
           </div>
         </section>
 
-        {/* VISION, MISSION, MOTIVATION */}
-        <section className="py-4 sm:py-8">
+        {/* COMMITMENT SECTION (Fixed ID Spelled: "commitment") */}
+        <section id="commitment" className="py-4 sm:py-8">
           <div className="text-center mb-8 sm:mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">
               Our Commitment
@@ -496,9 +483,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({
               <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-3 sm:mb-4">
                 Vision
               </h3>
-              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-                To support reading competency skills to increase intellectual
-                knowledge.
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {dynamicSettings?.vision ||
+                  "To support reading competency skills..."}
               </p>
             </motion.div>
 
@@ -512,8 +499,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({
               <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-3 sm:mb-4">
                 Mission
               </h3>
-              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-                To promote reading competency skills for university members.
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {dynamicSettings?.mission ||
+                  "To promote reading competency skills..."}
               </p>
             </motion.div>
 
@@ -527,19 +515,23 @@ export const LibraryHome: React.FC<HomePageProps> = ({
               <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-3 sm:mb-4">
                 Motivation
               </h3>
-              <p className="text-sm sm:text-base text-slate-600 leading-relaxed italic">
-                "Let's promote social skills through reading."
+              <p className="text-sm text-slate-600 leading-relaxed italic">
+                "
+                {dynamicSettings?.motivation_en ||
+                  "Let's promote social skills through reading."}
+                "
                 <br />
-                <span className="text-xs sm:text-sm text-slate-500 not-italic">
-                  လူမှုဘဝတိုးတက်ဖို့ စာဖတ်ခြင်းနှင့် မြှင့်တင်စို့
+                <span className="text-xs text-slate-500 not-italic block mt-1">
+                  {dynamicSettings?.motivation_mm ||
+                    "လူမှုဘဝတိုးတက်ဖို့ စာဖတ်ခြင်းနှင့် မြှင့်တင်စို့"}
                 </span>
               </p>
             </motion.div>
           </div>
         </section>
 
-        {/* LATEST ARRIVALS */}
-        <section>
+        {/* LATEST ARRIVALS SECTION (id="latestArrivals") */}
+        <section id="latestArrivals">
           <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
               <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
@@ -588,7 +580,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
           </div>
         </section>
 
-        {/* METRICS / STATS CARD COUNTER */}
+        {/* METRICS COUNTER */}
         <section className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-4 relative z-10">
           {stats.map((s, i) => {
             const Icon = s.icon;
@@ -622,22 +614,23 @@ export const LibraryHome: React.FC<HomePageProps> = ({
           })}
         </section>
 
-        {/* NOTICE BOARD */}
-        <section className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 rounded-2xl p-4 sm:p-6 relative overflow-hidden">
+        {/* NOTICE BOARD (id="noticeboard") */}
+        <section
+          id="noticeboard"
+          className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 rounded-2xl p-4 sm:p-6 relative overflow-hidden"
+        >
           <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-blue-200/20 rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 left-0 w-48 sm:w-64 h-48 sm:h-64 bg-purple-200/20 rounded-full blur-3xl"></div>
-
           <div className="relative">
             <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
               <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
                 <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
               </div>
-              Notice Board
+              Notice Board{" "}
               <span className="text-xs sm:text-sm font-normal text-slate-500 ml-2">
                 / အသိပေးချက်
               </span>
             </h3>
-
             <ul className="space-y-2 sm:space-y-3">
               <li className="flex items-start gap-2 sm:gap-3 bg-white/80 backdrop-blur-sm p-2.5 sm:p-3 rounded-xl hover:bg-white transition-colors shadow-sm">
                 <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mt-1.5 sm:mt-2 animate-pulse"></div>
@@ -652,242 +645,152 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                   fees.
                 </span>
               </li>
-              <li className="flex items-start gap-2 sm:gap-3 bg-white/80 backdrop-blur-sm p-2.5 sm:p-3 rounded-xl hover:bg-white transition-colors shadow-sm">
-                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full mt-1.5 sm:mt-2 animate-pulse"></div>
-                <span className="text-xs sm:text-sm text-slate-700">
-                  Quiet study area rules must be{" "}
-                  <strong>strictly followed</strong>.
-                </span>
-              </li>
             </ul>
           </div>
         </section>
       </div>
 
-      {/* FOOTER - Full Width */}
+      {/* FOOTER */}
       <footer className="bg-slate-900 w-full text-gray-300 pt-12 sm:pt-16 pb-6 sm:pb-8 border-t-4 border-blue-600 mt-8 sm:mt-12">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-12 mb-8 sm:mb-12">
-              {/* Col 1 - Logo & Social */}
               <div className="sm:col-span-2 lg:col-span-1">
                 <div className="flex items-center mb-4 sm:mb-6">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-base sm:text-xl mr-2 sm:mr-3">
-                    <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-transparent rounded-lg flex items-center justify-center text-white font-bold text-base sm:text-xl mr-2 sm:mr-3">
+                    <Image
+                      src={brandConfig.logo}
+                      alt={`${brandConfig.name} Logo`}
+                      width={36}
+                      height={36}
+                      className="object-contain"
+                      priority
+                    />
                   </div>
                   <div>
                     <h2 className="font-bold text-base sm:text-xl text-white leading-tight">
                       UCS Taungoo
                     </h2>
-                    <p className="text-[10px] sm:text-xs text-gray-500">
-                      University Library
+                    <p className="text-[10px] sm:text-xs text-blue-400 font-medium uppercase tracking-wider">
+                      Library Portal
                     </p>
                   </div>
                 </div>
                 <p className="text-xs sm:text-sm text-gray-400 mb-4 sm:mb-6 leading-relaxed">
-                  Find us on social media.
+                  Empowering computer science education through dynamic learning
+                  resources and digital archives.
                 </p>
-                <div className="flex space-x-2 sm:space-x-3">
-                  <a
-                    href="#"
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-xs sm:text-sm font-bold"
-                  >
-                    F
-                  </a>
-                  <a
-                    href="#"
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-xs sm:text-sm font-bold"
-                  >
-                    T
-                  </a>
-                  <a
-                    href="#"
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-xs sm:text-sm font-bold"
-                  >
-                    I
-                  </a>
-                  <a
-                    href="#"
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-xs sm:text-sm font-bold"
-                  >
-                    Y
-                  </a>
-                </div>
               </div>
 
-              {/* Col 2 - Quick Links */}
               <div>
-                <h3 className="font-bold text-base sm:text-lg text-white mb-4 sm:mb-6 uppercase tracking-wider text-xs sm:text-sm">
+                <h3 className="font-bold text-xs sm:text-sm text-white mb-4 sm:mb-6 uppercase tracking-wider text-blue-500">
                   Quick Links
                 </h3>
                 <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                   <li>
                     <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
+                      href="https://www.ucstaungoo.edu.mm"
+                      className="hover:text-blue-400 transition flex items-center group"
                     >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      About University
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
-                    >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      Academic Calendar
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
-                    >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      Admissions
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
-                    >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      Library
+                      <ArrowRight className="w-3 h-3 mr-1.5 text-blue-500 transition-transform group-hover:translate-x-1" />
+                      University Main Site
                     </a>
                   </li>
                 </ul>
               </div>
 
-              {/* Col 3 - Faculties */}
+              {/*  LINKS HERE */}
               <div>
-                <h3 className="font-bold text-base sm:text-lg text-white mb-4 sm:mb-6 uppercase tracking-wider text-xs sm:text-sm">
-                  Faculties
+                <h3 className="font-bold text-xs sm:text-sm text-white mb-4 sm:mb-6 uppercase tracking-wider text-blue-500">
+                  Library Resources
                 </h3>
                 <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                   <li>
                     <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
+                      href="#about"
+                      className="hover:text-blue-400 transition flex items-center group"
                     >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      Computer Science
+                      <ArrowRight className="w-3 h-3 mr-1.5 text-blue-500 transition-transform group-hover:translate-x-1" />
+                      About The Library
                     </a>
                   </li>
                   <li>
                     <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
+                      href="#commitment"
+                      className="hover:text-blue-400 transition flex items-center group"
                     >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      Computer Systems &amp; Tech
+                      <ArrowRight className="w-3 h-3 mr-1.5 text-blue-500 transition-transform group-hover:translate-x-1" />
+                      Our Commitment
                     </a>
                   </li>
                   <li>
                     <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
+                      href="#noticeboard"
+                      className="hover:text-blue-400 transition flex items-center group"
                     >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      Information Science
+                      <ArrowRight className="w-3 h-3 mr-1.5 text-blue-500 transition-transform group-hover:translate-x-1" />
+                      Notice Board
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="#latestArrivals"
+                      className="hover:text-blue-400 transition flex items-center group"
+                    >
+                      <ArrowRight className="w-3 h-3 mr-1.5 text-blue-500 transition-transform group-hover:translate-x-1" />
+                      New Arrivals
                     </a>
                   </li>
                 </ul>
               </div>
 
-              {/* Col 4 - Departments */}
               <div>
-                <h3 className="font-bold text-base sm:text-lg text-white mb-4 sm:mb-6 uppercase tracking-wider text-xs sm:text-sm">
-                  Departments
+                <h3 className="font-bold text-xs sm:text-sm text-white mb-4 sm:mb-6 uppercase tracking-wider text-blue-500">
+                  Opening Hours
                 </h3>
-                <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-                  <li>
-                    <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
-                    >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      Computing
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
-                    >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      Natural Languages
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
-                    >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      Natural Science
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      className="hover:text-blue-400 transition flex items-center"
-                    >
-                      <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 text-blue-500" />{" "}
-                      Administration &amp; Student Affairs
-                    </a>
+                <ul className="space-y-3 text-xs sm:text-sm text-gray-400">
+                  <li className="flex items-start">
+                    <Clock className="w-3.5 h-3.5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-gray-300">Mon - Fri</p>
+                      <p className="text-[11px]">9:00 AM - 4:00 PM</p>
+                    </div>
                   </li>
                 </ul>
               </div>
 
-              {/* Col 5 - Contact Info */}
               <div className="sm:col-span-2 lg:col-span-1">
-                <h3 className="font-bold text-base sm:text-lg text-white mb-4 sm:mb-6 uppercase tracking-wider text-xs sm:text-sm">
+                <h3 className="font-bold text-xs sm:text-sm text-white mb-4 sm:mb-6 uppercase tracking-wider text-blue-500">
                   Contact Info
                 </h3>
                 <ul className="space-y-3 sm:space-y-4 text-xs sm:text-sm">
                   <li className="flex items-start">
-                    <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 mt-0.5 mr-2 sm:mr-3 flex-shrink-0" />
+                    <MapPin className="w-3.5 h-3.5 text-blue-500 mt-0.5 mr-2 sm:mr-3 flex-shrink-0" />
                     <span>
                       University of Computer Studies,
                       <br />
                       Taungoo Campus, Myanmar
                     </span>
                   </li>
-                  <li className="flex items-center">
-                    <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 mr-2 sm:mr-3" />
-                    <span>+95 123 456 789</span>
+                  <li className="flex items-start">
+                    <PhoneCall className="w-3.5 h-3.5 text-blue-500 mt-0.5 mr-2 sm:mr-3 flex-shrink-0" />
+                    <a
+                      href="tel:+95123456789"
+                      className="hover:text-blue-500 hover:underline"
+                    >
+                      +95 123 456 789
+                    </a>
                   </li>
-                  <li className="flex items-center">
-                    <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 mr-2 sm:mr-3" />
-                    <span className="break-all">
+                  <li className="flex items-start">
+                    <MailIcon className="w-3.5 h-3.5 text-blue-500 mt-0.5 mr-2 sm:mr-3 flex-shrink-0" />
+                    <a
+                      href="mailto:ucstgostuaffair2024@gmail.com"
+                      className="hover:text-blue-500 hover:underline"
+                    >
                       ucstgostuaffair2024@gmail.com
-                    </span>
-                  </li>
-                  <li className="flex items-center">
-                    <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 mr-2 sm:mr-3" />
-                    <span>www.ucstaungoo.edu.mm</span>
+                    </a>
                   </li>
                 </ul>
-              </div>
-            </div>
-
-            {/* Bottom Footer Credits */}
-            <div className="border-t border-gray-800 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-gray-500 gap-3 sm:gap-0">
-              <p className="text-center sm:text-left">
-                &copy; 2026 UCS Taungoo. All Rights Reserved. Designed SMK
-              </p>
-              <div className="flex space-x-3 sm:space-x-4">
-                <a href="#" className="hover:text-white transition">
-                  Privacy Policy
-                </a>
-                <a href="#" className="hover:text-white transition">
-                  Terms of Service
-                </a>
-                <a href="#" className="hover:text-white transition">
-                  Sitemap
-                </a>
               </div>
             </div>
           </div>

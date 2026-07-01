@@ -2,14 +2,14 @@
 
 import { EbooksTab } from "@/components/students/tabs/EbooksTab";
 import { useBooksInfinite } from "@/hooks/useBooksInfinite";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation"; 
 type ViewMode = "grid" | "list";
 
 const EbookPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
-  // 2. Read search state directly from the URL query string
+  //  Read search state directly from the URL query string
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
 
@@ -21,7 +21,7 @@ const EbookPage = () => {
     hasMore,
   } = useBooksInfinite("ebook");
 
-  // 3. Filters books automatically based on URL search adjustments
+  //  Filters books automatically based on URL search adjustments
   const filteredBooks = useMemo(() => {
     if (!searchQuery) return liveBooks;
     const q = searchQuery.toLowerCase();

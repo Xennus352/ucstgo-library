@@ -278,11 +278,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                   {book.category.name}
                 </span>
               )}
-              {book.publicationYear && (
-                <span className="text-[9px] text-white">
-                  {book.publicationYear}
-                </span>
-              )}
+             
               {book.language && (
                 <span className="text-[9px] text-white">• {book.language}</span>
               )}
@@ -293,17 +289,7 @@ export const BookCard: React.FC<BookCardProps> = ({
 
             {/* Important Info Grid */}
             <div className="grid grid-cols-2 gap-1.5 mb-2.5">
-              {/* ISBN */}
-              {book.isbn && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[8px] uppercase tracking-wider text-white font-semibold">
-                    ISBN
-                  </span>
-                  <span className="text-[10px] text-white truncate">
-                    {book.isbn}
-                  </span>
-                </div>
-              )}
+            
 
               {/* Copies Available */}
               {showAvailability && (

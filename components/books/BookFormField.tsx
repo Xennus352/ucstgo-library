@@ -39,15 +39,15 @@ interface BookFormFieldsProps {
       description: string;
       publicationYear: string;
       language: string;
-      donate: string; 
+      donate: string;
     }>
   >;
   coverPreview: string | null;
   handleCoverChange: (file: File | null) => void;
   ebook: File | null;
   setEbook: React.Dispatch<React.SetStateAction<File | null>>;
-  semester: string; 
-  setSemester: React.Dispatch<React.SetStateAction<string>>; 
+  semester: string;
+  setSemester: React.Dispatch<React.SetStateAction<string>>;
   copies: number;
   setCopies: React.Dispatch<React.SetStateAction<number>>;
   shelfLocation?: string;
@@ -61,8 +61,8 @@ export function BookFormFields({
   handleCoverChange,
   ebook,
   setEbook,
-  semester, 
-  setSemester, 
+  semester,
+  setSemester,
   copies,
   setCopies,
   shelfLocation = "",
@@ -78,6 +78,7 @@ export function BookFormFields({
     { value: "Y3_SEM2", label: "Year 3 - Semester 2" },
     { value: "Y4_SEM1", label: "Year 4 - Semester 1" },
     { value: "Y4_SEM2", label: "Year 4 - Semester 2" },
+    { value: "MASTER", label: "Master's Program" },
   ];
   return (
     <div className="space-y-4">

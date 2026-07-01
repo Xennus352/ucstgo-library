@@ -278,6 +278,8 @@ enum Semester {
   Y3_SEM2
   Y4_SEM1
   Y4_SEM2
+
+  MASTER
 }
 
 enum EbookFormat {
@@ -375,4 +377,17 @@ model PushSubscription {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// ----------------------------------------------------
+//  SYSTEM CONFIGURATION MODULE
+// ----------------------------------------------------
+
+model SystemSetting {
+  key         String   @id // Unique identifier like 'about_p1', 'vision', 'footer_phone'
+  value       String   @db.Text // Large text storage for paragraphs or data configurations
+  description String? // Optional context string for the Admin Panel UI
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_setting")
 }
