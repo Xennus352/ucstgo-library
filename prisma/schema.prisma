@@ -251,7 +251,7 @@ enum ReservationStatus {
 
 model Ebook {
   id         String          @id @default(uuid())
-  filePath   String
+  filePath   String?
   fileSize   Int?
   format     EbookFormat     @default(PDF)
   accessType EbookAccessType @default(OPEN)

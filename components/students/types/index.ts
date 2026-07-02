@@ -150,13 +150,14 @@ export interface Verification {
   updatedAt: Date;
 }
 
-// UI Helper Types (not in database)
+// UI Helper Types 
 export interface BookWithDetails extends Book {
   author: Author;
   category: Category;
   donate?: string | null;
   ebook?: Ebook;
   copies?: BookCopy[];
+  type: string;
   readingProgress?: number;
   isReserved?: boolean;
   isBorrowed?: boolean;

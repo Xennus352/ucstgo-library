@@ -23,6 +23,9 @@ import {
   Mail,
   PhoneCall,
   MailIcon,
+  Brain,
+  CheckCircle2,
+  CheckCircle2Icon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -124,6 +127,13 @@ export const LibraryHome: React.FC<HomePageProps> = ({
     const interval = setInterval(update, 60000);
     return () => clearInterval(interval);
   }, []);
+  const rules = [
+    "စာအုပ်ငှားကာလမှာ 14 ရက် (2 Weeks) ဖြစ်သည်။",
+    "Due Date မတိုင်မီ ပြန်မအပ်ပါက Borrowing Restriction သို့မဟုတ် Penalty ရှိနိုင်သည်။",
+    "စာအုပ်ပျက်စီးခြင်း သို့မဟုတ် ပျောက်ဆုံးပါက တာဝန်ယူရမည်။",
+    "Library Property များကို ဂရုတစိုက် အသုံးပြုပါ။",
+    "အခြားသူများ၏ စာအုပ်များကို ခွင့်မပြုဘဲ မယူရ။",
+  ];
 
   const libraryPhotos: LibraryPhoto[] = [
     {
@@ -277,13 +287,12 @@ export const LibraryHome: React.FC<HomePageProps> = ({
   ];
 
   return (
-    // Added scroll-smooth style to ensure beautiful transition scroll behavior
     <div
       className="min-h-screen text-slate-900 bg-gray-50 flex flex-col scroll-smooth"
       style={{ scrollBehavior: "smooth" }}
     >
       {/* HEADER HERO CAROUSEL */}
-      <div className="relative w-full h-[500px] sm:h-[600px] md:h-[700px] overflow-hidden">
+      <div className="relative w-full h-[320px] sm:h-[400px] md:h-[500px] lg:h-[560px]  overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide}
@@ -406,7 +415,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
 
       {/* MAIN LAYOUT WRAPPER */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-14 w-full flex-grow">
-        {/* ABOUT SECTION (id="about") */}
+        {/* ABOUT SECTION  */}
         <section className="py-4 sm:py-8" id="about">
           <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-center">
             <div className="w-full md:w-1/2 relative flex justify-center">
@@ -436,7 +445,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
             </div>
 
             <div className="w-full md:w-1/2">
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-4">
+              <h2 className="text-2xl sm:text-3xl text-center font-bold text-slate-800 mb-4">
                 <TextType
                   text={["About the Library"]}
                   typingSpeed={75}
@@ -450,7 +459,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                   cursorBlinkDuration={0.5}
                 />
               </h2>
-              <div className="w-12 h-1 bg-blue-600 mb-6 rounded-full"></div>
+              <div className="w-12 h-1 bg-yellow-400 mx-auto mb-6 rounded-full"></div>
               <p className="text-base sm:text-lg text-slate-600 leading-relaxed mb-4">
                 {dynamicSettings?.about_p1 ||
                   "University of Computer Studies (Taungoo) Library launched..."}
@@ -463,13 +472,13 @@ export const LibraryHome: React.FC<HomePageProps> = ({
           </div>
         </section>
 
-        {/* COMMITMENT SECTION (Fixed ID Spelled: "commitment") */}
+        {/* COMMITMENT SECTION */}
         <section id="commitment" className="py-4 sm:py-8">
           <div className="text-center mb-8 sm:mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">
               Our Commitment
             </h2>
-            <div className="w-12 h-1 bg-blue-600 mx-auto mt-4 rounded-full"></div>
+            <div className="w-12 h-1 bg-yellow-400 mx-auto mt-4 rounded-full"></div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -530,7 +539,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
           </div>
         </section>
 
-        {/* LATEST ARRIVALS SECTION (id="latestArrivals") */}
+        {/* LATEST ARRIVALS SECTION */}
         <section id="latestArrivals">
           <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -614,38 +623,89 @@ export const LibraryHome: React.FC<HomePageProps> = ({
           })}
         </section>
 
-        {/* NOTICE BOARD (id="noticeboard") */}
-        <section
-          id="noticeboard"
-          className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 rounded-2xl p-4 sm:p-6 relative overflow-hidden"
-        >
-          <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-blue-200/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-48 sm:w-64 h-48 sm:h-64 bg-purple-200/20 rounded-full blur-3xl"></div>
-          <div className="relative">
-            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
-                <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+        {/* NOTICE BOARD */}
+
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            {/* Notice Board */}
+            <aside className="lg:sticky lg:top-8 self-start">
+              <div className="mb-6">
+                <div className="inline-flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center">
+                    <Bell className="w-6 h-6 text-white" />
+                  </div>
+
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">
+                      Notice Board
+                    </h2>
+                    <p className="text-sm text-slate-500">အသိပေးချက်များ</p>
+                  </div>
+                </div>
               </div>
-              Notice Board{" "}
-              <span className="text-xs sm:text-sm font-normal text-slate-500 ml-2">
-                / အသိပေးချက်
-              </span>
-            </h3>
-            <ul className="space-y-2 sm:space-y-3">
-              <li className="flex items-start gap-2 sm:gap-3 bg-white/80 backdrop-blur-sm p-2.5 sm:p-3 rounded-xl hover:bg-white transition-colors shadow-sm">
-                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mt-1.5 sm:mt-2 animate-pulse"></div>
-                <span className="text-xs sm:text-sm text-slate-700">
-                  Library open: <strong>8:00 AM – 8:00 PM</strong> (Mon–Sat)
+
+              <div className="space-y-5">
+                <div className="flex gap-4">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-blue-600" />
+                  <div>
+                    <h3 className="font-semibold text-slate-800">
+                      Library Opening Hours
+                    </h3>
+                    <p className="text-slate-600 text-sm mt-1">
+                      Monday – Friday
+                    </p>
+                    <p className="text-blue-600 font-medium text-sm mt-1">
+                      9:00 AM – 4:00 PM
+                    </p>
+                  </div>
+                </div>
+
+                <hr className="border-slate-200" />
+
+                <div className="flex gap-4">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-purple-600" />
+                  <div>
+                    <h3 className="font-semibold text-slate-800">
+                      Book Return
+                    </h3>
+                    <p className="text-slate-600 text-sm mt-1">
+                      Return books within 7 days.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            {/* Rules */}
+            <div className="lg:col-span-2">
+              <div className="mb-10">
+                <span className="text-blue-600 font-semibold uppercase tracking-wider text-sm">
+                  Library Policy
                 </span>
-              </li>
-              <li className="flex items-start gap-2 sm:gap-3 bg-white/80 backdrop-blur-sm p-2.5 sm:p-3 rounded-xl hover:bg-white transition-colors shadow-sm">
-                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-purple-500 rounded-full mt-1.5 sm:mt-2 animate-pulse"></div>
-                <span className="text-xs sm:text-sm text-slate-700">
-                  Return books within <strong>7 days</strong> to avoid late
-                  fees.
-                </span>
-              </li>
-            </ul>
+
+                <h2 className="mt-2 text-4xl font-bold text-slate-900">
+                  Library Rules
+                </h2>
+
+                <p className="mt-3 text-slate-600 max-w-2xl">
+                  Please follow the library rules to maintain a quiet, safe, and
+                  comfortable learning environment.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                {rules.map((rule, index) => (
+                  <div
+                    key={index}
+                    className="flex gap-5 border-b border-slate-200 pb-6"
+                  >
+                    <CheckCircle2 className="w-6 h-6 text-emerald-500 mt-1 shrink-0" />
+
+                    <p className="text-slate-700 leading-8">{rule}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -689,11 +749,11 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                 <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                   <li>
                     <a
-                      href="https://www.ucstaungoo.edu.mm"
+                      href="http://www.ucstaungoo.edu.mm"
                       className="hover:text-blue-400 transition flex items-center group"
                     >
                       <ArrowRight className="w-3 h-3 mr-1.5 text-blue-500 transition-transform group-hover:translate-x-1" />
-                      University Main Site
+                      www.ucstaungoo.edu.mm
                     </a>
                   </li>
                 </ul>

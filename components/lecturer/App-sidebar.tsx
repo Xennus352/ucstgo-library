@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/sidebar";
 import { BookSearch } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import Image from "next/image";
+import { brandConfig } from "@/config/brand";
 
 // Match the exact shape of your navData object
 interface NavSubItem {
@@ -79,7 +81,14 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
               <a href="/lecturer/home">
-                <BookSearch />
+                <Image
+                  src={brandConfig.logo}
+                  alt={`${brandConfig.name} Logo`}
+                  width={36}
+                  height={36}
+                  className="object-contain"
+                  priority
+                />
                 <span className="text-base font-semibold">UCSTgo Library</span>
               </a>
             </SidebarMenuButton>

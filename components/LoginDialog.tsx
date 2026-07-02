@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeClosed } from "lucide-react";
+import { brandConfig } from "@/config/brand";
 
 interface LoginDialogProps {
   isOpen?: boolean;
@@ -118,11 +119,11 @@ export default function LoginDialog({
 
       <DialogContent className="p-6 sm:p-8 overflow-hidden w-[92vw] max-w-md rounded-2xl">
         <DialogHeader className="space-y-2">
-          <DialogTitle className="text-2xl font-extrabold">
-            Next-Gen Tech Library
+          <DialogTitle className="text-xl text-center font-extrabold">
+            {brandConfig.name}
           </DialogTitle>
           <DialogDescription className="text-sm">
-            Read e-books, manage borrowings and reserve workstations.
+            Read e-books, manage borrowings and reserve books.
           </DialogDescription>
         </DialogHeader>
 
