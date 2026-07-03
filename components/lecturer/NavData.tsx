@@ -1,4 +1,4 @@
-import { BookText, CircleUser, Home, SquareLibrary } from "lucide-react";
+import { BookText, CircleUser, Plus, SquareLibrary } from "lucide-react";
 
 export const navData = {
   navMain: [
@@ -6,6 +6,11 @@ export const navData = {
       title: "Ebooks",
       url: "/lecturer/ebooks",
       icon: <BookText />,
+    },
+{
+      title: "Manage E Resources",
+      url: "/lecturer/manage-ebooks",
+      icon: <Plus />,
     },
     {
       title: "Physical Books",

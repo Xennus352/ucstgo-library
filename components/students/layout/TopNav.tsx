@@ -53,7 +53,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                 priority
               />
             </div>
-            <span className="text-lg text-primary font-bold tracking-tight">
+            <span className="text-lg text-primary hidden lg:inline font-bold tracking-tight">
               {brandConfig.name}
             </span>
           </motion.div>

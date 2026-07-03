@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path, { join } from "path";
 import prisma from "@/lib/prisma";
-import { Semester } from "@/app/generated/prisma/enums";
 import { auth } from "@/lib/auth";
 
 /* -----------------------------
@@ -110,6 +109,7 @@ function generateBarcode(isbn: string, index: number): string {
 /* -----------------------------
    GET books
 ----------------------------- */
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -164,7 +164,11 @@ export async function GET(req: NextRequest) {
     if (type === "ebook") {
       where.ebook = {
         isNot: null,
-        ...(semesterFilter && { semester: semesterFilter as Semester }),
+
+        ...(semesterFilter &&
+          semesterFilter !== "all" && {
+            semesterId: semesterFilter,
+          }),
       };
     } else if (type === "physical") {
       where.ebook = null;
@@ -203,7 +207,15 @@ export async function GET(req: NextRequest) {
               id: true,
               format: true,
               filePath: true,
-              semester: true,
+              semesterId: true,
+
+              semester: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
             },
           },
 
@@ -251,7 +263,7 @@ export async function GET(req: NextRequest) {
 
       const available = stats.AVAILABLE;
       const borrowed = stats.BORROWED;
-      const total = book._count.copies;
+      const totalCount = book._count.copies;
 
       return {
         ...book,
@@ -271,7 +283,7 @@ export async function GET(req: NextRequest) {
         availability: {
           available,
           borrowed,
-          total,
+          total: totalCount,
           isAvailable: available > 0,
         },
       };
@@ -334,7 +346,9 @@ export async function POST(req: NextRequest) {
     const categoryName = formData.get("category") as string;
     const shelfLocation = formData.get("shelfLocation") as string | null;
     const donate = formData.get("donate") as string | null;
-    const semester = formData.get("semester") as string | null;
+
+    // This is coming as an ID string (e.g. from a select dropdown)
+    const semesterId = formData.get("semester") as string | null;
 
     // Softly cast as optional parameters
     const cover = formData.get("cover") as File | null;
@@ -414,7 +428,8 @@ export async function POST(req: NextRequest) {
           filePath: ebookDbPath,
           format: "PDF",
           accessType: "OPEN",
-          semester: semester ? (semester as Semester) : null,
+          // FIX HERE: Use semesterId rather than the old schema's semester property
+          semesterId: semesterId || null,
         },
       });
     }

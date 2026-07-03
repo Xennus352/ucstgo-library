@@ -249,13 +249,20 @@ enum ReservationStatus {
 // 4. DIGITAL LIBRARY (E-Books)
 // ----------------------------------------------------
 
+// ----------------------------------------------------
+// 4. DIGITAL LIBRARY (E-Books)
+// ----------------------------------------------------
+
 model Ebook {
   id         String          @id @default(uuid())
   filePath   String?
   fileSize   Int?
   format     EbookFormat     @default(PDF)
   accessType EbookAccessType @default(OPEN)
-  semester   Semester?
+
+  // Dynamic Semester Relation 
+  semesterId String?
+  semester   Semester? @relation(fields: [semesterId], references: [id], onDelete: SetNull)
 
   bookId String @unique
   book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -267,19 +274,19 @@ model Ebook {
 
   @@index([bookId])
   @@index([format])
+  @@index([semesterId]) 
 }
 
-enum Semester {
-  Y1_SEM1
-  Y1_SEM2
-  Y2_SEM1
-  Y2_SEM2
-  Y3_SEM1
-  Y3_SEM2
-  Y4_SEM1
-  Y4_SEM2
+model Semester {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g., "Year 1 - Semester 1"
+  slug      String   @unique // e.g., "y1-sem1" (great for clean URL routing)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  MASTER
+  ebooks Ebook[] // Back-relation to Ebooks
+
+  @@index([name])
 }
 
 enum EbookFormat {

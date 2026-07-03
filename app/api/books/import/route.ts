@@ -12,8 +12,6 @@ import {
   getOrCreateCategory,
 } from "@/lib/upload";
 
-import { Semester } from "@/app/generated/prisma/enums";
-
 /* -----------------------------------
    STORAGE CONFIG (MATCHS POST API)
 ------------------------------------ */
@@ -43,7 +41,6 @@ function sanitizeFileName(name: string) {
 /* -----------------------------------
    ZIP IMPORT API
 ------------------------------------ */
-
 export async function POST(req: Request) {
   try {
     /* -----------------------------
@@ -185,7 +182,9 @@ export async function POST(req: Request) {
       const category = await getOrCreateCategory(categoryName);
 
       const copiesCount = row.copies ? Number(row.copies) : 1;
-      const semester = row.semester ? (row.semester as Semester) : null;
+
+      // FIX 1: Treat the Excel input cell value as an ID string
+      const semesterId = row.semester ? String(row.semester).trim() : null;
 
       await prisma.$transaction(async (tx) => {
         const book = await tx.book.create({
@@ -211,7 +210,8 @@ export async function POST(req: Request) {
               filePath: ebookDbPath,
               format: "PDF",
               accessType: "OPEN",
-              semester,
+              // FIX 2: Map to scalar relation property semesterId
+              semesterId: semesterId,
             },
           });
         }

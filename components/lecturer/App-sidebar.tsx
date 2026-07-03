@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { BookSearch } from "lucide-react";
+
 import { useCurrentUser } from "@/hooks/use-current-user";
 import Image from "next/image";
 import { brandConfig } from "@/config/brand";
@@ -80,7 +80,7 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <a href="/lecturer/home">
+              <a href="/lecturer/ebooks">
                 <Image
                   src={brandConfig.logo}
                   alt={`${brandConfig.name} Logo`}

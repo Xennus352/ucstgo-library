@@ -74,9 +74,6 @@ export async function GET(req: NextRequest) {
 }
 
 // ========================================================
-// POST: /api/books/lecturer -> Register a single book record
-// ========================================================
-// ========================================================
 // POST: /api/books/lecturer
 // ========================================================
 export async function POST(req: NextRequest) {
@@ -118,14 +115,6 @@ export async function POST(req: NextRequest) {
 
     const isLecturer = role === "LECTURER";
 
-    /* Lecturer rule (keep if you want mandatory PDF for lecturers) */
-    // if (isLecturer && (!ebook || ebook.size === 0)) {
-    //   return NextResponse.json(
-    //     { error: "Lecturer must upload an ebook PDF." },
-    //     { status: 400 },
-    //   );
-    // }
-
     const STORAGE_ROOT = path.resolve(
       process.cwd(),
       "..",
@@ -160,7 +149,7 @@ export async function POST(req: NextRequest) {
       coverDbPath = `${p.dbPath}/${fileName}`;
     }
 
-    /* ---------------- EBOOK (OPTIONAL NOW) ---------------- */
+    /* ---------------- EBOOK ---------------- */
     let ebookDbPath: string | null = null;
 
     if (ebook && ebook.size > 0) {
@@ -208,14 +197,14 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      /* ✅ ALWAYS CREATE EBOOK ROW (even if null) */
+      /* ✅ FIXED: Corrected mapping from relation string to scalar 'semesterId' column */
       await tx.ebook.create({
         data: {
           bookId: newBook.id,
-          filePath: ebookDbPath, // now optional safely
+          filePath: ebookDbPath,
           format: "PDF",
           accessType: isLecturer ? "LECTURER_ONLY" : "OPEN",
-          semester: semester ? (semester as any) : null,
+          semesterId: semester || null,
         },
       });
 

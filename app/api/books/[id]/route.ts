@@ -5,13 +5,10 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
 import {
-
   generateBarcode,
   getOrCreateAuthor,
   getOrCreateCategory,
- 
 } from "@/lib/upload";
-import { Semester } from "@/app/generated/prisma/enums";
 
 /* -----------------------------
    GET /api/books/[id]
@@ -41,7 +38,15 @@ export async function GET(
             id: true,
             format: true,
             filePath: true,
-            semester: true,
+            semesterId: true,
+            // FIX HERE: Select fields from the joined Semester table relation object
+            semester: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
           },
         },
         _count: {
@@ -197,8 +202,9 @@ export async function PATCH(
     const donate =
       formData.get("donate") !== null ? String(formData.get("donate")) : null;
 
-    const semester = formData.get("semester")
-      ? (formData.get("semester") as Semester)
+    // FIX 1: Change property mapping name to match relation scalar field
+    const semesterId = formData.get("semester")
+      ? String(formData.get("semester"))
       : null;
 
     const publicationYearRaw = formData.get("publicationYear");
@@ -297,6 +303,7 @@ export async function PATCH(
     /* =========================
        UPDATE DATABASE
     ========================== */
+    // FIX 2: Re-architect data structure map query inside the relational update payload
     const updatedBook = await prisma.book.update({
       where: { id },
       data: {
@@ -317,24 +324,28 @@ export async function PATCH(
                 create: {
                   filePath: ebookDbPath,
                   format: "PDF",
-                  semester,
+                  semesterId: semesterId, // 👈 Fix field name
                 },
                 update: {
                   filePath: ebookDbPath,
-                  semester,
+                  semesterId: semesterId, // 👈 Fix field name
                 },
               },
             }
-          : semester
-            ? {
-                update: { semester },
-              }
-            : undefined,
+          : {
+              update: {
+                semesterId: semesterId, // 👈 Fix field name
+              },
+            },
       },
       include: {
         author: true,
         category: true,
-        ebook: true,
+        ebook: {
+          include: {
+            semester: true, // Include the populated Semester object for consistency across the application
+          },
+        },
       },
     });
 

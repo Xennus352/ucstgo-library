@@ -35,6 +35,7 @@ import Stack from "@/components/Stack";
 import { LibrarySettings } from "@/app/actions/settings";
 import Image from "next/image";
 import { brandConfig } from "@/config/brand";
+import { rules } from "@/libraryRules/rules";
 
 const Counter = ({ value }: { value: number }) => (
   <span>{value.toLocaleString()}</span>
@@ -127,13 +128,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({
     const interval = setInterval(update, 60000);
     return () => clearInterval(interval);
   }, []);
-  const rules = [
-    "စာအုပ်ငှားကာလမှာ 14 ရက် (2 Weeks) ဖြစ်သည်။",
-    "Due Date မတိုင်မီ ပြန်မအပ်ပါက Borrowing Restriction သို့မဟုတ် Penalty ရှိနိုင်သည်။",
-    "စာအုပ်ပျက်စီးခြင်း သို့မဟုတ် ပျောက်ဆုံးပါက တာဝန်ယူရမည်။",
-    "Library Property များကို ဂရုတစိုက် အသုံးပြုပါ။",
-    "အခြားသူများ၏ စာအုပ်များကို ခွင့်မပြုဘဲ မယူရ။",
-  ];
 
   const libraryPhotos: LibraryPhoto[] = [
     {
@@ -626,12 +620,13 @@ export const LibraryHome: React.FC<HomePageProps> = ({
         {/* NOTICE BOARD */}
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          {/* Changed grid to 2 equal columns on large screens instead of 1:2 split */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             {/* Notice Board */}
-            <aside className="lg:sticky lg:top-8 self-start">
-              <div className="mb-6">
+            <aside className="lg:sticky lg:top-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+              <div className="mb-8">
                 <div className="inline-flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
                     <Bell className="w-6 h-6 text-white" />
                   </div>
 
@@ -646,7 +641,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
 
               <div className="space-y-5">
                 <div className="flex gap-4">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-blue-600" />
+                  <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 shrink-0" />
                   <div>
                     <h3 className="font-semibold text-slate-800">
                       Library Opening Hours
@@ -660,10 +655,10 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                   </div>
                 </div>
 
-                <hr className="border-slate-200" />
+                <hr className="border-slate-100" />
 
                 <div className="flex gap-4">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-purple-600" />
+                  <div className="w-2 h-2 mt-2 rounded-full bg-purple-600 shrink-0" />
                   <div>
                     <h3 className="font-semibold text-slate-800">
                       Book Return
@@ -676,36 +671,38 @@ export const LibraryHome: React.FC<HomePageProps> = ({
               </div>
             </aside>
 
-            {/* Rules */}
-            <div className="lg:col-span-2">
-              <div className="mb-10">
-                <span className="text-blue-600 font-semibold uppercase tracking-wider text-sm">
-                  Library Policy
-                </span>
+            {/* Library Rules (Now matching Notice Board UI perfectly) */}
+            <aside className="lg:sticky lg:top-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+              <div className="mb-8">
+                <div className="inline-flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-md shadow-emerald-200">
+                    <CheckCircle2 className="w-6 h-6 text-white" />
+                  </div>
 
-                <h2 className="mt-2 text-4xl font-bold text-slate-900">
-                  Library Rules
-                </h2>
-
-                <p className="mt-3 text-slate-600 max-w-2xl">
-                  Please follow the library rules to maintain a quiet, safe, and
-                  comfortable learning environment.
-                </p>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">
+                      Library Rules
+                    </h2>
+                    <p className="text-sm text-slate-500">စည်းကမ်းချက်များ</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {rules.map((rule, index) => (
-                  <div
-                    key={index}
-                    className="flex gap-5 border-b border-slate-200 pb-6"
-                  >
-                    <CheckCircle2 className="w-6 h-6 text-emerald-500 mt-1 shrink-0" />
-
-                    <p className="text-slate-700 leading-8">{rule}</p>
+                  <div key={index} className="group">
+                    <div className="flex gap-4">
+                      <div className="w-2 h-2 mt-2 rounded-full bg-emerald-500 shrink-0" />
+                      <div>
+                        <p className="text-slate-700 text-sm leading-relaxed">
+                          {rule}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </aside>
           </div>
         </section>
       </div>

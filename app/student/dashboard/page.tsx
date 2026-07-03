@@ -34,7 +34,7 @@ import {
 } from "@/app/actions/libraryStats";
 import { getLatestBooks } from "@/app/actions/library";
 import LoginDialog from "@/components/LoginDialog";
-import { getLibrarySettings, LibrarySettings } from "@/app/actions/settings"; // 👈 Added LibrarySettings type import
+import { getLibrarySettings, LibrarySettings } from "@/app/actions/settings"; 
 
 const EbookReaderContainer = dynamic(
   () => import("@/components/reader/EbookReaderContainer"),
@@ -43,7 +43,7 @@ const EbookReaderContainer = dynamic(
 
 const tabsConfig = [
   { id: "Home", label: "Home", icon: BookOpen },
-  { id: "eBooks", label: "Ebooks", icon: Tablet },
+  { id: "EResources", label: "EResources", icon: Tablet },
   { id: "Physical", label: "Books", icon: Book },
   { id: "Profile", label: "Profile", icon: User },
 ] as const satisfies TabConfig[];
@@ -152,8 +152,8 @@ export default function LibraryApp() {
   }, [isLoggedIn, isUserLoading, activeTab]);
 
   const apiType = useMemo(() => {
-    if (activeTab === "eBooks") return "ebook";
-    if (activeTab === "Physical") return "physical";
+    if (activeTab === "EResources") return "EResources";
+    if (activeTab === "Physical") return "all";
     return "all";
   }, [activeTab]);
 
@@ -358,7 +358,7 @@ export default function LibraryApp() {
       case "Home":
         return (
           <LibraryHome
-            dynamicSettings={dynamicSettings} // 👈 Correctly distributed here
+            dynamicSettings={dynamicSettings}
             initialCounts={homeMetrics}
             initialLatestBooks={latestBooks}
             onNavigate={(route) => {
@@ -369,7 +369,7 @@ export default function LibraryApp() {
               if (route === "borrow-books" || route === "search-catalog") {
                 setActiveTab("Physical");
               } else if (route === "e-books") {
-                setActiveTab("eBooks");
+                setActiveTab("EResources");
               } else if (route === "study-rooms") {
                 toast.info("Study room reservation feature coming soon!");
               }
@@ -377,7 +377,7 @@ export default function LibraryApp() {
           />
         );
 
-      case "eBooks":
+      case "EResources":
         return (
           <div className="px-4 md:px-12 w-full">
             <EbooksTab
@@ -435,7 +435,7 @@ export default function LibraryApp() {
     latestBooks,
     isLoggedIn,
     isUserLoading,
-    dynamicSettings, // 👈 Added dependency tracking mapping
+    dynamicSettings,
   ]);
 
   return (

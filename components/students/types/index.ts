@@ -150,18 +150,42 @@ export interface Verification {
   updatedAt: Date;
 }
 
-// UI Helper Types 
+// UI Helper Types
+
+export interface EbookWithSemester extends Omit<Ebook, "semester"> {
+  semesterId: string;
+  semester: {
+    id: string;
+    name: string;
+    slug: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}
+
 export interface BookWithDetails extends Book {
   author: Author;
-  category: Category;
+
   donate?: string | null;
-  ebook?: Ebook;
+  category?: Category | null;
+  ebook?: EbookWithSemester | null;
   copies?: BookCopy[];
   type: string;
   readingProgress?: number;
   isReserved?: boolean;
   isBorrowed?: boolean;
   filePath: string;
+  status: "available" | "borrowed" | "unavailable";
+  availability: {
+    available: number;
+    borrowed: number;
+    total: number;
+    isAvailable: boolean;
+  };
+  _count?: {
+    copies: number;
+    reservations: number;
+  };
 }
 
 export interface TabConfig {
@@ -171,4 +195,4 @@ export interface TabConfig {
 }
 
 export type ViewMode = "grid" | "list";
-export type TabId = "Home" | "eBooks" | "Physical" | "Profile";
+export type TabId = "Home" | "EResources" | "Physical" | "Profile";

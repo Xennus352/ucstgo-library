@@ -5,7 +5,7 @@ import { fetcher } from "@/lib/fetcher";
 import { transformApiBooks } from "@/utils/dataAdapter";
 import { BookWithDetails } from "@/components/students/types";
 
-type BookType = "all" | "ebook" | "physical";
+type BookType = "all" | "EResources" | "physical";
 
 const PAGE_SIZE = 20;
 

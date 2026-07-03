@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,8 +16,9 @@ import {
   CheckCircle,
   GraduationCap,
 } from "lucide-react";
+import { getAllSemesters } from "@/app/actions/semesters";
 
-// 1. Updated Interface Definition to align with main page states
+
 interface BookFormFieldsProps {
   form: {
     title: string;
@@ -54,6 +56,13 @@ interface BookFormFieldsProps {
   setShelfLocation?: React.Dispatch<React.SetStateAction<string>>;
 }
 
+// 1. Interface definition for the dynamic semester objects from your Prisma schema
+interface SemesterData {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export function BookFormFields({
   form,
   setForm,
@@ -68,18 +77,19 @@ export function BookFormFields({
   shelfLocation = "",
   setShelfLocation,
 }: BookFormFieldsProps) {
-  // Available semesters mapping to your database Schema Enum definitions
-  const semesterOptions = [
-    { value: "Y1_SEM1", label: "Year 1 - Semester 1" },
-    { value: "Y1_SEM2", label: "Year 1 - Semester 2" },
-    { value: "Y2_SEM1", label: "Year 2 - Semester 1" },
-    { value: "Y2_SEM2", label: "Year 2 - Semester 2" },
-    { value: "Y3_SEM1", label: "Year 3 - Semester 1" },
-    { value: "Y3_SEM2", label: "Year 3 - Semester 2" },
-    { value: "Y4_SEM1", label: "Year 4 - Semester 1" },
-    { value: "Y4_SEM2", label: "Year 4 - Semester 2" },
-    { value: "MASTER", label: "Master's Program" },
-  ];
+  // 2. State for handling the live semesters array from Server Actions
+  const [semesterOptions, setSemesterOptions] = useState<SemesterData[]>([]);
+
+  useEffect(() => {
+    async function fetchSemesters() {
+      const response = await getAllSemesters();
+      if (response.success && response.data) {
+        setSemesterOptions(response.data);
+      }
+    }
+    fetchSemesters();
+  }, []);
+
   return (
     <div className="space-y-4">
       {/* Basic Information - 2 column grid */}
@@ -214,13 +224,12 @@ export function BookFormFields({
             />
           </div>
 
-          {/* 2. Added Donation Input Field */}
           <div>
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               Donation Information (Optional)
             </label>
             <Input
-              placeholder="e.g., Donated by John Doe"
+              placeholder="e.g., Donated by ERPB"
               value={form.donate}
               onChange={(e) => setForm({ ...form, donate: e.target.value })}
               className="h-9 text-sm"
@@ -321,7 +330,7 @@ export function BookFormFields({
                       onClick={(e) => {
                         e.preventDefault();
                         setEbook(null);
-                        setSemester(""); // Clear semester if ebook is removed
+                        setSemester("");
                       }}
                       className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                     >
@@ -342,7 +351,7 @@ export function BookFormFields({
               </div>
             </label>
 
-            {/* 3. Conditional Semester Selector (Shows up only when Ebook is active) */}
+            {/* Dynamic Target Semester Selection */}
             {ebook && (
               <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
@@ -355,9 +364,10 @@ export function BookFormFields({
                   className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:focus-visible:ring-slate-300"
                 >
                   <option value="">Select a semester...</option>
+                  {/* 3. Updated loop to match database schema attributes (id and name) */}
                   {semesterOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}
                     </option>
                   ))}
                 </select>
