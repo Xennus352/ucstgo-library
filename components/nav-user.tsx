@@ -34,7 +34,7 @@ export function NavUser({ user }: { user: User }) {
 
   const handleLogout = async () => {
     await signOut();
-    router.push("/sign-in");
+    router.push("/portal");
     router.refresh();
   };
 
