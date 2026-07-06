@@ -34,7 +34,7 @@ export async function proxy(req: Request) {
     ADMIN: "/admin/dashboard",
     STUDENT: "/student/dashboard",
     LIBRARIAN: "/librarian/dashboard",
-    LECTURER: "/lecturer/home",
+    LECTURER: "/lecturer/ebooks",
   };
   const role = user.role;
 

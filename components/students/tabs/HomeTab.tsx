@@ -620,7 +620,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({
         {/* NOTICE BOARD */}
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          {/* Changed grid to 2 equal columns on large screens instead of 1:2 split */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             {/* Notice Board */}
             <aside className="lg:sticky lg:top-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -640,38 +639,58 @@ export const LibraryHome: React.FC<HomePageProps> = ({
               </div>
 
               <div className="space-y-5">
+                <hr className="border-slate-100" />
+
+                {/* Library Closure */}
                 <div className="flex gap-4">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 shrink-0" />
+                  <div className="w-2 h-2 mt-2 rounded-full bg-red-500 shrink-0" />
                   <div>
                     <h3 className="font-semibold text-slate-800">
-                      Library Opening Hours
+                      စာကြည့်တိုက်ပိတ်ရက် အသိပေးချက်
                     </h3>
-                    <p className="text-slate-600 text-sm mt-1">
-                      Monday – Friday
-                    </p>
-                    <p className="text-blue-600 font-medium text-sm mt-1">
-                      9:00 AM – 4:00 PM
+                    <p className="text-sm text-slate-600 mt-1">
+                      ၂၀၂၆ ခုနှစ်၊ ဩဂုတ်လ ၁၂ ရက်နေ့တွင် စာကြည့်တိုက်
+                      ပိတ်မည်ဖြစ်ပါသည်။
                     </p>
                   </div>
                 </div>
 
                 <hr className="border-slate-100" />
 
+                {/* New Book Arrival */}
                 <div className="flex gap-4">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-purple-600 shrink-0" />
+                  <div className="w-2 h-2 mt-2 rounded-full bg-emerald-500 shrink-0" />
                   <div>
                     <h3 className="font-semibold text-slate-800">
-                      Book Return
+                      စာအုပ်အသစ် ရောက်ရှိခြင်း
                     </h3>
-                    <p className="text-slate-600 text-sm mt-1">
-                      Return books within 7 days.
+                    <p className="text-sm text-slate-600 mt-1">
+                      Computer Science ဘာသာရပ်ဆိုင်ရာ စာအုပ်အသစ် (၂၅) အုပ်
+                      ထပ်မံရောက်ရှိထားပါသည်။
                     </p>
                   </div>
                 </div>
+
+                <hr className="border-slate-100" />
+
+                {/* E-Resources */}
+                <div className="flex gap-4">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-cyan-500 shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-slate-800">
+                      E-Resources အသိပေးချက်
+                    </h3>
+                    <p className="text-sm text-slate-600 mt-1">
+                      IEEE E-Resources များကို ယခုအခါ အသုံးပြုနိုင်ပြီဖြစ်ပါသည်။
+                    </p>
+                  </div>
+                </div>
+
+                <hr className="border-slate-100 pb-3" />
               </div>
             </aside>
 
-            {/* Library Rules (Now matching Notice Board UI perfectly) */}
+            {/* Library Rules  */}
             <aside className="lg:sticky lg:top-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
               <div className="mb-8">
                 <div className="inline-flex items-center gap-3">
@@ -699,6 +718,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                         </p>
                       </div>
                     </div>
+                      {index !== rules.length - 1 && (
+                        <hr className="border-slate-100 mt-5" />
+                      )}
                   </div>
                 ))}
               </div>
