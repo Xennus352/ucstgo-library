@@ -226,28 +226,28 @@ export const LibraryHome: React.FC<HomePageProps> = ({
     initialLatestBooks && initialLatestBooks.length > 0
       ? initialLatestBooks
       : [
-          {
-            title: "Advanced Mathematics",
-            author: "Dr. Smith",
-            year: "2026",
-            imageUrl:
-              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
-          },
-          {
-            title: "Data Science Essentials",
-            author: "Prof. Johnson",
-            year: "2026",
-            imageUrl:
-              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
-          },
-          {
-            title: "Physics for Engineers",
-            author: "Dr. Williams",
-            year: "2025",
-            imageUrl:
-              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
-          },
-        ];
+        {
+          title: "Advanced Mathematics",
+          author: "Dr. Smith",
+          year: "2026",
+          imageUrl:
+            "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
+        },
+        {
+          title: "Data Science Essentials",
+          author: "Prof. Johnson",
+          year: "2026",
+          imageUrl:
+            "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
+        },
+        {
+          title: "Physics for Engineers",
+          author: "Dr. Williams",
+          year: "2025",
+          imageUrl:
+            "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
+        },
+      ];
 
   const amenities = [
     { icon: Wifi, label: "Free WiFi" },
@@ -390,11 +390,10 @@ export const LibraryHome: React.FC<HomePageProps> = ({
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`transition-all duration-300 rounded-full ${
-                currentSlide === index
-                  ? "w-6 sm:w-8 md:w-10 h-1.5 sm:h-2 md:h-2.5 bg-white shadow-lg shadow-white/30"
-                  : "w-1.5 sm:w-2 md:w-2.5 h-1.5 sm:h-2 md:h-2.5 bg-white/40 hover:bg-white/60"
-              }`}
+              className={`transition-all duration-300 rounded-full ${currentSlide === index
+                ? "w-6 sm:w-8 md:w-10 h-1.5 sm:h-2 md:h-2.5 bg-white shadow-lg shadow-white/30"
+                : "w-1.5 sm:w-2 md:w-2.5 h-1.5 sm:h-2 md:h-2.5 bg-white/40 hover:bg-white/60"
+                }`}
             />
           ))}
         </div>
@@ -621,9 +620,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           {/* Changed grid to 2 equal columns on large screens instead of 1:2 split */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Notice Board */}
-            <aside className="lg:sticky lg:top-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <aside className="lg:sticky lg:top-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm h-full flex flex-col">
               <div className="mb-8">
                 <div className="inline-flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
@@ -644,14 +643,12 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                   <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 shrink-0" />
                   <div>
                     <h3 className="font-semibold text-slate-800">
-                      Library Opening Hours
+                      စာကြည့်တိုက်ပိတ်မည့် အသိပေးချက်
                     </h3>
                     <p className="text-slate-600 text-sm mt-1">
-                      Monday – Friday
+                      ၂၀၂၆ ခုနှစ် ဩဂုတ်လ (၁၂) ရက်နေ့တွင် စာကြည့်တိုက်ကို ပိတ်ထားမည်ဖြစ်ပါသည်။
                     </p>
-                    <p className="text-blue-600 font-medium text-sm mt-1">
-                      9:00 AM – 4:00 PM
-                    </p>
+
                   </div>
                 </div>
 
@@ -661,10 +658,23 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                   <div className="w-2 h-2 mt-2 rounded-full bg-purple-600 shrink-0" />
                   <div>
                     <h3 className="font-semibold text-slate-800">
-                      Book Return
+                      စာအုပ်အသစ်များ ရောက်ရှိကြောင်း အသိပေးချက်
                     </h3>
                     <p className="text-slate-600 text-sm mt-1">
-                      Return books within 7 days.
+                      Computer Science ဘာသာရပ်ဆိုင်ရာ စာအုပ်အသစ် (၂၅) အုပ်ကို စာကြည့်တိုက်တွင် ထပ်မံဖြည့်စွက်ထားပါသည်။
+                    </p>
+                  </div>
+                </div>
+                <hr className="border-slate-100" />
+
+                <div className="flex gap-4">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-purple-600 shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-slate-800">
+                      E-Resources အသစ်များ ရရှိနိုင်ကြောင်း အသိပေးချက်
+                    </h3>
+                    <p className="text-slate-600 text-sm mt-1">
+                      IEEE E-Resources အသစ်များကို ယခုအခါ စာကြည့်တိုက်မှတစ်ဆင့် အသုံးပြုနိုင်ပြီ ဖြစ်ပါသည်။
                     </p>
                   </div>
                 </div>
