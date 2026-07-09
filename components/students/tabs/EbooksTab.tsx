@@ -31,6 +31,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { getAllSemesters } from "@/app/actions/semesters";
 
 interface EbooksTabProps {
   books: BookWithDetails[];
@@ -53,26 +54,22 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [isFiltered, setIsFiltered] = useState(false);
 
+  const [semesters, setSemesters] = useState<
+    { id: string; name: string; slug: string }[]
+  >([]);
+
   // Extract all active runtime Semesters dynamically from books data payload
-  const uniqueSemesters = useMemo(() => {
-    const semMap = new Map<
-      string,
-      { id: string; name: string; slug: string }
-    >();
-    books.forEach((book) => {
-      // Cast as any to bypass the temporary type constraints safely
-      const ebookData = book.ebook as any;
-      if (ebookData?.semester && typeof ebookData.semester === "object") {
-        const sem = ebookData.semester;
-        if (!semMap.has(sem.id)) {
-          semMap.set(sem.id, { id: sem.id, name: sem.name, slug: sem.slug });
-        }
+  useEffect(() => {
+    async function fetchSemesters() {
+      const result = await getAllSemesters();
+
+      if (result.success && result.data) {
+        setSemesters(result.data);
       }
-    });
-    return Array.from(semMap.values()).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-  }, [books]);
+    }
+
+    fetchSemesters();
+  }, []);
 
   // Track accordion expand states
   const [openSemesters, setOpenSemesters] = useState<Record<string, boolean>>(
@@ -124,7 +121,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
     if (activeSemesterFilter !== "all") {
       filteredEbooks = filteredEbooks.filter((book) => {
         const ebookData = book.ebook as any;
-        // FIX: Extract ID directly from the embedded semester relational object if root key is missing
+        // Extract ID directly from the embedded semester relational object if root key is missing
         const currentSemId = ebookData?.semester?.id || ebookData?.semesterId;
         return currentSemId === activeSemesterFilter;
       });
@@ -143,12 +140,12 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
       {} as Record<string, BookWithDetails[]>,
     );
 
-    // Sort active keys using names fetched from uniqueSemesters
+    // Sort active keys using names fetched from semesters
     const activeKeys = Object.keys(groups).sort((a, b) => {
       if (a === "UNASSIGNED") return 1;
       if (b === "UNASSIGNED") return -1;
-      const nameA = uniqueSemesters.find((s) => s.id === a)?.name || "";
-      const nameB = uniqueSemesters.find((s) => s.id === b)?.name || "";
+      const nameA = semesters.find((s) => s.id === a)?.name || "";
+      const nameB = semesters.find((s) => s.id === b)?.name || "";
       return nameA.localeCompare(nameB);
     });
 
@@ -157,7 +154,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
       sortedSemesterIds: activeKeys,
       groupedSemesters: groups,
     };
-  }, [books, activeCategoryFilter, activeSemesterFilter, uniqueSemesters]);
+  }, [books, activeCategoryFilter, activeSemesterFilter, semesters]);
 
   // Track if active filters are applied
   useEffect(() => {
@@ -207,7 +204,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
 
     if (activeSemesterFilter !== "all") {
       const semName =
-        uniqueSemesters.find((s) => s.id === activeSemesterFilter)?.name ||
+        semesters.find((s) => s.id === activeSemesterFilter)?.name ||
         "Selected Semester";
       activeFilters.push({
         id: "semester",
@@ -320,9 +317,9 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
             <SelectItem value="all" className="text-black">
               All Semesters ({books.filter((b) => b.ebook).length})
             </SelectItem>
-            {uniqueSemesters.map((sem) => (
+            {semesters.map((sem) => (
               <SelectItem key={sem.id} value={sem.id} className="text-black">
-                {sem.name} ({getSemesterCount(sem.id)})
+                {sem.name} (<span className="italic font-bold"> {getSemesterCount(sem.id)} </span>)
               </SelectItem>
             ))}
           </SelectContent>
@@ -461,7 +458,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
               const semesterCount = semesterBooks.length;
 
               const semName =
-                uniqueSemesters.find((s) => s.id === semId)?.name ||
+                semesters.find((s) => s.id === semId)?.name ||
                 "General Titles / Unassigned";
               const semContentId = `sem-content-${semId}`;
               const semHeaderId = `sem-header-${semId}`;

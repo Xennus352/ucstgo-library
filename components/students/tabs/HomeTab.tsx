@@ -226,28 +226,28 @@ export const LibraryHome: React.FC<HomePageProps> = ({
     initialLatestBooks && initialLatestBooks.length > 0
       ? initialLatestBooks
       : [
-        {
-          title: "Advanced Mathematics",
-          author: "Dr. Smith",
-          year: "2026",
-          imageUrl:
-            "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
-        },
-        {
-          title: "Data Science Essentials",
-          author: "Prof. Johnson",
-          year: "2026",
-          imageUrl:
-            "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
-        },
-        {
-          title: "Physics for Engineers",
-          author: "Dr. Williams",
-          year: "2025",
-          imageUrl:
-            "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
-        },
-      ];
+          {
+            title: "Advanced Mathematics",
+            author: "Dr. Smith",
+            year: "2026",
+            imageUrl:
+              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
+          },
+          {
+            title: "Data Science Essentials",
+            author: "Prof. Johnson",
+            year: "2026",
+            imageUrl:
+              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
+          },
+          {
+            title: "Physics for Engineers",
+            author: "Dr. Williams",
+            year: "2025",
+            imageUrl:
+              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=500&fit=crop",
+          },
+        ];
 
   const amenities = [
     { icon: Wifi, label: "Free WiFi" },
@@ -390,10 +390,11 @@ export const LibraryHome: React.FC<HomePageProps> = ({
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`transition-all duration-300 rounded-full ${currentSlide === index
-                ? "w-6 sm:w-8 md:w-10 h-1.5 sm:h-2 md:h-2.5 bg-white shadow-lg shadow-white/30"
-                : "w-1.5 sm:w-2 md:w-2.5 h-1.5 sm:h-2 md:h-2.5 bg-white/40 hover:bg-white/60"
-                }`}
+              className={`transition-all duration-300 rounded-full ${
+                currentSlide === index
+                  ? "w-6 sm:w-8 md:w-10 h-1.5 sm:h-2 md:h-2.5 bg-white shadow-lg shadow-white/30"
+                  : "w-1.5 sm:w-2 md:w-2.5 h-1.5 sm:h-2 md:h-2.5 bg-white/40 hover:bg-white/60"
+              }`}
             />
           ))}
         </div>
@@ -619,10 +620,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({
         {/* NOTICE BOARD */}
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          {/* Changed grid to 2 equal columns on large screens instead of 1:2 split */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             {/* Notice Board */}
-            <aside className="lg:sticky lg:top-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm h-full flex flex-col">
+            <aside className="lg:sticky lg:top-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
               <div className="mb-8">
                 <div className="inline-flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
@@ -639,49 +639,58 @@ export const LibraryHome: React.FC<HomePageProps> = ({
               </div>
 
               <div className="space-y-5">
+                <hr className="border-slate-100" />
+
+                {/* Library Closure */}
                 <div className="flex gap-4">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 shrink-0" />
+                  <div className="w-2 h-2 mt-2 rounded-full bg-red-500 shrink-0" />
                   <div>
                     <h3 className="font-semibold text-slate-800">
-                      စာကြည့်တိုက်ပိတ်မည့် အသိပေးချက်
+                      စာကြည့်တိုက်ပိတ်ရက် အသိပေးချက်
                     </h3>
-                    <p className="text-slate-600 text-sm mt-1">
-                      ၂၀၂၆ ခုနှစ် ဩဂုတ်လ (၁၂) ရက်နေ့တွင် စာကြည့်တိုက်ကို ပိတ်ထားမည်ဖြစ်ပါသည်။
+                    <p className="text-sm text-slate-600 mt-1">
+                      ၂၀၂၆ ခုနှစ်၊ ဩဂုတ်လ ၁၂ ရက်နေ့တွင် စာကြည့်တိုက်
+                      ပိတ်မည်ဖြစ်ပါသည်။
                     </p>
-
                   </div>
                 </div>
 
                 <hr className="border-slate-100" />
 
+                {/* New Book Arrival */}
                 <div className="flex gap-4">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-purple-600 shrink-0" />
+                  <div className="w-2 h-2 mt-2 rounded-full bg-emerald-500 shrink-0" />
                   <div>
                     <h3 className="font-semibold text-slate-800">
-                      စာအုပ်အသစ်များ ရောက်ရှိကြောင်း အသိပေးချက်
+                      စာအုပ်အသစ် ရောက်ရှိခြင်း
                     </h3>
-                    <p className="text-slate-600 text-sm mt-1">
-                      Computer Science ဘာသာရပ်ဆိုင်ရာ စာအုပ်အသစ် (၂၅) အုပ်ကို စာကြည့်တိုက်တွင် ထပ်မံဖြည့်စွက်ထားပါသည်။
+                    <p className="text-sm text-slate-600 mt-1">
+                      Computer Science ဘာသာရပ်ဆိုင်ရာ စာအုပ်အသစ် (၂၅) အုပ်
+                      ထပ်မံရောက်ရှိထားပါသည်။
                     </p>
                   </div>
                 </div>
+
                 <hr className="border-slate-100" />
 
+                {/* E-Resources */}
                 <div className="flex gap-4">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-purple-600 shrink-0" />
+                  <div className="w-2 h-2 mt-2 rounded-full bg-cyan-500 shrink-0" />
                   <div>
                     <h3 className="font-semibold text-slate-800">
-                      E-Resources အသစ်များ ရရှိနိုင်ကြောင်း အသိပေးချက်
+                      E-Resources အသိပေးချက်
                     </h3>
-                    <p className="text-slate-600 text-sm mt-1">
-                      IEEE E-Resources အသစ်များကို ယခုအခါ စာကြည့်တိုက်မှတစ်ဆင့် အသုံးပြုနိုင်ပြီ ဖြစ်ပါသည်။
+                    <p className="text-sm text-slate-600 mt-1">
+                      IEEE E-Resources များကို ယခုအခါ အသုံးပြုနိုင်ပြီဖြစ်ပါသည်။
                     </p>
                   </div>
                 </div>
+
+                <hr className="border-slate-100 pb-3" />
               </div>
             </aside>
 
-            {/* Library Rules (Now matching Notice Board UI perfectly) */}
+            {/* Library Rules  */}
             <aside className="lg:sticky lg:top-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
               <div className="mb-8">
                 <div className="inline-flex items-center gap-3">
@@ -709,6 +718,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                         </p>
                       </div>
                     </div>
+                      {index !== rules.length - 1 && (
+                        <hr className="border-slate-100 mt-5" />
+                      )}
                   </div>
                 ))}
               </div>

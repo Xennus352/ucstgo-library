@@ -43,11 +43,10 @@ model User {
   readingHistory ReadingHistory[]
   bookmarks      Bookmark[]
 
-  // Explicitly named notification relations (Duplicates removed ✅)
+  // Explicitly named notification relations
   notificationsReceived Notification[]     @relation("NotificationRecipient")
   notificationsSent     Notification[]     @relation("NotificationSender")
   notificationReads     NotificationRead[]
-  pushSubscriptions     PushSubscription[]
 
   @@index([email])
   @@index([studentId])
@@ -274,7 +273,7 @@ model Ebook {
 
   @@index([bookId])
   @@index([format])
-  @@index([semesterId]) 
+  @@index([semesterId])
 }
 
 model Semester {
@@ -369,20 +368,6 @@ model NotificationRead {
   readAt DateTime @default(now())
 
   @@unique([notificationId, userId])
-  @@index([userId])
-}
-
-model PushSubscription {
-  id String @id @default(uuid())
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  endpoint String @unique
-  keys     Json
-
-  createdAt DateTime @default(now())
-
   @@index([userId])
 }
 
