@@ -113,7 +113,7 @@ export default function BookManagementModal({
       <div className="absolute inset-0 -z-10" onClick={onClose} />
 
       {/* Modal Wrapper */}
-      {/* Changed rounded-t-xl to rounded-xl on mobile too so it looks floating from the top */}
+      {/*  on mobile too so it looks floating from the top */}
       <div className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col h-[85vh] sm:h-auto sm:max-h-[85vh] transition-all">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
