@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+
 import {
   BookOpen,
   Tag,
@@ -17,7 +18,15 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { getAllSemesters } from "@/app/actions/semesters";
-
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
+import { useCategories } from "@/hooks/use-categories";
 
 interface BookFormFieldsProps {
   form: {
@@ -44,6 +53,7 @@ interface BookFormFieldsProps {
       donate: string;
     }>
   >;
+  categories?: any[]; // Added categories array property here
   coverPreview: string | null;
   handleCoverChange: (file: File | null) => void;
   ebook: File | null;
@@ -66,6 +76,7 @@ interface SemesterData {
 export function BookFormFields({
   form,
   setForm,
+
   coverPreview,
   handleCoverChange,
   ebook,
@@ -79,6 +90,8 @@ export function BookFormFields({
 }: BookFormFieldsProps) {
   // 2. State for handling the live semesters array from Server Actions
   const [semesterOptions, setSemesterOptions] = useState<SemesterData[]>([]);
+  const { data: categories = [] } = useCategories();
+
 
   useEffect(() => {
     async function fetchSemesters() {
@@ -133,12 +146,50 @@ export function BookFormFields({
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               Category *
             </label>
-            <Input
-              placeholder="e.g., Fiction"
+            <Combobox
               value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className="h-9 text-sm"
-            />
+              onValueChange={(value) =>
+                setForm({ ...form, category: value ?? "" })
+              }
+            >
+              <ComboboxInput
+                placeholder="Search or type a new category..."
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="h-9 text-sm w-full"
+              />
+              <ComboboxContent>
+                <ComboboxList>
+                  {/* 1. Safely resolve the array if it's nested inside an object */}
+                  {(() => {
+                    // Determine if 'categories' is an array, or if it lives inside data/categories properties
+                    const categoriesArray = Array.isArray(categories)
+                      ? categories
+                      : (categories as any)?.data ||
+                        (categories as any)?.categories ||
+                        [];
+
+                    if (!categoriesArray || categoriesArray.length === 0) {
+                      return (
+                        <ComboboxEmpty>
+                          No categories found. Type to create one.
+                        </ComboboxEmpty>
+                      );
+                    }
+
+                    return categoriesArray.map((cat: any) => {
+                      const categoryName =
+                        typeof cat === "string" ? cat : cat?.name || cat?.title;
+                      return (
+                        <ComboboxItem key={categoryName} value={categoryName}>
+                          {categoryName}
+                        </ComboboxItem>
+                      );
+                    });
+                  })()}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           </div>
 
           <div className="md:col-span-2">

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 
+
 // Types
 interface Book {
   id: string;
@@ -58,6 +59,8 @@ export default function BookManagementModal({
   // Track existing ebook filename
   const [existingEbookName, setExistingEbookName] = useState<string>("");
   const [existingSemester, setExistingSemester] = useState<string>("");
+
+
 
   // Form state for create and edit
   const [form, setForm] = useState({
@@ -422,6 +425,7 @@ export default function BookManagementModal({
 
               {/* Action Buttons */}
               <div className="flex justify-end gap-2 sm:gap-3 px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 rounded-b-xl shrink-0">
+              
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -450,6 +454,7 @@ export default function BookManagementModal({
                   )}
                 </Button>
               </div>
+           
             </TabsContent>
 
             {/* View Tab */}

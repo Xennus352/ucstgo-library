@@ -58,8 +58,6 @@ export default function CreateBookForm() {
       return;
     }
 
-    //  Removed the "if (!cover)" validation block that forced an error toast!
-
     const fd = new FormData();
 
     Object.entries(form).forEach(([key, value]) => {

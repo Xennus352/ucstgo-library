@@ -3,12 +3,14 @@
 import React, { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { CheckCircle, Plus, BookOpen, Pencil, X } from "lucide-react";
+import { CheckCircle, Plus, BookOpen, Pencil, X, FileUp } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { BookFormFields } from "@/components/books/BookFormField";
+import { ImportModal } from "@/components/books/ImportModal";
+import { BookZipImport } from "@/components/books/BookZipImport";
 
 // Types matching your existing setup
 interface Book {
@@ -56,6 +58,7 @@ export default function ManageEbooks() {
     "view",
   );
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Track existing ebook state details
   const [existingEbookName, setExistingEbookName] = useState<string>("");
@@ -331,9 +334,7 @@ export default function ManageEbooks() {
   };
 
   return (
-    <div >
-     
-
+    <div>
       {/* Main Core Form Engine View Container */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs ">
         <Tabs
@@ -465,6 +466,13 @@ export default function ManageEbooks() {
               setShelfLocation={setShelfLocation}
             />
             <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button
+                className="hover:cursor-pointer"
+                onClick={() => setShowImportModal(true)}
+                variant="outline"
+              >
+                <FileUp className="w-4 h-4 mr-2" /> Excel Import
+              </Button>
               <Button variant="outline" onClick={() => setActiveTab("view")}>
                 Cancel
               </Button>
@@ -476,6 +484,19 @@ export default function ManageEbooks() {
                 {pending ? "Creating..." : "Create Book"}
               </Button>
             </div>
+            {showImportModal && (
+              <ImportModal
+                isOpen={showImportModal}
+                onClose={() => setShowImportModal(false)}
+              >
+                <BookZipImport
+                  onComplete={() => {
+                    setShowImportModal(false);
+                    mutate();
+                  }}
+                />
+              </ImportModal>
+            )}
           </TabsContent>
 
           {/* EDIT TAB INTERFACE */}
