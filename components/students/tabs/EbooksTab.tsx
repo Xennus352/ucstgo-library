@@ -102,7 +102,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
         categories.add(category);
       }
     });
-    return Array.from(categories).sort();
+    return Array.from(categories).sort((a, b) => b.localeCompare(a));
   }, [books]);
 
   // Filter books based on active criteria and group them by dynamic semester
@@ -303,7 +303,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
 
       {/* Dynamic Semester Select Dropdown */}
       <div>
-        <span className="text-xs md:text-sm text-muted-foreground font-medium mb-2 block text-black">
+        <span className="text-xs md:text-sm text-muted-foreground font-medium mb-2 block ">
           Academic Semester:
         </span>
         <Select
@@ -319,7 +319,12 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
             </SelectItem>
             {semesters.map((sem) => (
               <SelectItem key={sem.id} value={sem.id} className="text-black">
-                {sem.name} (<span className="italic font-bold"> {getSemesterCount(sem.id)} </span>)
+                {sem.name} (
+                <span className="italic font-bold">
+                  {" "}
+                  {getSemesterCount(sem.id)}{" "}
+                </span>
+                )
               </SelectItem>
             ))}
           </SelectContent>

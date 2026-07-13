@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const categories = await prisma.category.findMany({
       orderBy: {
-        name: "asc",
+        name: "desc",
       },
     });
 
@@ -14,7 +14,7 @@ export async function GET() {
     console.error("CATEGORY GET ERROR:", error);
 
     return NextResponse.json(
-      { error: "Failed to fetch categories", },
+      { error: "Failed to fetch categories" },
       { status: 500 },
     );
   }
