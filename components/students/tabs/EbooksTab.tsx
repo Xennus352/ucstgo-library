@@ -348,7 +348,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
           <div className="space-y-0.5 min-w-0 flex-1">
             <h2 className="text-base md:text-xl lg:text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary flex-shrink-0" />
-              <span className="truncate">eBooks Collection</span>
+              <span className="truncate">EResources Collection</span>
               <Badge
                 variant="secondary"
                 className="ml-1 text-xs flex-shrink-0 text-black"
