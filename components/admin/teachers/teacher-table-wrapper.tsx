@@ -21,6 +21,7 @@ import {
   ShieldAlert,
   UserCheck,
   UserX,
+  Download,
 } from "lucide-react";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
 import {
@@ -39,6 +40,7 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import CreateTeacherForm from "./teacher-create-teacher-form";
 import { Button } from "@/components/ui/button";
+import { SAMPLE_ZIP_TEACHER_PATH } from "@/constants/sampleData";
 
 type EditableImportRow = {
   _localKey: string;
@@ -365,6 +367,23 @@ export function TeacherTableWrapper() {
         title="Bulk Spreadsheet Workspace"
       >
         <div className="space-y-4 pt-4">
+          {/* Sample Download Banner (Only shows when no data is parsed yet) */}
+          {previewRows.length === 0 && (
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-lg flex items-center justify-between gap-4">
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Need a template? Download our sample format structure.
+              </div>
+              <a
+                href={SAMPLE_ZIP_TEACHER_PATH}
+                download="sample_students.zip"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-medium transition-colors shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Sample.zip
+              </a>
+            </div>
+          )}
+
           {previewRows.length === 0 ? (
             <label
               onDragOver={(e) => {

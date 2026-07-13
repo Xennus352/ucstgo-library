@@ -21,8 +21,8 @@ export const navData = {
       icon: <GraduationCapIcon />,
     },
     {
-      title: "admin Management",
-      url: "/admin/admins",
+      title: "Librarian Management",
+      url: "/admin/librarians",
       icon: <ShieldCheckIcon />,
     },
     {

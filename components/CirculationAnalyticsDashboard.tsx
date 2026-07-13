@@ -159,7 +159,7 @@ export default async function CirculationAnalyticsDashboard() {
 
               return (
                 <div
-                  key={book.id}
+                  key={`${book.id}-${i}`}
                   className="flex items-center justify-between px-5 py-4 hover:bg-muted/30"
                 >
                   <div className="flex items-center gap-4">
@@ -207,7 +207,7 @@ export default async function CirculationAnalyticsDashboard() {
 
               return (
                 <div
-                  key={user.id}
+                  key={`${user.id}-${i}`}
                   className="flex items-center justify-between px-5 py-4 hover:bg-muted/30"
                 >
                   <div className="flex items-center gap-4">
