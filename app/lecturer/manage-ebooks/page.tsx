@@ -3,14 +3,16 @@
 import React, { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { CheckCircle, Plus, BookOpen, Pencil, X, FileUp } from "lucide-react";
+import {  Plus, BookOpen, Pencil, X, FileUp } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import { BookFormFields } from "@/components/books/BookFormField";
+
 import { ImportModal } from "@/components/books/ImportModal";
 import { BookZipImport } from "@/components/books/BookZipImport";
+import { BookFormFields } from "@/components/lecturer/BookFormFields";
+
 
 // Types matching your existing setup
 interface Book {
