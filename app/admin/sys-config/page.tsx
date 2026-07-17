@@ -1,9 +1,21 @@
 import React from "react";
+import fs from "fs/promises";
+import path from "path";
+import { Settings, Palette, GraduationCap } from "lucide-react";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { getLibrarySettings } from "@/app/actions/settings";
 import { getAllSemesters } from "@/app/actions/semesters";
 import { AddSemesterForm } from "@/components/admin/AddSemesterForm";
 import DeleteSemesterButton from "@/components/admin/DeleteSemesterButton";
+import UpdateBrandForm from "@/components/admin/updateBrand";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 const SystemConfiguration = async () => {
   const [settings, semestersRes] = await Promise.all([
@@ -11,63 +23,97 @@ const SystemConfiguration = async () => {
     getAllSemesters(),
   ]);
 
+  const configPath = path.join(process.cwd(), "config", "brand.ts");
+  let initialName = "UCSTGO Library";
+  let initialLogo = "/images/brand.jpg";
+  try {
+    const configText = await fs.readFile(configPath, "utf8");
+    initialName = configText.match(/name:\s*"([^"]+)"/)?.[1] ?? initialName;
+    initialLogo = configText.match(/logo:\s*"([^"]+)"/)?.[1] ?? initialLogo;
+  } catch {}
+
   const semesters = semestersRes.success ? semestersRes.data : [];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-8">
-      <div>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">
           System Configuration
         </h1>
-        <p className="text-sm text-neutral-500">
-          Manage global configurations, variables, and academic slots.
+        <p className="text-sm text-muted-foreground">
+          Manage global configurations, branding, and academic semesters.
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3 items-start">
-        {/* Main Key-Value Library Configuration Settings Form */}
+      <Tabs defaultValue="settings">
+        <TabsList variant="line" className="w-full justify-start overflow-x-auto">
+          <TabsTrigger value="settings" className="gap-2">
+            <Settings className="size-4" />
+            General
+          </TabsTrigger>
+          <TabsTrigger value="branding" className="gap-2">
+            <Palette className="size-4" />
+            Branding
+          </TabsTrigger>
+          <TabsTrigger value="semesters" className="gap-2">
+            <GraduationCap className="size-4" />
+            Semesters
+          </TabsTrigger>
+        </TabsList>
 
-        <div className="border rounded-xl p-5 bg-white shadow-sm space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-neutral-900">
-              Academic Semesters
-            </h2>
-            <p className="text-xs text-neutral-500">
-              Add slots used for organizing catalog e-books.
-            </p>
-          </div>
-
-          <AddSemesterForm />
-
-          <div className="space-y-2 max-h-[320px] overflow-y-auto pt-2 border-t">
-            {semesters?.length === 0 ? (
-              <p className="text-xs text-neutral-400 italic">
-                No semesters added yet.
-              </p>
-            ) : (
-              semesters?.map((sem) => (
-                <div
-                  key={sem.id}
-                  className="flex items-center justify-between p-2.5 bg-neutral-50 border rounded-lg text-sm"
-                >
-                  <div>
-                    <p className="font-medium text-neutral-800">{sem.name}</p>
-                    <span className="text-[10px] text-neutral-400 font-mono">
-                      {sem.slug}
-                    </span>
-                  </div>
-                  <DeleteSemesterButton semesterId={sem.id} />
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Sidebar Card layout for Dynamic Semesters Management */}
-        <div className="lg:col-span-2">
+        <TabsContent value="settings" className="mt-6">
           <SettingsForm initialSettings={settings} />
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="branding" className="mt-6">
+          <UpdateBrandForm
+            initialName={initialName}
+            initialLogo={initialLogo}
+          />
+        </TabsContent>
+
+        <TabsContent value="semesters" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Academic Semesters</CardTitle>
+              <CardDescription>
+                Add and manage semesters used for organizing catalog e-books.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <AddSemesterForm />
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Existing Semesters
+                </h3>
+                <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                  {semesters?.length === 0 ? (
+                    <p className="text-sm text-muted-foreground italic py-8 text-center">
+                      No semesters added yet.
+                    </p>
+                  ) : (
+                    semesters?.map((sem) => (
+                      <div
+                        key={sem.id}
+                        className="flex items-center justify-between p-3 bg-card border rounded-lg text-sm hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="font-medium truncate">{sem.name}</p>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {sem.slug}
+                          </span>
+                        </div>
+                        <DeleteSemesterButton semesterId={sem.id} />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

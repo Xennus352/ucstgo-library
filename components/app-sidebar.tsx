@@ -113,7 +113,9 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
                   className="object-contain"
                   priority
                 />
-                <span className="text-base font-semibold">UCSTgo Library</span>
+                <span className="text-base font-semibold">
+                  {brandConfig.name}
+                </span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
