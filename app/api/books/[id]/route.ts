@@ -1,195 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import path, { join } from "path";
-import prisma from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-
 import {
   FILE_LIMITS,
   validateContentLength,
   validateFileSize,
-  generateBarcode,
-  getOrCreateAuthor,
-  getOrCreateCategory,
 } from "@/lib/upload";
+import { toNextResponse } from "@/lib/errors";
+import {
+  requireRole,
+  ALLOWED_BOOK_ROLES,
+} from "@/lib/services/auth.service";
+import {
+  getBookById,
+  updateBook,
+  deleteBook,
+  generateBarcode,
+} from "@/lib/services/book.service";
+import prisma from "@/lib/prisma";
 
-/* -----------------------------
-   GET /api/books/[id]
------------------------------ */
+const STORAGE_ROOT = path.resolve(process.cwd(), "..", "ucstgo-library-storage");
+
+function getUploadPath(type: "covers" | "ebooks") {
+  const date = new Date();
+  const year = date.getFullYear().toString();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return {
+    dir: join(STORAGE_ROOT, "books", type, year, month),
+    dbPath: `books/${type}/${year}/${month}`,
+  };
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
-
-    const book = await prisma.book.findUnique({
-      where: { id },
-      include: {
-        author: true,
-        category: true,
-        copies: {
-          select: {
-            id: true,
-            barcode: true,
-            shelfLocation: true,
-            status: true,
-          },
-        },
-        ebook: {
-          select: {
-            id: true,
-            format: true,
-            filePath: true,
-            semesterId: true,
-            // FIX HERE: Select fields from the joined Semester table relation object
-            semester: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            copies: true,
-            reservations: true,
-          },
-        },
-      },
-    });
-
-    if (!book) {
-      return NextResponse.json(
-        { success: false, error: "Book not found" },
-        { status: 404 },
-      );
-    }
-
-    // Availability calculation
-    const stats: Record<string, number> = {
-      AVAILABLE: 0,
-      BORROWED: 0,
-      LOST: 0,
-      DAMAGED: 0,
-    };
-
-    for (const copy of book.copies) {
-      const statusKey = copy.status as string;
-      stats[statusKey] = (stats[statusKey] || 0) + 1;
-    }
-
-    const available = stats.AVAILABLE;
-    const borrowed = stats.BORROWED;
-    const total = book._count.copies;
-
-    // TRANSFORM ASSET LINKS: Format database keys for frontend route usage
-    const enrichedBook = {
-      ...book,
-      coverImage: book.coverImage ? `/api/files/${book.coverImage}` : null,
-      ebook: book.ebook
-        ? {
-            ...book.ebook,
-            filePath: `/api/files/${book.ebook.filePath}`,
-          }
-        : null,
-      status:
-        available > 0 ? "available" : borrowed > 0 ? "borrowed" : "unavailable",
-      availability: {
-        available,
-        borrowed,
-        total,
-        isAvailable: available > 0,
-      },
-    };
-
-    return NextResponse.json(
-      { success: true, data: enrichedBook },
-      { status: 200 },
-    );
+    const book = await getBookById(id);
+    return NextResponse.json({ success: true, data: book });
   } catch (error) {
-    console.error("API Error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch book" },
-      { status: 500 },
-    );
+    return toNextResponse(error);
   }
 }
 
-// ===============================
-// STORAGE ROOT (ONLY SOURCE OF TRUTH)
-// ===============================
-const STORAGE_ROOT = path.resolve(
-  process.cwd(),
-  "..",
-  "ucstgo-library-storage",
-);
-
-// Convert DB path -> absolute filesystem path
-function toAbsoluteStoragePath(dbPath: string) {
-  return path.join(STORAGE_ROOT, dbPath);
-}
-
-/* -----------------------------
-   PATCH /api/books/[id]
------------------------------ */
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    /* =========================
-       1. AUTH & ROLE GATEKEEPING
-    ========================== */
-    const session = await auth.api.getSession({ headers: req.headers });
-
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const currentUserRole = session.user.role ?? "";
-    const allowedRoles = ["LECTURER", "LIBRARIAN", "ADMIN"];
-
-    if (!allowedRoles.includes(currentUserRole)) {
-      return NextResponse.json(
-        {
-          error:
-            "Forbidden: You do not have permission to modify catalog items.",
-        },
-        { status: 403 },
-      );
-    }
-
+    const user = await requireRole(req.headers, ALLOWED_BOOK_ROLES);
     const { id } = await context.params;
-
-    // Fetch existing book record up front for target validation
-    const existingBook = await prisma.book.findUnique({
-      where: { id },
-      include: { ebook: true },
-    });
-
-    if (!existingBook) {
-      return NextResponse.json({ error: "Book not found" }, { status: 404 });
-    }
-
-    /* =========================
-       2. SECURE OWNERSHIP CHECK
-    ========================== */
-    // Safeguard: Lecturers can only update the specific books they personally created.
-    if (
-      currentUserRole === "LECTURER" &&
-      existingBook.createdById !== session.user.id
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Forbidden: Lecturers can only modify catalog items they originally created.",
-        },
-        { status: 403 },
-      );
-    }
 
     const contentLength = Number(req.headers.get("content-length")) || 0;
     const bodyLimitError = validateContentLength(
@@ -199,90 +60,32 @@ export async function PATCH(
     if (bodyLimitError) return bodyLimitError;
 
     const formData = await req.formData();
-
     const cover = formData.get("cover") as File | null;
     const ebookFile = formData.get("ebook") as File | null;
 
     const coverSizeError = validateFileSize(cover, FILE_LIMITS.cover, "Cover");
     if (coverSizeError) return coverSizeError;
-    const ebookSizeError = validateFileSize(
-      ebookFile,
-      FILE_LIMITS.ebook,
-      "Ebook",
-    );
+    const ebookSizeError = validateFileSize(ebookFile, FILE_LIMITS.ebook, "Ebook");
     if (ebookSizeError) return ebookSizeError;
 
-    const title = String(formData.get("title") || "");
-    const isbn = String(formData.get("isbn") || "");
-    const authorName = String(formData.get("author") || "");
-    const categoryName = String(formData.get("category") || "");
-    const description = String(formData.get("description") || "");
-    const publisher = String(formData.get("publisher") || "");
-    const language = String(formData.get("language") || "");
-    const shelfLocation = String(formData.get("shelfLocation") || "");
-
-    const donate =
-      formData.get("donate") !== null ? String(formData.get("donate")) : null;
-
-    const semesterId = formData.get("semester")
-      ? String(formData.get("semester"))
-      : null;
-
-    const publicationYearRaw = formData.get("publicationYear");
-    const publicationYear =
-      publicationYearRaw && !isNaN(Number(publicationYearRaw))
-        ? Number(publicationYearRaw)
-        : null;
-
-    const desiredCopiesRaw = formData.get("copies");
-    const desiredCopies =
-      desiredCopiesRaw && !isNaN(Number(desiredCopiesRaw))
-        ? Number(desiredCopiesRaw)
-        : 0;
-
-    const STORAGE_ROOT = path.resolve(
-      process.cwd(),
-      "..",
-      "ucstgo-library-storage",
-    );
-
-    function getUploadPath(type: "covers" | "ebooks") {
-      const date = new Date();
-      const year = date.getFullYear().toString();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-
-      return {
-        dir: join(STORAGE_ROOT, "books", type, year, month),
-        dbPath: `books/${type}/${year}/${month}`,
-      };
+    const existingBook = await prisma.book.findUnique({
+      where: { id },
+      include: { ebook: true },
+    });
+    if (!existingBook) {
+      return NextResponse.json({ error: "Book not found" }, { status: 404 });
     }
 
-    const [author, category] = await Promise.all([
-      getOrCreateAuthor(authorName),
-      getOrCreateCategory(categoryName),
-    ]);
-
-    /* =========================
-       COVER UPDATE
-    ========================== */
     let coverImage = existingBook.coverImage;
-
     if (cover && cover.size > 0) {
       const coverPath = getUploadPath("covers");
-
       await mkdir(coverPath.dir, { recursive: true });
-
-      const safeName = cover.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-      const fileName = `${crypto.randomUUID()}-${safeName}`;
-
-      const absolutePath = join(coverPath.dir, fileName);
-
-      const buffer = Buffer.from(await cover.arrayBuffer());
-      await writeFile(absolutePath, buffer);
-
+      const fileName = `${crypto.randomUUID()}-${cover.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+      await writeFile(
+        join(coverPath.dir, fileName),
+        Buffer.from(await cover.arrayBuffer()),
+      );
       coverImage = `${coverPath.dbPath}/${fileName}`;
-
-      // delete old cover
       if (existingBook.coverImage) {
         try {
           await unlink(path.join(STORAGE_ROOT, existingBook.coverImage));
@@ -290,27 +93,16 @@ export async function PATCH(
       }
     }
 
-    /* =========================
-       EBOOK UPDATE
-    ========================== */
     let ebookDbPath: string | null = existingBook.ebook?.filePath || null;
-
     if (ebookFile && ebookFile.size > 0) {
       const ebookPath = getUploadPath("ebooks");
-
       await mkdir(ebookPath.dir, { recursive: true });
-
-      const safeName = ebookFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-      const fileName = `${crypto.randomUUID()}-${safeName}`;
-
-      const absolutePath = join(ebookPath.dir, fileName);
-
-      const buffer = Buffer.from(await ebookFile.arrayBuffer());
-      await writeFile(absolutePath, buffer);
-
+      const fileName = `${crypto.randomUUID()}-${ebookFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+      await writeFile(
+        join(ebookPath.dir, fileName),
+        Buffer.from(await ebookFile.arrayBuffer()),
+      );
       ebookDbPath = `${ebookPath.dbPath}/${fileName}`;
-
-      // delete old ebook
       if (existingBook.ebook?.filePath) {
         try {
           await unlink(path.join(STORAGE_ROOT, existingBook.ebook.filePath));
@@ -318,62 +110,37 @@ export async function PATCH(
       }
     }
 
-    /* =========================
-       UPDATE DATABASE
-    ========================== */
-    // FIX 2: Re-architect data structure map query inside the relational update payload
-    const updatedBook = await prisma.book.update({
-      where: { id },
-      data: {
-        title,
-        isbn,
-        authorId: author.id,
-        categoryId: category.id,
-        description,
-        publisher,
-        publicationYear,
-        language,
+    const updatedBook = await updateBook(
+      id,
+      {
+        title: String(formData.get("title") || ""),
+        isbn: String(formData.get("isbn") || ""),
+        authorName: String(formData.get("author") || ""),
+        categoryName: String(formData.get("category") || ""),
+        description: String(formData.get("description") || ""),
+        publisher: String(formData.get("publisher") || ""),
+        language: String(formData.get("language") || ""),
         coverImage,
-        donate,
-
-        ebook: ebookDbPath
-          ? {
-              upsert: {
-                create: {
-                  filePath: ebookDbPath,
-                  format: "PDF",
-                  semesterId: semesterId, // 👈 Fix field name
-                },
-                update: {
-                  filePath: ebookDbPath,
-                  semesterId: semesterId, // 👈 Fix field name
-                },
-              },
-            }
-          : {
-              update: {
-                semesterId: semesterId, // 👈 Fix field name
-              },
-            },
+        ebookDbPath,
+        semesterId: formData.get("semester")
+          ? String(formData.get("semester"))
+          : null,
+        publicationYear: formData.get("publicationYear")
+          ? Number(formData.get("publicationYear"))
+          : null,
+        donate:
+          formData.get("donate") !== null
+            ? String(formData.get("donate"))
+            : null,
       },
-      include: {
-        author: true,
-        category: true,
-        ebook: {
-          include: {
-            semester: true, // Include the populated Semester object for consistency across the application
-          },
-        },
-      },
-    });
+      user.id,
+    );
 
-    /* =========================
-       SYNC COPIES
-    ========================== */
+    const desiredCopies = Number(formData.get("copies") || 0);
+    const shelfLocation = String(formData.get("shelfLocation") || "");
     const currentCopiesCount = await prisma.bookCopy.count({
       where: { bookId: id },
     });
-
     const diff = desiredCopies - currentCopiesCount;
 
     if (shelfLocation) {
@@ -387,7 +154,7 @@ export async function PATCH(
       await prisma.bookCopy.createMany({
         data: Array.from({ length: diff }).map((_, i) => ({
           bookId: id,
-          barcode: generateBarcode(isbn, currentCopiesCount + i),
+          barcode: generateBarcode(String(formData.get("isbn") || ""), currentCopiesCount + i),
           status: "AVAILABLE",
           shelfLocation: shelfLocation || "Unassigned",
         })),
@@ -400,27 +167,17 @@ export async function PATCH(
         orderBy: { createdAt: "desc" },
         take: Math.abs(diff),
       });
-
       if (copiesToDelete.length < Math.abs(diff)) {
         return NextResponse.json(
-          {
-            error:
-              "Cannot reduce copies because some are borrowed/unavailable.",
-          },
+          { error: "Cannot reduce copies because some are borrowed/unavailable." },
           { status: 400 },
         );
       }
-
       await prisma.bookCopy.deleteMany({
-        where: {
-          id: { in: copiesToDelete.map((c) => c.id) },
-        },
+        where: { id: { in: copiesToDelete.map((c) => c.id) } },
       });
     }
 
-    /* =========================
-       RESPONSE
-    ========================== */
     return NextResponse.json({
       success: true,
       data: {
@@ -429,69 +186,34 @@ export async function PATCH(
           ? `/api/files/${updatedBook.coverImage}`
           : null,
         ebook: updatedBook.ebook
-          ? {
-              ...updatedBook.ebook,
-              filePath: `/api/files/${updatedBook.ebook.filePath}`,
-            }
+          ? { ...updatedBook.ebook, filePath: `/api/files/${updatedBook.ebook.filePath}` }
           : null,
       },
     });
   } catch (error) {
     console.error("PATCH Error:", error);
-    return NextResponse.json(
-      { error: "Failed to update book" },
-      { status: 500 },
-    );
+    return toNextResponse(error);
   }
 }
 
-/* -----------------------------
-   DELETE /api/books/[id]
------------------------------ */
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await context.params;
+    const files = await deleteBook(id);
 
-    // 1. Fetch record to track down existing storage assets before deletion
-    const book = await prisma.book.findUnique({
-      where: { id },
-      include: { ebook: true },
-    });
-
-    if (!book) {
-      return NextResponse.json(
-        { success: false, error: "Book not found" },
-        { status: 404 },
-      );
-    }
-
-    // 2. Clear out filesystem assets
-    if (book.coverImage) {
+    if (files.coverImage) {
       try {
-        await unlink(toAbsoluteStoragePath(book.coverImage));
-      } catch (err) {
-        console.warn("Failed to remove cover image on deletion:", err);
-      }
+        await unlink(path.join(STORAGE_ROOT, files.coverImage));
+      } catch {}
     }
-
-    if (book.ebook?.filePath) {
+    if (files.ebookPath) {
       try {
-        await unlink(toAbsoluteStoragePath(book.ebook.filePath));
-      } catch (err) {
-        console.warn("Failed to remove ebook file on deletion:", err);
-      }
+        await unlink(path.join(STORAGE_ROOT, files.ebookPath));
+      } catch {}
     }
-
-    // 3. Remove database references (Cascade hooks or manual deletion blocks)
-    // Delete copies and e-books first if they don't use PostgreSQL Cascades
-    await prisma.$transaction([
-      prisma.bookCopy.deleteMany({ where: { bookId: id } }),
-      prisma.ebook.deleteMany({ where: { bookId: id } }),
-      prisma.book.delete({ where: { id } }),
-    ]);
 
     return NextResponse.json({
       success: true,
@@ -499,9 +221,6 @@ export async function DELETE(
     });
   } catch (error) {
     console.error("DELETE Error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete book record" },
-      { status: 500 },
-    );
+    return toNextResponse(error);
   }
 }

@@ -1,64 +1,38 @@
-import { auth } from "@/lib/auth";
-import prisma from "@/lib/prisma";
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { toNextResponse } from "@/lib/errors";
+import { requireRole, ALLOWED_STAFF_ROLES } from "@/lib/services/auth.service";
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const reqHeaders = await headers();
-
-  const session = await auth.api.getSession({ headers: reqHeaders });
-
-  if (
-    !session?.user ||
-    (session.user.role !== "ADMIN" && session.user.role !== "LIBRARIAN")
-  ) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    // Added 'banned' to the destructuring
-    const { name, phone, studentId, faculty, password, banned } =
-      await req.json();
+    await requireRole(req.headers, ALLOWED_STAFF_ROLES);
+    const { id } = await params;
+    const { name, phone, studentId, faculty, password, banned } = await req.json();
 
-    // -------------------------
-    // 1. UPDATE PROFILE (DB ONLY)
-    // -------------------------
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(phone !== undefined && { phone }),
-        ...(studentId !== undefined && { studentId }),
-        ...(faculty !== undefined && { faculty }),
-        // Include 'banned' if it's provided in the request body
-        ...(banned !== undefined && { banned }),
-      },
-    });
+    const data: any = {};
+    if (name !== undefined) data.name = name;
+    if (phone !== undefined) data.phone = phone;
+    if (studentId !== undefined) data.studentId = studentId;
+    if (faculty !== undefined) data.faculty = faculty;
+    if (banned !== undefined) data.banned = banned;
 
-    // -------------------------
-    // 2. UPDATE PASSWORD (AUTH ONLY)
-    // -------------------------
-    const adminApi = auth.api as any;
+    const updated = await prisma.user.update({ where: { id }, data });
 
-    if (password && password.trim().length > 0) {
-      await adminApi.updateUser({
-        headers: reqHeaders,
-        body: {
-          id,
-          password: password.trim(),
-        },
+    if (password?.trim()) {
+      await (auth.api as any).updateUser({
+        headers: await headers(),
+        body: { id, password: password.trim() },
       });
     }
 
-    return NextResponse.json(updatedUser);
-  } catch (error: any) {
-    console.error("[STUDENTS_SERVER_PATCH]", error);
-
-    return NextResponse.json({ message: "Update failed" }, { status: 500 });
+    return NextResponse.json(updated);
+  } catch (error) {
+    return toNextResponse(error);
   }
 }
 
@@ -66,38 +40,18 @@ export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({
-    headers: reqHeaders,
-  });
-
-  const { id } = await params;
-
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
-  }
-
   try {
-    // Delete Better Auth records first
-    await prisma.session.deleteMany({
-      where: { userId: id },
-    });
+    await requireRole(req.headers, ["ADMIN"]);
+    const { id } = await params;
 
-    await prisma.account.deleteMany({
-      where: { userId: id },
-    });
+    await prisma.$transaction([
+      prisma.session.deleteMany({ where: { userId: id } }),
+      prisma.account.deleteMany({ where: { userId: id } }),
+      prisma.user.delete({ where: { id } }),
+    ]);
 
-    // Delete user
-    await prisma.user.delete({
-      where: { id },
-    });
-
-    return NextResponse.json({
-      message: "User deleted successfully",
-    });
+    return NextResponse.json({ message: "User deleted successfully" });
   } catch (error) {
-    console.error("[STUDENTS_SERVER_DELETE]", error);
-
-    return NextResponse.json({ message: "Delete failed" }, { status: 500 });
+    return toNextResponse(error);
   }
 }

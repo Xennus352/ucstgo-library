@@ -42,6 +42,8 @@ import { z } from "zod";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/StatusBadge";
+import { statusBadge } from "@/lib/design-tokens";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Drawer,
@@ -199,31 +201,25 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       const status = row.original.status;
       if (status === "Overdue") {
         return (
-          <Badge variant="destructive" className="gap-1 px-1.5">
+          <span className={statusBadge({ status: "OVERDUE", className: "gap-1 px-1.5" })}>
             <AlertTriangleIcon className="size-3" />
             Overdue
-          </Badge>
+          </span>
         );
       }
       if (status === "Returned") {
         return (
-          <Badge
-            variant="outline"
-            className="gap-1 px-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5"
-          >
+          <span className={statusBadge({ status: "RETURNED", className: "gap-1 px-1.5" })}>
             <CircleCheckIcon className="size-3 fill-emerald-500 text-background dark:fill-emerald-400" />
             Returned
-          </Badge>
+          </span>
         );
       }
       return (
-        <Badge
-          variant="outline"
-          className="gap-1 px-1.5 text-blue-500 border-blue-500/30 bg-blue-500/5"
-        >
-          <LoaderIcon className="size-3 animate-spin text-blue-500" />
+        <span className={statusBadge({ status: "BORROWED", className: "gap-1 px-1.5" })}>
+          <LoaderIcon className="size-3 animate-spin" />
           Borrowed
-        </Badge>
+        </span>
       );
     },
   },

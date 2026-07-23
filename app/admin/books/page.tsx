@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { Plus, FileUp } from "lucide-react";
 import { BookZipImport } from "@/components/books/BookZipImport";
@@ -10,7 +9,7 @@ import { BookStats } from "@/components/books/BookStats";
 import { BookSearch } from "@/components/books/BookSearch";
 import { BookTable } from "@/components/books/BookTable";
 import { ImportModal } from "@/components/books/ImportModal";
-import { fetcher } from "@/lib/fetcher";
+import { useBookSearch } from "@/features/catalog/hooks/use-book-catalog";
 import AlertModal from "@/components/AlertModal";
 
 export default function BooksPage() {
@@ -21,31 +20,21 @@ export default function BooksPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Build query parameters
-  const queryParams = new URLSearchParams({
-    page: page.toString(),
-    limit: "20",
-    ...(searchQuery && { q: searchQuery }),
-    ...(categoryFilter && { categoryId: categoryFilter }),
-    ...(statusFilter && { status: statusFilter }),
+  const { data, mutate, isLoading } = useBookSearch({
+    page,
+    limit: 20,
+    q: searchQuery || undefined,
+    categoryId: categoryFilter || undefined,
+    status: statusFilter || undefined,
   });
 
-  // SWR automatically re-fetches when search, category, status, or page changes
-  const { data, mutate, isLoading } = useSWR(
-    `/api/books?${queryParams.toString()}`,
-    fetcher,
-    { keepPreviousData: true },
-  );
-
-  // Delete Handler
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this book?")) return;
 
     await fetch(`/api/books/${id}`, { method: "DELETE" });
-    mutate(); // Refresh the data list
+    mutate();
   };
 
-  // Edit Handler
   const handleEdit = (id: string) => {
     window.location.href = `/admin/books/edit/${id}`;
   };
@@ -56,7 +45,6 @@ export default function BooksPage() {
   return (
     <div className=" ">
       <div className="px-4 lg:px-8 py-8">
-        {/* Header Section */}
         <div className="rounded-xl border bg-white p-4 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
@@ -66,7 +54,6 @@ export default function BooksPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              {/* THE NEW BROADCAST BUTTON */}
               <Button
                 variant="outline"
                 onClick={() => setIsModalOpen(true)}
@@ -86,10 +73,8 @@ export default function BooksPage() {
     backdrop-blur-sm
   `}
               >
-                {/* Animated Gradient Background */}
                 <div className="absolute inset-0 bg-gradient-to-r from-amber-400/0 via-amber-400/0 to-amber-500/0 group-hover:from-amber-400/20 group-hover:via-amber-400/20 group-hover:to-amber-500/30 transition-all duration-500" />
 
-                {/* Shimmer Effect */}
                 <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-amber-400/20 to-transparent" />
 
                 <div className="relative flex items-center gap-2.5">
@@ -98,10 +83,8 @@ export default function BooksPage() {
                   </span>
                   <span className="relative">
                     Send Alert
-                    {/* Underline Animation */}
                     <span className="absolute -bottom-0.5 left-0 w-0 group-hover:w-full h-0.5 bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-300" />
                   </span>
-                  {/* Pulse Ring */}
                   <span className="relative flex h-2 w-2 ml-1">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
@@ -156,7 +139,6 @@ export default function BooksPage() {
           </ImportModal>
         )}
 
-        {/* Books Table */}
         <BookTable
           data={books}
           isLoading={isLoading}
@@ -164,7 +146,6 @@ export default function BooksPage() {
           onDelete={handleDelete}
         />
 
-        {/* Pagination */}
         <div className="flex items-center justify-between mt-6">
           <p className="text-sm text-muted-foreground">
             {pagination
@@ -191,7 +172,6 @@ export default function BooksPage() {
           </div>
         </div>
       </div>
-      {/* THE MODAL INJECTED HERE */}
       <AlertModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );

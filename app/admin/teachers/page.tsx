@@ -1,35 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TeacherMetrics } from "@/components/admin/teachers/teacher-metrics";
 import { TeacherTableWrapper } from "@/components/admin/teachers/teacher-table-wrapper";
+import { useUserList } from "@/features/user-management/hooks/use-user-management";
 import Loading from "@/components/animations/Loading";
 
 export default function TeacherManagementPage() {
-  const [teachers, setTeachers] = useState<any[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useUserList("TEACHER");
+  const teachers = data?.data ?? null;
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        // Fetch from the new Teacher API endpoint
-        const res = await fetch("/api/admin/teachers");
-        const result = await res.json();
-
-        setTeachers(result.data || []);
-      } catch (error) {
-        console.error("Failed to fetch teachers:", error);
-        setTeachers([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
-
-  if (loading)
+  if (isLoading)
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-500">
         <div className="relative">
@@ -66,7 +47,6 @@ export default function TeacherManagementPage() {
               </div>
             </div>
 
-            {/* Defensive check: only render if teachers is not null */}
             {teachers && (
               <>
                 <TeacherMetrics data={teachers} />

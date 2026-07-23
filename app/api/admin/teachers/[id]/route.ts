@@ -1,71 +1,51 @@
-import { auth } from "@/lib/auth";
-import prisma from "@/lib/prisma";
-
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { toNextResponse } from "@/lib/errors";
+import { requireRole, ALLOWED_STAFF_ROLES } from "@/lib/services/auth.service";
 
-// 1. PATCH: Update Teacher Details
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
-
-  // Only Admin/Librarian can update
-  if (
-    !session?.user ||
-    (session.user.role !== "ADMIN" && session.user.role !== "LIBRARIAN")
-  ) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    await requireRole(req.headers, ALLOWED_STAFF_ROLES);
+    const { id } = await params;
     const { name, phone, faculty, password, banned } = await req.json();
 
-    // Update Profile Fields
-    const updatedUser = await prisma.user.update({
-      where: { id, role: "LECTURER" }, // Enforce role constraint
-      data: {
-        ...(name !== undefined && { name }),
-        ...(phone !== undefined && { phone }),
-        ...(faculty !== undefined && { faculty }),
-        ...(banned !== undefined && { banned }),
-      },
+    const data: any = {};
+    if (name !== undefined) data.name = name;
+    if (phone !== undefined) data.phone = phone;
+    if (faculty !== undefined) data.faculty = faculty;
+    if (banned !== undefined) data.banned = banned;
+
+    const updated = await prisma.user.update({
+      where: { id, role: "LECTURER" },
+      data,
     });
 
-    // Update Password via Auth API if provided
-    if (password && password.trim().length > 0) {
+    if (password?.trim()) {
       await (auth.api as any).updateUser({
-        headers: reqHeaders,
+        headers: await headers(),
         body: { id, password: password.trim() },
       });
     }
 
-    return NextResponse.json(updatedUser);
-  } catch (error: any) {
-    console.error("[TEACHERS_SERVER_PATCH]", error);
-    return NextResponse.json({ message: "Update failed" }, { status: 500 });
+    return NextResponse.json(updated);
+  } catch (error) {
+    return toNextResponse(error);
   }
 }
 
-// 2. DELETE: Remove Teacher
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
-
-  // Only Admin can delete teachers
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
-  }
-
   try {
-    // Transaction to ensure data integrity
+    await requireRole(req.headers, ["ADMIN"]);
+    const { id } = await params;
+
     await prisma.$transaction([
       prisma.session.deleteMany({ where: { userId: id } }),
       prisma.account.deleteMany({ where: { userId: id } }),
@@ -74,7 +54,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Teacher deleted successfully" });
   } catch (error) {
-    console.error("[TEACHERS_SERVER_DELETE]", error);
-    return NextResponse.json({ message: "Delete failed" }, { status: 500 });
+    return toNextResponse(error);
   }
 }

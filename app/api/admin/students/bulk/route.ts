@@ -1,55 +1,45 @@
-import { auth } from "@/lib/auth";
-import prisma from "@/lib/prisma";
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { toNextResponse } from "@/lib/errors";
+import { requireRole, ALLOWED_STAFF_ROLES } from "@/lib/services/auth.service";
 
 export async function POST(req: Request) {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
-
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "LIBRARIAN")) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    await requireRole(req.headers, ALLOWED_STAFF_ROLES);
     const { students } = await req.json();
-    if (!Array.isArray(students)) return NextResponse.json({ message: "Invalid payload" }, { status: 400 });
+    if (!Array.isArray(students)) {
+      return NextResponse.json({ message: "Invalid payload" }, { status: 400 });
+    }
 
-    const results = [];
-
-    for (const student of students) {
+    const results: any[] = [];
+    for (const s of students) {
       try {
-        // 1. Better Auth handles hashing and table relationships automatically
         const newUser = await auth.api.signUpEmail({
           body: {
-            email: student.email,
-            password: student.password || "UCSTgoStudent@2026",
-            name: student.name,
-            
+            email: s.email,
+            password: s.password || "UCSTgoStudent@2026",
+            name: s.name,
           },
         });
-
-        // 2. Update additional custom fields
         await prisma.user.update({
           where: { id: newUser.user.id },
           data: {
-            studentId: student.studentId || null,
-            faculty: student.faculty || null,
-            phone: student.phone || null,
+            role: "STUDENT",
+            studentId: s.studentId || null,
+            faculty: s.faculty || null,
+            phone: s.phone || null,
             emailVerified: true,
           },
         });
-
-        results.push({ email: student.email, status: "success" });
+        results.push({ email: s.email, status: "success" });
       } catch (err: any) {
-        console.error(`Import error for ${student.email}:`, err.message);
-        results.push({ email: student.email, status: "error", message: err.message });
+        results.push({ email: s.email, status: "error", message: err.message });
       }
     }
 
     return NextResponse.json({ results }, { status: 201 });
   } catch (error) {
-    console.error("[STUDENTS_SERVER_BULK]", error);
-    return NextResponse.json({ message: "Bulk import failed" }, { status: 500 });
+    return toNextResponse(error);
   }
 }

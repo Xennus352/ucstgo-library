@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
+import { statusBadge, roleBadge } from "@/lib/design-tokens";
 
 import { BorrowRecord } from "../types";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -241,7 +242,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
                 {/* Role Indicator Accent */}
                 {user.role && (
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-600 border border-sky-500/15 shadow-2xs backdrop-blur-xs">
+                  <span className={roleBadge({ role: user.role as any })}>
                     {user.role}
                   </span>
                 )}
@@ -577,12 +578,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
                           {/* RIGHT SIDE STATUS */}
                           <span
-                            className={`text-[10px] font-bold tracking-wide uppercase px-2.5 py-0.5 rounded-full border shrink-0
-          ${
-            isOverdue
-              ? "bg-red-500/10 text-red-600 border-red-500/20"
-              : "bg-sky-500/10 text-sky-600 border-sky-500/10"
-          }`}
+                            className={statusBadge({ status: isOverdue ? "OVERDUE" : "BORROWED", className: "shrink-0" })}
                           >
                             {isOverdue ? "Overdue" : "Checked Out"}
                           </span>
@@ -674,11 +670,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {/* Status Badge */}
                             <span
-                              className={`text-[10px] font-bold tracking-wide uppercase px-2.5 py-0.5 rounded-full border ${
-                                isExpired
-                                  ? "bg-red-500/10 text-red-600 border-red-500/20"
-                                  : "bg-emerald-500/10 text-emerald-600 border-emerald-500/10"
-                              }`}
+                              className={statusBadge({ status: isExpired ? "OVERDUE" : "AVAILABLE", className: "" })}
                             >
                               {isExpired ? "Expired" : "On Hold"}
                             </span>

@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-
-import prisma from "@/lib/prisma";
+import { getSession, getDbUserRole, getDefaultRoute } from "@/lib/services/auth.service";
 
 export async function proxy(req: Request) {
   const url = new URL(req.url);
@@ -15,11 +13,8 @@ export async function proxy(req: Request) {
     return NextResponse.next();
   }
 
-  const session = await auth.api.getSession({
-    headers: req.headers,
-  });
+  const session = await getSession(req.headers);
 
-  // not logged in
   if (!session?.user) {
     if (path === "/student" || path === "/student/dashboard") {
       return NextResponse.next();
@@ -27,41 +22,26 @@ export async function proxy(req: Request) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  // get real user from DB
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true },
-  });
+  const role = await getDbUserRole(session.user.id);
 
-  if (!user) {
+  if (!role) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  // 🔒 ROLE PROTECTION MAP
-  const roleRules: Record<string, string> = {
-    ADMIN: "/admin/dashboard",
-    STUDENT: "/student/dashboard",
-    LIBRARIAN: "/librarian/dashboard",
-    LECTURER: "/lecturer/ebooks",
+  const roleRoute = getDefaultRoute(role);
+  const routePatterns: Record<string, string> = {
+    "/admin": "ADMIN",
+    "/student": "STUDENT",
+    "/librarian": "LIBRARIAN",
+    "/lecturer": "LECTURER",
   };
-  const role = user.role;
 
-  // check route access
-  if (path.startsWith("/admin") && role !== "ADMIN") {
-    return NextResponse.redirect(new URL(roleRules[role], req.url));
+  for (const [prefix, allowedRole] of Object.entries(routePatterns)) {
+    if (path.startsWith(prefix) && role !== allowedRole) {
+      return NextResponse.redirect(new URL(roleRoute, req.url));
+    }
   }
 
-  if (path.startsWith("/student") && role !== "STUDENT") {
-    return NextResponse.redirect(new URL(roleRules[role], req.url));
-  }
-
-  if (path.startsWith("/librarian") && role !== "LIBRARIAN") {
-    return NextResponse.redirect(new URL(roleRules[role], req.url));
-  }
-
-  if (path.startsWith("/lecturer") && role !== "LECTURER") {
-    return NextResponse.redirect(new URL(roleRules[role], req.url));
-  }
   return NextResponse.next();
 }
 

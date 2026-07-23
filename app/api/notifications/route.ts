@@ -1,42 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { toNextResponse } from "@/lib/errors";
+import { requireSession } from "@/lib/services/auth.service";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
-
-    if (!session?.user) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const userId = session.user.id;
+    const { user } = await requireSession(request.headers);
 
     const notifications = await prisma.notification.findMany({
-      where: {
-        OR: [{ userId: userId }, { userId: null }],
-      },
+      where: { OR: [{ userId: user.id }, { userId: null }] },
       include: {
-        sender: {
-          select: {
-            name: true,
-            role: true,
-          },
-        },
-        reads: {
-          where: {
-            userId: userId,
-          },
-          select: {
-            id: true,
-          },
-        },
+        sender: { select: { name: true, role: true } },
+        reads: { where: { userId: user.id }, select: { id: true } },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
       take: 4,
     });
 
@@ -49,17 +26,8 @@ export async function GET(request: NextRequest) {
       isRead: n.reads.length > 0,
     }));
 
-    return NextResponse.json({
-      success: true,
-      notifications: formatted,
-    });
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message,
-      },
-      { status: 500 },
-    );
+    return NextResponse.json({ success: true, notifications: formatted });
+  } catch (error) {
+    return toNextResponse(error);
   }
 }

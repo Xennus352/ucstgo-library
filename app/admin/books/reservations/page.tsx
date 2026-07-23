@@ -7,7 +7,7 @@ import { ReservationStats } from "@/components/reservations/ReservationStats";
 import { ReservationFilters } from "@/components/reservations/ReservationFilters";
 import { ReservationTable } from "@/components/reservations/ReservationTable";
 import { Pagination } from "@/components/reservations/Pagination";
-
+import { useReservations } from "@/features/circulation/hooks/use-circulation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,11 +29,7 @@ interface Reservation {
 }
 
 export default function ReservationPage() {
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [filteredReservations, setFilteredReservations] = useState<
-    Reservation[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [filteredReservations, setFilteredReservations] = useState<Reservation[]>([]);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,7 +46,6 @@ export default function ReservationPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Custom Confirmation Dialog State
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -67,12 +62,25 @@ export default function ReservationPage() {
     onConfirm: () => {},
   });
 
-  // Fetch all records exactly once on component mounting
-  useEffect(() => {
-    fetchReservations();
-  }, []);
+  const { data, isLoading, mutate } = useReservations();
+  const reservations = (data?.success ? data.data : []) as Reservation[];
 
-  // Compute all filtering logic locally
+  const calculateStats = (data: Reservation[]) => {
+    setStats({
+      total: data.length,
+      active: data.filter((r) => r?.status === "ACTIVE").length,
+      fulfilled: data.filter((r) => r?.status === "FULFILLED").length,
+      cancelled: data.filter((r) => r?.status === "CANCELLED").length,
+      expired: data.filter((r) => r?.status === "EXPIRED").length,
+    });
+  };
+
+  useEffect(() => {
+    if (data?.success) {
+      calculateStats(data.data || []);
+    }
+  }, [data]);
+
   useEffect(() => {
     let result = [...reservations];
 
@@ -112,38 +120,8 @@ export default function ReservationPage() {
 
     setFilteredReservations(result);
     setCurrentPage(1);
-  }, [reservations, searchQuery, statusFilter, dateFilter]);
+  }, [data, searchQuery, statusFilter, dateFilter]);
 
-  const fetchReservations = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/reservations`);
-      const data = await response.json();
-
-      if (data.success) {
-        setReservations(data.data || []);
-        calculateStats(data.data || []);
-      } else {
-        toast.error(data.error || "Failed to load reservations");
-      }
-    } catch {
-      toast.error("Failed to load reservations");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const calculateStats = (data: Reservation[]) => {
-    setStats({
-      total: data.length,
-      active: data.filter((r) => r?.status === "ACTIVE").length,
-      fulfilled: data.filter((r) => r?.status === "FULFILLED").length,
-      cancelled: data.filter((r) => r?.status === "CANCELLED").length,
-      expired: data.filter((r) => r?.status === "EXPIRED").length,
-    });
-  };
-
-  // Execution functions separated from confirmation prompts
   const executeFulfill = async (reservationId: string) => {
     try {
       setIsProcessing(reservationId);
@@ -151,12 +129,12 @@ export default function ReservationPage() {
         `/api/reservations/${reservationId}/fullfill`,
         { method: "POST" },
       );
-      const data = await response.json();
-      if (data.success) {
+      const result = await response.json();
+      if (result.success) {
         toast.success("Reservation fulfilled successfully!");
-        fetchReservations();
+        mutate();
       } else {
-        toast.error(data.error || "Failed to fulfill reservation");
+        toast.error(result.error || "Failed to fulfill reservation");
       }
     } catch {
       toast.error("Failed to fulfill reservation");
@@ -172,12 +150,12 @@ export default function ReservationPage() {
         `/api/reservations/${reservationId}/cancel`,
         { method: "POST" },
       );
-      const data = await response.json();
-      if (data.success) {
+      const result = await response.json();
+      if (result.success) {
         toast.success("Reservation cancelled successfully");
-        fetchReservations();
+        mutate();
       } else {
-        toast.error(data.error || "Failed to cancel reservation");
+        toast.error(result.error || "Failed to cancel reservation");
       }
     } catch {
       toast.error("Failed to cancel reservation");
@@ -186,7 +164,6 @@ export default function ReservationPage() {
     }
   };
 
-  // Triggers for custom confirmation modal
   const handleFulfillReservation = (reservationId: string) => {
     setConfirmConfig({
       isOpen: true,
@@ -254,7 +231,7 @@ export default function ReservationPage() {
         setStatusFilter={setStatusFilter}
         dateFilter={dateFilter}
         setDateFilter={setDateFilter}
-        onRefresh={fetchReservations}
+        onRefresh={() => mutate()}
       />
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -275,7 +252,6 @@ export default function ReservationPage() {
         />
       </div>
 
-      {/* Reusable Shadcn UI AlertDialog Wrapper */}
       <AlertDialog
         open={confirmConfig.isOpen}
         onOpenChange={(open) =>

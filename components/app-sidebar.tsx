@@ -128,6 +128,9 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />
+        <p className="px-3 pb-2 text-[10px] text-muted-foreground/50 text-center">
+          Developed By SMK
+        </p>
       </SidebarFooter>
     </Sidebar>
   );

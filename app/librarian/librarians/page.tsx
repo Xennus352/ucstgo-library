@@ -1,35 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { LibrarianMetrics } from "@/components/admin/library/librarian-metrics";
 import { LibrarianTableWrapper } from "@/components/admin/library/LibrarianTableWrapper";
-
+import { useUserList } from "@/features/user-management/hooks/use-user-management";
 
 export default function LibrarianManagementPage() {
-  const [librarians, setLibrarians] = useState<any[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useUserList("LIBRARIAN");
+  const librarians = data?.data ?? null;
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        // Fetch from the new Librarian API endpoint
-        const res = await fetch("/api/admin/librarians");
-        const result = await res.json();
-
-        setLibrarians(result.data || []);
-      } catch (error) {
-        console.error("Failed to fetch librarians:", error);
-        setLibrarians([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
-
-  if (loading)
+  if (isLoading)
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-500">
         <div className="relative">
@@ -66,7 +46,6 @@ export default function LibrarianManagementPage() {
               </div>
             </div>
 
-            {/* Defensive check: only render if librarians is not null */}
             {librarians && (
               <>
                 <LibrarianMetrics data={librarians} />

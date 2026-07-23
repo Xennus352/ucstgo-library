@@ -1,34 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { StudentMetrics } from "@/components/admin/students/student-metrics";
 import { StudentTableWrapper } from "@/components/admin/students/student-table-wrapper";
-
+import { useUserList } from "@/features/user-management/hooks/use-user-management";
 
 export default function StudentManagementPage() {
-  const [students, setStudents] = useState<any[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useUserList("STUDENT");
+  const students = data?.data ?? null;
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await fetch("/api/admin/students");
-        const result = await res.json();
-
-        setStudents(result.data || []);
-      } catch (error) {
-        console.error("Failed to fetch students:", error);
-        setStudents([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
-
-  if (loading)
+  if (isLoading)
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-500">
         <div className="relative">
@@ -65,7 +46,6 @@ export default function StudentManagementPage() {
               </div>
             </div>
 
-            {/* Defensive check: only render if students is not null */}
             {students && (
               <>
                 <StudentMetrics data={students} />

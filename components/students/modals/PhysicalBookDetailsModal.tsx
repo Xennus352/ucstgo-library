@@ -10,6 +10,7 @@ import {
   Clock,
   BookOpen,
 } from "lucide-react";
+import { statusBadge } from "@/lib/design-tokens";
 import { BookWithDetails } from "@/components/students/types";
 import {
   Dialog,
@@ -97,11 +98,11 @@ export const PhysicalBookDetailsModal: React.FC<
 
             <div className="pt-2">
               {isAvailable ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className={statusBadge({ status: "AVAILABLE", className: "gap-1 text-[11px]" })}>
                   <CheckCircle2 className="h-3 w-3" /> Available to Borrow
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-destructive/10 text-destructive border border-destructive/20">
+                <span className={statusBadge({ status: "BORROWED", className: "gap-1 text-[11px]" })}>
                   <XCircle className="h-3 w-3" /> All Copies Out
                 </span>
               )}

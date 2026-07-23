@@ -12,6 +12,7 @@ import {
   Check,
   Ban,
 } from "lucide-react";
+import { statusBadge } from "@/lib/design-tokens";
 
 interface Reservation {
   id: string;
@@ -29,19 +30,9 @@ interface TableProps {
   onCancel: (id: string) => void;
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "ACTIVE":
-      return "bg-yellow-50 text-yellow-700 border-yellow-200";
-    case "FULFILLED":
-      return "bg-green-50 text-green-700 border-green-200";
-    case "CANCELLED":
-      return "bg-gray-50 text-gray-700 border-gray-200";
-    case "EXPIRED":
-      return "bg-red-50 text-red-700 border-red-200";
-    default:
-      return "bg-gray-50 text-gray-700 border-gray-200";
-  }
+const getStatusBadgeClass = (status: string) => {
+  const s = status === "ACTIVE" ? "BORROWED" : status === "FULFILLED" ? "RETURNED" : status === "CANCELLED" ? "CANCELLED" : "OVERDUE";
+  return statusBadge({ status: s as any, className: "gap-1 px-2.5 py-1" });
 };
 
 const getStatusIcon = (status: string) => {
@@ -185,9 +176,7 @@ export function ReservationTable({
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center space-x-1 px-2.5 py-1 text-xs font-medium rounded-full border ${getStatusColor(reservation.status)}`}
-                      >
+                      <span className={getStatusBadgeClass(reservation.status)}>
                         {getStatusIcon(reservation.status)}
                         <span>{getStatusLabel(reservation.status)}</span>
                       </span>

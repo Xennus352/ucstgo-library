@@ -10,6 +10,7 @@ import {
   GraduationCap,
   HeartHandshake,
 } from "lucide-react";
+import { statusBadge } from "@/lib/design-tokens";
 
 interface BookPreviewCardProps {
   title: string;
@@ -191,10 +192,10 @@ console.log(hasUploadedCover)
               ISBN: {isbn || "N/A"}
             </span>
             {hasEbook && (
-              <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded text-xs font-medium border border-emerald-100 dark:border-emerald-900/30">
+              <span className={statusBadge({ status: "AVAILABLE", className: "gap-1 px-2 py-1 text-xs" })}>
                 <FileText className="w-3 h-3" />
                 <span>E-Book</span>
-              </div>
+              </span>
             )}
           </div>
         </div>
