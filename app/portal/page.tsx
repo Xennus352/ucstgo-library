@@ -8,10 +8,11 @@ import { roleRoutes } from "@/lib/role-routes";
 import { User } from "@/types/UserType";
 import { LoginFormValues, loginSchema } from "@/lib/validations/auth";
 import Image from "next/image";
-import { brandConfig } from "@/config/brand";
+import { useBrandConfig } from "@/components/brand-config-provider";
 
 export default function SignInPage() {
   const router = useRouter();
+  const { config: brandConfig } = useBrandConfig();
   const [isLoading, setIsLoading] = useState(false);
 
   const [dimensions, setDimensions] = useState({ width: 1200, height: 800 });
@@ -148,6 +149,7 @@ export default function SignInPage() {
                   width={84}
                   height={84}
                   className="object-contain"
+                  style={{ width: "auto", height: "auto" }}
                   priority
                 />
               </div>

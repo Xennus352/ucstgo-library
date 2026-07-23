@@ -3,6 +3,11 @@ import { writeFile, mkdir } from "fs/promises";
 import path, { join } from "path";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import {
+  FILE_LIMITS,
+  validateContentLength,
+  validateFileSize,
+} from "@/lib/upload";
 
 /* -----------------------------
    Upload Helpers (Decoupled Sandbox Model)
@@ -338,7 +343,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const contentLength = Number(req.headers.get("content-length")) || 0;
+    const bodyLimitError = validateContentLength(
+      contentLength,
+      FILE_LIMITS.cover + FILE_LIMITS.ebook + 1024 * 1024,
+    );
+    if (bodyLimitError) return bodyLimitError;
+
     const formData = await req.formData();
+
+    const cover = formData.get("cover") as File | null;
+    const ebook = formData.get("ebook") as File | null;
+
+    const coverSizeError = validateFileSize(cover, FILE_LIMITS.cover, "Cover");
+    if (coverSizeError) return coverSizeError;
+    const ebookSizeError = validateFileSize(ebook, FILE_LIMITS.ebook, "Ebook");
+    if (ebookSizeError) return ebookSizeError;
 
     const title = formData.get("title") as string;
     const isbn = formData.get("isbn") as string;
@@ -349,10 +369,6 @@ export async function POST(req: NextRequest) {
 
     // This is coming as an ID string (e.g. from a select dropdown)
     const semesterId = formData.get("semester") as string | null;
-
-    // Softly cast as optional parameters
-    const cover = formData.get("cover") as File | null;
-    const ebook = formData.get("ebook") as File | null;
 
     const copies = Number(formData.get("copies") || 1);
 

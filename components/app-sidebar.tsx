@@ -18,7 +18,7 @@ import { BookSearch } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { brandConfig } from "@/config/brand";
+import { useBrandConfig } from "@/components/brand-config-provider";
 
 // Match the exact shape of your navData object
 interface NavSubItem {
@@ -42,6 +42,7 @@ interface DynamicSidebarProps extends React.ComponentProps<typeof Sidebar> {
 export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
   const { user, isLoading, error } = useCurrentUser();
   const pathname = usePathname();
+  const { config: brandConfig } = useBrandConfig();
 
   // Create user data
   const userData = user
@@ -111,6 +112,7 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
                   width={36}
                   height={36}
                   className="object-contain"
+                  style={{ width: "auto", height: "auto" }}
                   priority
                 />
                 <span className="text-base font-semibold">

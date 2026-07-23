@@ -5,6 +5,9 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
 import {
+  FILE_LIMITS,
+  validateContentLength,
+  validateFileSize,
   generateBarcode,
   getOrCreateAuthor,
   getOrCreateCategory,
@@ -188,7 +191,26 @@ export async function PATCH(
       );
     }
 
+    const contentLength = Number(req.headers.get("content-length")) || 0;
+    const bodyLimitError = validateContentLength(
+      contentLength,
+      FILE_LIMITS.cover + FILE_LIMITS.ebook + 1024 * 1024,
+    );
+    if (bodyLimitError) return bodyLimitError;
+
     const formData = await req.formData();
+
+    const cover = formData.get("cover") as File | null;
+    const ebookFile = formData.get("ebook") as File | null;
+
+    const coverSizeError = validateFileSize(cover, FILE_LIMITS.cover, "Cover");
+    if (coverSizeError) return coverSizeError;
+    const ebookSizeError = validateFileSize(
+      ebookFile,
+      FILE_LIMITS.ebook,
+      "Ebook",
+    );
+    if (ebookSizeError) return ebookSizeError;
 
     const title = String(formData.get("title") || "");
     const isbn = String(formData.get("isbn") || "");
@@ -202,7 +224,6 @@ export async function PATCH(
     const donate =
       formData.get("donate") !== null ? String(formData.get("donate")) : null;
 
-    // FIX 1: Change property mapping name to match relation scalar field
     const semesterId = formData.get("semester")
       ? String(formData.get("semester"))
       : null;
@@ -218,9 +239,6 @@ export async function PATCH(
       desiredCopiesRaw && !isNaN(Number(desiredCopiesRaw))
         ? Number(desiredCopiesRaw)
         : 0;
-
-    const cover = formData.get("cover") as File | null;
-    const ebookFile = formData.get("ebook") as File | null;
 
     const STORAGE_ROOT = path.resolve(
       process.cwd(),

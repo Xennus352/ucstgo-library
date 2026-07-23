@@ -1,61 +1,57 @@
-"use server";
-
+import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
-export async function updateBrand(formData: FormData) {
+export async function POST(req: Request) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const formData = await req.formData();
+
   const name = formData.get("name")?.toString().trim();
+  const title = formData.get("title")?.toString().trim();
   const logo = formData.get("logo") as File | null;
   const faviconFile = formData.get("favicon") as File | null;
-  const title = formData.get("title")?.toString().trim();
 
   const configPath = path.join(process.cwd(), "config", "brand.ts");
 
-  // Read current config
   const configText = await fs.readFile(configPath, "utf8");
 
   const currentName =
     configText.match(/name:\s*"([^"]*)"/)?.[1] ?? "UCSTaungoo Digital Library";
-
   const currentLogo =
     configText.match(/logo:\s*"([^"]*)"/)?.[1] ?? "/images/brand.png";
-
   const currentFavicon =
     configText.match(/favicon:\s*"([^"]*)"/)?.[1] ?? "/icon.png";
-
   const currentTitle =
     configText.match(/title:\s*"([^"]*)"/)?.[1] ?? `${currentName} Digital Library`;
 
   let logoPath = currentLogo;
 
-  // Upload logo if provided
   if (logo && logo.size > 0) {
     const buffer = Buffer.from(await logo.arrayBuffer());
-
     const ext = path.extname(logo.name) || ".png";
-
     const stamp = Date.now();
     const filename = `brand_${stamp}${ext}`;
-
     const imageDir = path.join(process.cwd(), "public", "images");
-
     await fs.mkdir(imageDir, { recursive: true });
-
     await fs.writeFile(path.join(imageDir, filename), buffer);
-
     logoPath = `/images/${filename}`;
   }
 
   let faviconPath = currentFavicon;
 
-  // Upload favicon if provided — overwrite app/icon.png so Next.js serves it at /icon.png
   if (faviconFile && faviconFile.size > 0) {
     const buffer = Buffer.from(await faviconFile.arrayBuffer());
-
     const appDir = path.join(process.cwd(), "app");
     await fs.writeFile(path.join(appDir, "icon.png"), buffer);
-
     faviconPath = "/icon.png";
   }
 
@@ -71,17 +67,18 @@ export async function updateBrand(formData: FormData) {
 `;
 
   await fs.writeFile(configPath, newContent, "utf8");
+
   revalidatePath("/admin/dashboard");
   revalidatePath("/admin/sys-config");
   revalidatePath("/librarian/dashboard");
   revalidatePath("/lecturer/home");
   revalidatePath("/student/dashboard");
 
-  return {
+  return NextResponse.json({
     name: name || currentName,
     logo: logoPath,
     favicon: faviconPath,
     title: title || currentTitle,
     updatedAt,
-  };
+  });
 }

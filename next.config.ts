@@ -1,11 +1,12 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  images:{
-    remotePatterns:[
-      {protocol:'https',hostname:"www.google.com"}
-    ]
-  }
+const nextConfig = {
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "www.google.com" }],
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "50mb",
+    },
+  },
 };
 
 export default nextConfig;

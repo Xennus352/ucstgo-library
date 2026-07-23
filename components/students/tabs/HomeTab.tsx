@@ -34,7 +34,7 @@ import TextType from "@/components/TextType";
 import Stack from "@/components/Stack";
 import { LibrarySettings } from "@/app/actions/settings";
 import Image from "next/image";
-import { brandConfig } from "@/config/brand";
+import { useBrandConfig } from "@/components/brand-config-provider";
 import { rules } from "@/libraryRules/rules";
 
 const Counter = ({ value }: { value: number }) => (
@@ -76,6 +76,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
   initialLatestBooks,
   dynamicSettings,
 }) => {
+  const { config: brandConfig } = useBrandConfig();
   const [time, setTime] = useState("");
   const [greeting, setGreeting] = useState("");
 
@@ -743,6 +744,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                       width={36}
                       height={36}
                       className="object-contain"
+                      style={{ width: "auto", height: "auto" }}
                       priority
                     />
                   </div>

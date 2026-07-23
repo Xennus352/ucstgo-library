@@ -16,7 +16,7 @@ import {
 
 import { useCurrentUser } from "@/hooks/use-current-user";
 import Image from "next/image";
-import { brandConfig } from "@/config/brand";
+import { useBrandConfig } from "@/components/brand-config-provider";
 
 // Match the exact shape of your navData object
 interface NavSubItem {
@@ -39,6 +39,7 @@ interface DynamicSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
   const { user, isLoading } = useCurrentUser();
+  const { config: brandConfig } = useBrandConfig();
 
   // Create user data safely
   const userData = user
@@ -87,9 +88,10 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
                   width={36}
                   height={36}
                   className="object-contain"
+                  style={{ width: "auto", height: "auto" }}
                   priority
                 />
-                <span className="text-base font-semibold">UCSTgo Library</span>
+                <span className="text-base font-semibold">{brandConfig.name}</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

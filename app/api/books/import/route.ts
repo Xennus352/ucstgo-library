@@ -7,6 +7,9 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
 import {
+  FILE_LIMITS,
+  validateContentLength,
+  validateFileSize,
   generateBarcode,
   getOrCreateAuthor,
   getOrCreateCategory,
@@ -61,12 +64,26 @@ export async function POST(req: Request) {
       );
     }
 
+    const contentLength = Number(req.headers.get("content-length")) || 0;
+    const bodyLimitError = validateContentLength(
+      contentLength,
+      FILE_LIMITS.zipImport,
+    );
+    if (bodyLimitError) return bodyLimitError;
+
     const formData = await req.formData();
     const zipFile = formData.get("file") as File;
 
     if (!zipFile) {
       return NextResponse.json({ error: "ZIP file required" }, { status: 400 });
     }
+
+    const zipSizeError = validateFileSize(
+      zipFile,
+      FILE_LIMITS.zipImport,
+      "ZIP import",
+    );
+    if (zipSizeError) return zipSizeError;
 
     const buffer = Buffer.from(await zipFile.arrayBuffer());
 

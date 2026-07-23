@@ -4,12 +4,20 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function proxy(req: Request) {
+  const url = new URL(req.url);
+  const path = url.pathname;
+
+  const isNextAction = req.headers.get("next-action") !== null;
+  const isServerAction =
+    req.headers.get("content-type")?.includes("form-data") || isNextAction;
+
+  if (req.method !== "GET" && isServerAction) {
+    return NextResponse.next();
+  }
+
   const session = await auth.api.getSession({
     headers: req.headers,
   });
-
-  const url = new URL(req.url);
-  const path = url.pathname;
 
   // not logged in
   if (!session?.user) {
@@ -39,8 +47,6 @@ export async function proxy(req: Request) {
   const role = user.role;
 
   // check route access
-  // ROLE PROTECTION MAP
-  // Redirect user to their own dashboard if they access another role's route
   if (path.startsWith("/admin") && role !== "ADMIN") {
     return NextResponse.redirect(new URL(roleRules[role], req.url));
   }

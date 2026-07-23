@@ -4,6 +4,11 @@ import { auth } from "@/lib/auth";
 import path, { join } from "path";
 import { mkdir, writeFile } from "fs/promises";
 import crypto from "crypto";
+import {
+  FILE_LIMITS,
+  validateContentLength,
+  validateFileSize,
+} from "@/lib/upload";
 
 // ========================================================
 // GET: /api/books/lecturer -> Fetch current lecturer's books
@@ -90,7 +95,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const contentLength = Number(req.headers.get("content-length")) || 0;
+    const bodyLimitError = validateContentLength(
+      contentLength,
+      FILE_LIMITS.cover + FILE_LIMITS.ebook + 1024 * 1024,
+    );
+    if (bodyLimitError) return bodyLimitError;
+
     const formData = await req.formData();
+
+    const cover = formData.get("cover") as File | null;
+    const ebook = formData.get("ebook") as File | null;
+
+    const coverSizeError = validateFileSize(cover, FILE_LIMITS.cover, "Cover");
+    if (coverSizeError) return coverSizeError;
+    const ebookSizeError = validateFileSize(ebook, FILE_LIMITS.ebook, "Ebook");
+    if (ebookSizeError) return ebookSizeError;
 
     const title = formData.get("title") as string;
     const isbn = formData.get("isbn") as string;
@@ -100,9 +120,6 @@ export async function POST(req: NextRequest) {
     const shelfLocation = formData.get("shelfLocation") as string | null;
     const donate = formData.get("donate") as string | null;
     const semester = formData.get("semester") as string | null;
-
-    const cover = formData.get("cover") as File | null;
-    const ebook = formData.get("ebook") as File | null;
 
     const copies = Number(formData.get("copies") || 1);
 

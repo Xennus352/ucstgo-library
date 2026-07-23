@@ -1,6 +1,44 @@
 import prisma from "@/lib/prisma";
 import { mkdir } from "fs/promises";
 import { join } from "path";
+import { NextResponse } from "next/server";
+
+export const FILE_LIMITS = {
+  cover: 10 * 1024 * 1024,
+  ebook: 100 * 1024 * 1024,
+  zipImport: 200 * 1024 * 1024,
+} as const;
+
+export function validateContentLength(
+  contentLength: number | null,
+  maxBytes: number,
+): NextResponse | null {
+  if (contentLength && contentLength > maxBytes) {
+    return NextResponse.json(
+      {
+        error: `Request body too large. Maximum allowed is ${Math.round(maxBytes / 1024 / 1024)} MB.`,
+      },
+      { status: 413 },
+    );
+  }
+  return null;
+}
+
+export function validateFileSize(
+  file: File | null,
+  maxBytes: number,
+  label: string,
+): NextResponse | null {
+  if (file && file.size > maxBytes) {
+    return NextResponse.json(
+      {
+        error: `${label} file too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed is ${Math.round(maxBytes / 1024 / 1024)} MB.`,
+      },
+      { status: 413 },
+    );
+  }
+  return null;
+}
 
 export async function getOrCreateAuthor(name: string) {
   return await prisma.author.upsert({

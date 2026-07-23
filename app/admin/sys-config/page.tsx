@@ -26,10 +26,14 @@ const SystemConfiguration = async () => {
   const configPath = path.join(process.cwd(), "config", "brand.ts");
   let initialName = "UCSTGO Library";
   let initialLogo = "/images/brand.jpg";
+  let initialFavicon = "/icon.png";
+  let initialTitle = "UCSTGO Digital Library";
   try {
     const configText = await fs.readFile(configPath, "utf8");
     initialName = configText.match(/name:\s*"([^"]+)"/)?.[1] ?? initialName;
     initialLogo = configText.match(/logo:\s*"([^"]+)"/)?.[1] ?? initialLogo;
+    initialFavicon = configText.match(/favicon:\s*"([^"]+)"/)?.[1] ?? initialFavicon;
+    initialTitle = configText.match(/title:\s*"([^"]+)"/)?.[1] ?? initialTitle;
   } catch {}
 
   const semesters = semestersRes.success ? semestersRes.data : [];
@@ -69,6 +73,8 @@ const SystemConfiguration = async () => {
           <UpdateBrandForm
             initialName={initialName}
             initialLogo={initialLogo}
+            initialFavicon={initialFavicon}
+            initialTitle={initialTitle}
           />
         </TabsContent>
 

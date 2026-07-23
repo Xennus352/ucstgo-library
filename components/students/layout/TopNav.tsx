@@ -7,7 +7,7 @@ import { SearchBar } from "../ui/SearchBar";
 import { TabConfig, TabId } from "../types";
 import Image from "next/image";
 import NotificationBell from "@/components/NotificationBell";
-import { brandConfig } from "@/config/brand";
+import { useBrandConfig } from "@/components/brand-config-provider";
 
 interface TopNavProps {
   tabs: TabConfig[];
@@ -26,6 +26,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   isLoggedIn = false,
   searchValue = "",
 }) => {
+  const { config: brandConfig } = useBrandConfig();
   return (
     <motion.header
       initial={{ y: -12, opacity: 0 }}
@@ -50,6 +51,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                 width={36}
                 height={36}
                 className="object-contain"
+                style={{ width: "auto", height: "auto" }}
                 priority
               />
             </div>

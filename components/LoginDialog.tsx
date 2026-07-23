@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeClosed } from "lucide-react";
-import { brandConfig } from "@/config/brand";
+import { useBrandConfig } from "@/components/brand-config-provider";
 
 interface LoginDialogProps {
   isOpen?: boolean;
@@ -40,7 +40,8 @@ export default function LoginDialog({
   showTrigger = true,
 }: LoginDialogProps) {
   const router = useRouter();
-  const { refreshUser } = useCurrentUser(); 
+  const { refreshUser } = useCurrentUser();
+  const { config: brandConfig } = useBrandConfig(); 
 
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = isOpen !== undefined;

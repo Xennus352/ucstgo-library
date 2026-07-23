@@ -1,11 +1,9 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
-import { updateBrand } from "@/app/actions/update-brand";
-import { brandConfig } from "@/config/brand"; // Imported direct config reference here
+import React, { useState } from "react";
+import { useBrandConfig } from "@/components/brand-config-provider";
 import { toast } from "sonner";
 
-// shadcn UI component primitives
 import {
   Card,
   CardContent,
@@ -21,17 +19,23 @@ import { Button } from "@/components/ui/button";
 interface BrandFormProps {
   initialName?: string;
   initialLogo?: string;
+  initialFavicon?: string;
+  initialTitle?: string;
 }
 
 export default function BrandForm({
-  initialName = brandConfig.name, // Falls back to configuration file settings
-  initialLogo = brandConfig.logo, // Falls back to configuration file settings
+  initialName = "",
+  initialLogo = "/images/brand.png",
+  initialFavicon = "/icon.png",
+  initialTitle = "",
 }: BrandFormProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [namePreview, setNamePreview] = useState(initialName);
   const [logoPreview, setLogoPreview] = useState(initialLogo);
+  const [faviconPreview, setFaviconPreview] = useState(initialFavicon);
+  const [titlePreview, setTitlePreview] = useState(initialTitle);
+  const { refresh } = useBrandConfig();
 
-  // Handle local image file preview before uploading
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -43,40 +47,62 @@ export default function BrandForm({
     }
   };
 
+  const handleFaviconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFaviconPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsPending(true);
     const formData = new FormData(e.currentTarget);
 
-    startTransition(() => {
-      toast.promise(updateBrand(formData), {
-        loading: "Updating brand configurations...",
-        success: (data) => {
-          // If your server action returns updated parameters, bind them here
-          if (data?.name) setNamePreview(data.name);
-          if (data?.logo) setLogoPreview(`${data.logo}?t=${Date.now()}`);
-          return "Brand configuration updated successfully!";
-        },
-        error: "Failed to update brand. Please try again.",
+    try {
+      const res = await fetch("/api/admin/brand", {
+        method: "POST",
+        body: formData,
       });
-    });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || `Server error (${res.status})`);
+      }
+
+      const data = await res.json();
+      if (data?.name) setNamePreview(data.name);
+      if (data?.logo) setLogoPreview(data.logo);
+      if (data?.favicon) setFaviconPreview(data.favicon);
+      if (data?.title) setTitlePreview(data.title);
+      refresh();
+      toast.success("Brand configuration updated successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update brand. Please try again.");
+    } finally {
+      setIsPending(false);
+    }
   };
 
   return (
     <Card className="w-full max-w-xl mx-auto overflow-hidden">
-      {/* Header Banner using Card primitives and custom gradient branding */}
       <CardHeader className="bg-gradient-to-r from-royal/5 to-transparent border-b">
         <CardTitle className="text-xl font-semibold tracking-tight text-navy">
           Identity &amp; Branding
         </CardTitle>
         <CardDescription className="text-sm text-muted-foreground mt-1">
-          Customize the global name and logo asset configuration for the digital
+          Customize the global name, logo, favicon, and metadata for the digital
           library platform.
         </CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit}>
         <CardContent className="p-6 space-y-6">
-          {/* Live Card Identity Preview */}
+          {/* Live Preview */}
           <div className="space-y-2">
             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Live Application Preview
@@ -104,9 +130,7 @@ export default function BrandForm({
             </div>
           </div>
 
-          {/* Input fields stack */}
           <div className="space-y-5">
-            {/* Library Name Input */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="name" className="text-sm font-medium">
@@ -121,17 +145,34 @@ export default function BrandForm({
                 required
                 value={namePreview}
                 onChange={(e) => setNamePreview(e.target.value)}
-                placeholder={brandConfig.name}
+                placeholder="UCSTGO Library"
                 className="w-full bg-card"
               />
             </div>
 
-            {/* Graphical Logo File Dropzone */}
+            <div className="space-y-1.5">
+              <Label htmlFor="title" className="text-sm font-medium">
+                Browser Tab Title (SEO)
+              </Label>
+              <Input
+                id="title"
+                name="title"
+                type="text"
+                value={titlePreview}
+                onChange={(e) => setTitlePreview(e.target.value)}
+                placeholder="UCSTGO Digital Library"
+                className="w-full bg-card"
+              />
+              <p className="text-xs text-muted-foreground">
+                Shown in the browser tab and search engine results.
+              </p>
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="logo" className="text-sm font-medium">
                 Logo Graphic Asset
               </Label>
-              <div className="relative group flex flex-col items-center justify-center border-2 border-dashed hover:border-royal rounded-lg p-6 bg-card cursor-pointer transition-colors text-center">
+              <div className="relative group flex flex-col items-center justify-center border-2 border-dashed hover:border-royal rounded-lg p-6 bg-card cursor-pointer transition-colors text-center min-h-[160px]">
                 <input
                   id="logo"
                   name="logo"
@@ -140,32 +181,83 @@ export default function BrandForm({
                   onChange={handleLogoChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
-                <svg
-                  className="w-8 h-8 text-muted-foreground group-hover:text-royal transition-colors mb-2"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                {logoPreview ? (
+                  <img
+                    src={logoPreview}
+                    alt="Logo preview"
+                    className="max-h-28 max-w-full object-contain rounded-lg"
                   />
-                </svg>
-                <span className="text-sm font-medium text-navy">
-                  Click to change or drag file here
+                ) : (
+                  <svg
+                    className="w-8 h-8 text-muted-foreground group-hover:text-royal transition-colors mb-2"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                    />
+                  </svg>
+                )}
+                <span className="text-sm font-medium text-navy mt-2">
+                  {logoPreview ? "Click to change or drag new file" : "Click to change or drag file here"}
                 </span>
                 <span className="text-xs text-muted-foreground mt-1">
                   PNG, JPG, or SVG up to 5MB (Overwrites old version)
                 </span>
               </div>
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="favicon" className="text-sm font-medium">
+                Favicon (Browser Tab Icon)
+              </Label>
+              <div className="relative group flex flex-col items-center justify-center border-2 border-dashed hover:border-royal rounded-lg p-6 bg-card cursor-pointer transition-colors text-center min-h-[140px]">
+                <input
+                  id="favicon"
+                  name="favicon"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFaviconChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                {faviconPreview ? (
+                  <img
+                    src={faviconPreview}
+                    alt="Favicon preview"
+                    className="max-h-20 max-w-full object-contain rounded"
+                  />
+                ) : (
+                  <svg
+                    className="w-8 h-8 text-muted-foreground group-hover:text-royal transition-colors mb-2"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                    />
+                  </svg>
+                )}
+                <span className="text-sm font-medium text-navy mt-2">
+                  {faviconPreview ? "Click to change or drag new file" : "Click to upload favicon"}
+                </span>
+                <span className="text-xs text-muted-foreground mt-1">
+                  PNG, ICO, or SVG (32x32 or 16x16 recommended)
+                </span>
+              </div>
+            </div>
           </div>
         </CardContent>
 
-        {/* Form Footer Action */}
         <CardFooter className="pt-4 flex items-center justify-end gap-3 border-t bg-muted/10">
           <Button
             type="submit"
