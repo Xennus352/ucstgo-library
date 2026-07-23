@@ -112,7 +112,6 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
                   width={26}
                   height={36}
                   className="object-contain"
-                  style={{ width: "auto", height: "auto" }}
                   priority
                 />
                 <span className="text-base font-semibold">
