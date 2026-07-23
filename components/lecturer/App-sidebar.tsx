@@ -85,13 +85,15 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
                 <Image
                   src={brandConfig.logo}
                   alt={`${brandConfig.name} Logo`}
-                  width={36}
+                  width={26}
                   height={36}
                   className="object-contain"
                   style={{ width: "auto", height: "auto" }}
                   priority
                 />
-                <span className="text-base font-semibold">{brandConfig.name}</span>
+                <span className="text-base font-semibold">
+                  {brandConfig.name}
+                </span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -103,7 +105,7 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />
-        <p className="px-3 pb-2 text-[10px] text-muted-foreground/50 text-center">
+        <p className="px-3 py-2 text-[10px] sm:text-xs text-muted-foreground/50 text-center truncate select-none">
           Developed By SMK
         </p>
       </SidebarFooter>

@@ -26,6 +26,7 @@ import {
   Brain,
   CheckCircle2,
   CheckCircle2Icon,
+  Code2Icon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -719,9 +720,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                         </p>
                       </div>
                     </div>
-                      {index !== rules.length - 1 && (
-                        <hr className="border-slate-100 mt-5" />
-                      )}
+                    {index !== rules.length - 1 && (
+                      <hr className="border-slate-100 mt-5" />
+                    )}
                   </div>
                 ))}
               </div>
@@ -862,13 +863,25 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                       +95 123 456 789
                     </a>
                   </li>
-                  <li className="flex items-start">
-                    <MailIcon className="w-3.5 h-3.5 text-blue-500 mt-0.5 mr-2 sm:mr-3 flex-shrink-0" />
+                  <li className="flex items-start min-w-0">
+                    <MailIcon className="w-3.5 h-3.5 text-blue-500 mt-1 mr-2 sm:mr-3 shrink-0" />
                     <a
                       href="mailto:ucstgostuaffair2024@gmail.com"
-                      className="hover:text-blue-500 hover:underline"
+                      className="hover:text-blue-500 hover:underline break-all"
                     >
                       ucstgostuaffair2024@gmail.com
+                    </a>
+                  </li>
+                  <li className="flex items-center text-xs text-muted-foreground">
+                    <Code2Icon className="w-3.5 h-3.5 text-blue-500 mr-2 sm:mr-3 shrink-0" />
+                    <span className="mr-1">Developed by</span>
+                    <a
+                      href="https://github.com/Xennus352"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-white hover:text-blue-500 hover:underline transition-colors"
+                    >
+                      SMK
                     </a>
                   </li>
                 </ul>
