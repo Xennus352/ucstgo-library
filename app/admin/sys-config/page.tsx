@@ -1,7 +1,14 @@
 import React from "react";
 import fs from "fs/promises";
 import path from "path";
-import { Settings, Palette, GraduationCap, Bell, CheckSquare } from "lucide-react";
+import {
+  Settings,
+  Palette,
+  GraduationCap,
+  Bell,
+  CheckSquare,
+  BookMarked,
+} from "lucide-react";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { getLibrarySettings } from "@/app/actions/settings";
 import { getAllSemesters } from "@/app/actions/semesters";
@@ -38,7 +45,8 @@ const SystemConfiguration = async () => {
     const configText = await fs.readFile(configPath, "utf8");
     initialName = configText.match(/name:\s*"([^"]+)"/)?.[1] ?? initialName;
     initialLogo = configText.match(/logo:\s*"([^"]+)"/)?.[1] ?? initialLogo;
-    initialFavicon = configText.match(/favicon:\s*"([^"]+)"/)?.[1] ?? initialFavicon;
+    initialFavicon =
+      configText.match(/favicon:\s*"([^"]+)"/)?.[1] ?? initialFavicon;
     initialTitle = configText.match(/title:\s*"([^"]+)"/)?.[1] ?? initialTitle;
   } catch {}
 
@@ -58,7 +66,10 @@ const SystemConfiguration = async () => {
       </div>
 
       <Tabs defaultValue="settings">
-        <TabsList variant="line" className="w-full justify-start overflow-x-auto">
+        <TabsList
+          variant="line"
+          className="w-full justify-start overflow-x-auto"
+        >
           <TabsTrigger value="settings" className="gap-2">
             <Settings className="size-4" />
             General
@@ -79,6 +90,7 @@ const SystemConfiguration = async () => {
             <CheckSquare className="size-4" />
             Library Rules
           </TabsTrigger>
+       
         </TabsList>
 
         <TabsContent value="settings" className="mt-6">

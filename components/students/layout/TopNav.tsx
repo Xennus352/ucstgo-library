@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { GraduationCap, FlaskConical, ChevronDown } from "lucide-react";
 
 import { SearchBar } from "../ui/SearchBar";
 import { TabConfig, TabId } from "../types";
@@ -12,7 +13,7 @@ import { useBrandConfig } from "@/components/brand-config-provider";
 interface TopNavProps {
   tabs: TabConfig[];
   activeTab: TabId;
-  onTabChange: (tabId: TabId) => void;
+  onTabChange: (tabId: TabId, subCategory?: string) => void;
   onSearch?: (query: string) => void;
   isLoggedIn?: boolean;
   searchValue?: string;
@@ -27,6 +28,8 @@ export const TopNav: React.FC<TopNavProps> = ({
   searchValue = "",
 }) => {
   const { config: brandConfig } = useBrandConfig();
+  const [isEResourcesHovered, setIsEResourcesHovered] = useState(false);
+
   return (
     <motion.header
       initial={{ y: -12, opacity: 0 }}
@@ -34,7 +37,6 @@ export const TopNav: React.FC<TopNavProps> = ({
       transition={{ duration: 0.25 }}
       className="sticky top-0 z-40 bg-background/80 backdrop-blur-md px-4 sm:px-6 py-2.5 border-b border-border/40"
     >
-      {/* CHANGED: Changed flex-col to md:flex-row to handle tablet sizes gracefully */}
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
         {/* TOP ROW: LOGO, TABS, & MOBILE UTILITIES */}
         <div className="flex items-center justify-between gap-4 w-full md:w-auto">
@@ -60,10 +62,104 @@ export const TopNav: React.FC<TopNavProps> = ({
             </span>
           </motion.div>
 
+          {/* NAVIGATION TABS */}
           <nav className="hidden md:flex items-center gap-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
+              const isEResources =
+                tab.id === "eresources" ||
+                tab.label.toLowerCase().includes("eresources");
+
+              if (isEResources) {
+                return (
+                  <div
+                    key={tab.id}
+                    className="relative"
+                    onMouseEnter={() => setIsEResourcesHovered(true)}
+                    onMouseLeave={() => setIsEResourcesHovered(false)}
+                  >
+                    <button
+                      onClick={() => onTabChange(tab.id as TabId)}
+                      className={`relative flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 outline-none select-none cursor-pointer ${
+                        isActive
+                          ? "text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="hidden sm:inline">{tab.label}</span>
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                          isEResourcesHovered ? "rotate-180" : ""
+                        }`}
+                      />
+                      {isActive && (
+                        <motion.div
+                          layoutId="active-desktop-tab-underline"
+                          className="absolute bottom-0 left-3 right-3 h-[2px] bg-primary rounded-full"
+                          transition={{
+                            type: "spring",
+                            stiffness: 380,
+                            damping: 30,
+                          }}
+                        />
+                      )}
+                    </button>
+
+                    {/* HOVER DROPDOWN MENU */}
+                    <AnimatePresence>
+                      {isEResourcesHovered && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                          transition={{ duration: 0.15, ease: "easeOut" }}
+                          className="absolute top-full left-0 pt-1.5 w-56 z-50"
+                        >
+                          <div className="bg-popover text-popover-foreground rounded-xl border border-border shadow-lg p-1.5 backdrop-blur-lg">
+                            <button
+                              onClick={() => {
+                                onTabChange(tab.id as TabId, "academic");
+                                setIsEResourcesHovered(false);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors text-left"
+                            >
+                              <GraduationCap className="h-4 w-4 text-primary shrink-0" />
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-foreground text-sm">
+                                  Academic Resources
+                                </span>
+                                <span className="text-[11px] text-muted-foreground">
+                                  Textbooks, Question Papers & More
+                                </span>
+                              </div>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                onTabChange(tab.id as TabId, "research");
+                                setIsEResourcesHovered(false);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors text-left mt-1"
+                            >
+                              <FlaskConical className="h-4 w-4 text-primary shrink-0" />
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-foreground text-sm">
+                                  Research Resources
+                                </span>
+                                <span className="text-[11px] text-muted-foreground">
+                                  Theses, Publications & Journals
+                                </span>
+                              </div>
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              }
 
               return (
                 <button
@@ -76,8 +172,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                   }`}
                 >
                   <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>{" "}
-                  {/* Optional: Hide text on tiny screens, show on small/tablet */}
+                  <span className="hidden sm:inline">{tab.label}</span>
                   {isActive && (
                     <motion.div
                       layoutId="active-desktop-tab-underline"

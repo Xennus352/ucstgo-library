@@ -6,12 +6,13 @@ import { BookWithDetails, ViewMode } from "../types";
 import {
   Grid,
   List,
+  BookOpen,
+  GraduationCap,
+  FlaskConical,
   ChevronUp,
   ChevronDown,
-  Filter,
-  X,
   SlidersHorizontal,
-  BookOpen,
+  X,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,29 +41,294 @@ interface EbooksTabProps {
   viewMode?: ViewMode;
 }
 
+type SubCategoryKey =
+  | "textbook_reference"
+  | "old_question"
+  | "other_academic"
+  | "thesis"
+  | "publication"
+  | "other_research"
+  | "all";
+
+interface SubCategoryItem {
+  key: SubCategoryKey;
+  label: string;
+  section: "academic" | "research";
+}
+
+const ACADEMIC_SUBS: SubCategoryItem[] = [
+  {
+    key: "textbook_reference",
+    label: "Text Book & Reference Book",
+    section: "academic",
+  },
+  { key: "old_question", label: "Old Question", section: "academic" },
+  { key: "other_academic", label: "Others", section: "academic" },
+];
+
+const RESEARCH_SUBS: SubCategoryItem[] = [
+  { key: "thesis", label: "Theses", section: "research" },
+  {
+    key: "publication",
+    label: "Publication / Research Paper",
+    section: "research",
+  },
+  { key: "other_research", label: "Others", section: "research" },
+];
+
+const ALL_SUBS: SubCategoryItem[] = [...ACADEMIC_SUBS, ...RESEARCH_SUBS];
+
+function mapCategoryToSubCategory(categoryName: string): SubCategoryKey {
+  const name = categoryName.toLowerCase();
+
+  if (
+    name.includes("textbook") ||
+    name.includes("reference") ||
+    name.includes("book") ||
+    name.includes("syllabus") ||
+    name.includes("guide") ||
+    name.includes("study material") ||
+    name.includes("course material")
+  ) {
+    return "textbook_reference";
+  }
+
+  if (
+    name.includes("old question") ||
+    name.includes("question bank") ||
+    name.includes("exam paper") ||
+    name.includes("previous year") ||
+    (name.includes("question") && name.includes("old"))
+  ) {
+    return "old_question";
+  }
+
+  if (name.includes("thesis") || name.includes("dissertation")) {
+    return "thesis";
+  }
+
+  if (
+    name.includes("publication") ||
+    name.includes("research paper") ||
+    name.includes("journal") ||
+    (name.includes("paper") &&
+      !name.includes("question") &&
+      !name.includes("exam"))
+  ) {
+    return "publication";
+  }
+
+  const { main } = getSectionForCategory(categoryName);
+  return main === "academic" ? "other_academic" : "other_research";
+}
+
+function getSectionForCategory(categoryName: string): {
+  main: "academic" | "research";
+} {
+  const name = categoryName.toLowerCase();
+
+  if (
+    name.includes("textbook") ||
+    name.includes("reference") ||
+    name.includes("book") ||
+    name.includes("syllabus") ||
+    name.includes("guide") ||
+    name.includes("study material") ||
+    name.includes("course material")
+  ) {
+    return { main: "academic" };
+  }
+
+  if (
+    name.includes("old question") ||
+    name.includes("question bank") ||
+    name.includes("exam paper") ||
+    name.includes("previous year") ||
+    (name.includes("question") && name.includes("old"))
+  ) {
+    return { main: "academic" };
+  }
+
+  if (name.includes("thesis") || name.includes("dissertation")) {
+    return { main: "research" };
+  }
+
+  if (
+    name.includes("publication") ||
+    name.includes("research paper") ||
+    name.includes("journal") ||
+    (name.includes("paper") &&
+      !name.includes("question") &&
+      !name.includes("exam"))
+  ) {
+    return { main: "research" };
+  }
+
+  return { main: "academic" };
+}
+
+interface SidebarContentProps {
+  activeSubCategory: SubCategoryKey;
+  onSubCategoryChange: (key: SubCategoryKey) => void;
+  hasActiveFilters: boolean;
+  onClearAll: () => void;
+  semesters: { id: string; name: string; slug: string }[];
+  activeSemesterFilter: string;
+  onSemesterChange: (value: string) => void;
+}
+
+function SidebarContent({
+  activeSubCategory,
+  onSubCategoryChange,
+  hasActiveFilters,
+  onClearAll,
+  semesters,
+  activeSemesterFilter,
+  onSemesterChange,
+}: SidebarContentProps) {
+  const getSubCategoryCount = (
+    key: SubCategoryKey,
+    books: BookWithDetails[],
+  ) => {
+    if (key === "all") return books.length;
+    return books.filter((b) => {
+      if (!b.ebook) return false;
+      const category = b.category?.name || "Other";
+      const sub = mapCategoryToSubCategory(category);
+      return sub === key;
+    }).length;
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Academic Resources */}
+      <div>
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+          <GraduationCap className="h-4 w-4 text-primary" />
+          Academic Resources
+        </div>
+        <div className="space-y-1">
+          {ACADEMIC_SUBS.map((sub) => {
+            const isActive = activeSubCategory === sub.key;
+            const count = getSubCategoryCount(sub.key, []);
+            return (
+              <button
+                key={sub.key}
+                onClick={() => onSubCategoryChange(isActive ? "all" : sub.key)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
+                  isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                }`}
+              >
+                <span className="truncate">{sub.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+                    isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Research Resources */}
+      <div>
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+          <FlaskConical className="h-4 w-4 text-primary" />
+          Research Resources
+        </div>
+        <div className="space-y-1">
+          {RESEARCH_SUBS.map((sub) => {
+            const isActive = activeSubCategory === sub.key;
+            const count = getSubCategoryCount(sub.key, []);
+            return (
+              <button
+                key={sub.key}
+                onClick={() => onSubCategoryChange(isActive ? "all" : sub.key)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
+                  isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                }`}
+              >
+                <span className="truncate">{sub.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+                    isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Year Filter */}
+      <div>
+        <span className="text-xs font-medium text-muted-foreground mb-2 block">
+          Year Filter
+        </span>
+        <Select value={activeSemesterFilter} onValueChange={onSemesterChange}>
+          <SelectTrigger className="w-full h-9 text-sm text-black">
+            <SelectValue placeholder="All Years" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-black">
+              All Years
+            </SelectItem>
+            {semesters.map((sem) => (
+              <SelectItem key={sem.id} value={sem.id} className="text-black">
+                {sem.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {hasActiveFilters && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClearAll}
+          className="h-8 text-sm text-muted-foreground hover:text-foreground w-full"
+        >
+          <X className="h-3.5 w-3.5 mr-1.5" />
+          Clear All Filters
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export const EbooksTab: React.FC<EbooksTabProps> = ({
   books,
   onBookClick,
   onViewChange,
   viewMode = "grid",
 }) => {
-  // Filter states
-  const [activeCategoryFilter, setActiveCategoryFilter] =
-    useState<string>("all");
+  const [activeSubCategory, setActiveSubCategory] =
+    useState<SubCategoryKey>("all");
   const [activeSemesterFilter, setActiveSemesterFilter] =
     useState<string>("all");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [isFiltered, setIsFiltered] = useState(false);
 
   const [semesters, setSemesters] = useState<
     { id: string; name: string; slug: string }[]
   >([]);
 
-  // Extract all active runtime Semesters dynamically from books data payload
   useEffect(() => {
     async function fetchSemesters() {
       const result = await getAllSemesters();
-
       if (result.success && result.data) {
         setSemesters(result.data);
       }
@@ -71,64 +337,38 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
     fetchSemesters();
   }, []);
 
-  // Track accordion expand states
-  const [openSemesters, setOpenSemesters] = useState<Record<string, boolean>>(
-    {},
-  );
+  const hasActiveFilters =
+    activeSubCategory !== "all" || activeSemesterFilter !== "all";
 
-  // Auto-expand first semester group on mount
-  useEffect(() => {
-    const firstSem = books.find((b) => (b.ebook as any)?.semester)
-      ?.ebook as any;
-    const firstSemId = firstSem?.semester?.id || firstSem?.semesterId;
-    if (firstSemId) {
-      setOpenSemesters((prev) => ({ [firstSemId]: true, ...prev }));
-    }
-  }, [books]);
+  const clearAllFilters = () => {
+    setActiveSubCategory("all");
+    setActiveSemesterFilter("all");
+  };
 
-  // Auto-expand a semester accordion when it gets explicitly chosen in the filter dropdown
-  useEffect(() => {
-    if (activeSemesterFilter !== "all") {
-      setOpenSemesters((prev) => ({ ...prev, [activeSemesterFilter]: true }));
-    }
-  }, [activeSemesterFilter]);
+  const filteredBooks = useMemo(() => {
+    let result = books.filter((b) => b.ebook !== null && b.ebook !== undefined);
 
-  // Extract available filter categories
-  const filterCategories = useMemo(() => {
-    const categories = new Set<string>();
-    books.forEach((book) => {
-      if (book.ebook) {
+    if (activeSubCategory !== "all") {
+      result = result.filter((book) => {
         const category = book.category?.name || "Other";
-        categories.add(category);
-      }
-    });
-    return Array.from(categories).sort((a, b) => b.localeCompare(a));
-  }, [books]);
-
-  // Filter books based on active criteria and group them by dynamic semester
-  const { ebooksCount, groupedSemesters, sortedSemesterIds } = useMemo(() => {
-    let filteredEbooks = books.filter(
-      (b) => b.ebook !== null && b.ebook !== undefined,
-    );
-
-    if (activeCategoryFilter !== "all") {
-      filteredEbooks = filteredEbooks.filter((book) => {
-        const category = book.category?.name || "Other";
-        return category.toLowerCase() === activeCategoryFilter.toLowerCase();
+        const sub = mapCategoryToSubCategory(category);
+        return sub === activeSubCategory;
       });
     }
 
     if (activeSemesterFilter !== "all") {
-      filteredEbooks = filteredEbooks.filter((book) => {
+      result = result.filter((book) => {
         const ebookData = book.ebook as any;
-        // Extract ID directly from the embedded semester relational object if root key is missing
         const currentSemId = ebookData?.semester?.id || ebookData?.semesterId;
         return currentSemId === activeSemesterFilter;
       });
     }
 
-    // Grouping by Semester ID
-    const groups = filteredEbooks.reduce(
+    return result;
+  }, [books, activeSubCategory, activeSemesterFilter]);
+
+  const { groupedSemesters, sortedSemesterIds } = useMemo(() => {
+    const groups = filteredBooks.reduce(
       (acc, book) => {
         const ebookData = book.ebook as any;
         const semId =
@@ -140,7 +380,6 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
       {} as Record<string, BookWithDetails[]>,
     );
 
-    // Sort active keys using names fetched from semesters
     const activeKeys = Object.keys(groups).sort((a, b) => {
       if (a === "UNASSIGNED") return 1;
       if (b === "UNASSIGNED") return -1;
@@ -150,195 +389,145 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
     });
 
     return {
-      ebooksCount: filteredEbooks.length,
       sortedSemesterIds: activeKeys,
       groupedSemesters: groups,
     };
-  }, [books, activeCategoryFilter, activeSemesterFilter, semesters]);
+  }, [filteredBooks, semesters]);
 
-  // Track if active filters are applied
+  const [openSemesters, setOpenSemesters] = useState<Record<string, boolean>>(
+    {},
+  );
+
   useEffect(() => {
-    const hasFilters =
-      activeCategoryFilter !== "all" || activeSemesterFilter !== "all";
-    setIsFiltered(hasFilters);
-  }, [activeCategoryFilter, activeSemesterFilter]);
+    const firstSem = books.find((b) => (b.ebook as any)?.semester)
+      ?.ebook as any;
+    const firstSemId = firstSem?.semester?.id || firstSem?.semesterId;
+    if (firstSemId) {
+      setOpenSemesters((prev) => ({ [firstSemId]: true, ...prev }));
+    }
+  }, [books]);
 
   const toggleSemester = (semId: string) => {
     setOpenSemesters((prev) => ({ ...prev, [semId]: !prev[semId] }));
   };
 
-  const getCategoryCount = (category: string) => {
+  const getSubCategoryCount = (key: SubCategoryKey) => {
+    if (key === "all") return filteredBooks.length;
     return books.filter((b) => {
       if (!b.ebook) return false;
-      const cat = b.category?.name || "Other";
-      return cat.toLowerCase() === category.toLowerCase();
+      const category = b.category?.name || "Other";
+      const sub = mapCategoryToSubCategory(category);
+      return sub === key;
     }).length;
   };
 
-  const getSemesterCount = (semId: string) => {
-    return books.filter((b) => {
-      const ebookData = b.ebook as any;
-      return (ebookData?.semester?.id || ebookData?.semesterId) === semId;
-    }).length;
-  };
-
-  const clearAllFilters = () => {
-    setActiveCategoryFilter("all");
-    setActiveSemesterFilter("all");
-  };
-
-  const ActiveFiltersDisplay = () => {
-    const activeFilters = [];
-
-    if (activeCategoryFilter !== "all") {
-      const categoryName =
-        filterCategories.find(
-          (c) => c.toLowerCase() === activeCategoryFilter.toLowerCase(),
-        ) || activeCategoryFilter;
-      activeFilters.push({
-        id: "category",
-        label: `Category: ${categoryName}`,
-        type: "category",
-      });
-    }
-
-    if (activeSemesterFilter !== "all") {
-      const semName =
-        semesters.find((s) => s.id === activeSemesterFilter)?.name ||
-        "Selected Semester";
-      activeFilters.push({
-        id: "semester",
-        label: semName,
-        type: "semester",
-      });
-    }
-
-    if (activeFilters.length === 0) return null;
-
-    return (
-      <div className="flex flex-wrap items-center gap-1.5 py-1 px-0.5">
-        <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">
-          Active filters:
-        </span>
-        {activeFilters.map((filter) => (
-          <Badge
-            key={filter.id}
-            variant="secondary"
-            className="flex items-center gap-1 text-xs py-1 px-2.5 bg-primary/5 hover:bg-primary/10 border-primary/10 text-black"
-          >
-            <span className="text-black">{filter.label}</span>
-            <button
-              onClick={() => {
-                if (filter.type === "category") setActiveCategoryFilter("all");
-                if (filter.type === "semester") setActiveSemesterFilter("all");
-              }}
-              className="hover:text-foreground ml-0.5 text-black hover:text-destructive transition-colors"
-              aria-label={`Remove ${filter.type} filter`}
-            >
-              <X className="h-3 w-3 text-black" />
-            </button>
-          </Badge>
-        ))}
-        {activeFilters.length > 1 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearAllFilters}
-            className="h-6 text-xs text-black hover:text-foreground px-2 hover:bg-destructive/10"
-          >
-            Clear all
-          </Button>
-        )}
-      </div>
-    );
-  };
-
-  const FilterPills = () => (
-    <div className="flex flex-col gap-5 lg:gap-6">
-      {/* Category Section */}
+  const sidebar = (
+    <div className="flex flex-col gap-6">
+      {/* Academic Resources */}
       <div>
-        <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground mb-2.5">
-          <Filter className="h-3.5 w-3.5 text-black" />
-          <span className="font-medium text-black">Category:</span>
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+          <GraduationCap className="h-4 w-4 text-primary" />
+          Academic Resources
         </div>
-        <div className="flex flex-wrap lg:flex-col gap-1.5 lg:gap-1">
-          <Button
-            variant={activeCategoryFilter === "all" ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setActiveCategoryFilter("all")}
-            className="h-7 md:h-8 lg:h-9 text-xs rounded-full lg:rounded-md px-3 text-black justify-between lg:w-full"
-          >
-            <span>All Categories</span>
-            <Badge
-              variant="default"
-              className="ml-1.5 h-4 min-w-4 px-1 text-[10px] text-gray-200"
-            >
-              {books.filter((b) => b.ebook).length}
-            </Badge>
-          </Button>
-
-          {filterCategories.map((category) => (
-            <Button
-              key={category}
-              variant={
-                activeCategoryFilter === category.toLowerCase()
-                  ? "default"
-                  : "outline"
-              }
-              size="sm"
-              onClick={() => setActiveCategoryFilter(category.toLowerCase())}
-              className="h-7 md:h-8 lg:h-9 text-xs rounded-full lg:rounded-md px-3 text-black justify-between lg:w-full"
-            >
-              <span className="truncate">{category}</span>
-              <Badge
-                variant="secondary"
-                className="ml-1.5 h-4 min-w-4 px-1 text-[10px] text-black"
+        <div className="space-y-1">
+          {ACADEMIC_SUBS.map((sub) => {
+            const isActive = activeSubCategory === sub.key;
+            const count = getSubCategoryCount(sub.key);
+            return (
+              <button
+                key={sub.key}
+                onClick={() => setActiveSubCategory(isActive ? "all" : sub.key)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
+                  isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                }`}
               >
-                {getCategoryCount(category)}
-              </Badge>
-            </Button>
-          ))}
+                <span className="truncate">{sub.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+                    isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Dynamic Semester Select Dropdown */}
+      {/* Research Resources */}
       <div>
-        <span className="text-xs md:text-sm text-muted-foreground font-medium mb-2 block ">
-          Academic Semester:
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+          <FlaskConical className="h-4 w-4 text-primary" />
+          Research Resources
+        </div>
+        <div className="space-y-1">
+          {RESEARCH_SUBS.map((sub) => {
+            const isActive = activeSubCategory === sub.key;
+            const count = getSubCategoryCount(sub.key);
+            return (
+              <button
+                key={sub.key}
+                onClick={() => setActiveSubCategory(isActive ? "all" : sub.key)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
+                  isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                }`}
+              >
+                <span className="truncate">{sub.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+                    isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Year Filter */}
+      <div>
+        <span className="text-xs font-medium text-muted-foreground mb-2 block">
+          Year Filter
         </span>
         <Select
           value={activeSemesterFilter}
           onValueChange={setActiveSemesterFilter}
         >
           <SelectTrigger className="w-full h-9 text-sm text-black">
-            <SelectValue placeholder="All Semesters" />
+            <SelectValue placeholder="All Years" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all" className="text-black">
-              All Semesters ({books.filter((b) => b.ebook).length})
+              All Years
             </SelectItem>
             {semesters.map((sem) => (
               <SelectItem key={sem.id} value={sem.id} className="text-black">
-                {sem.name} (
-                <span className="italic font-bold">
-                  {" "}
-                  {getSemesterCount(sem.id)}{" "}
-                </span>
-                )
+                {sem.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {isFiltered && (
+      {hasActiveFilters && (
         <Button
           variant="ghost"
           size="sm"
           onClick={clearAllFilters}
-          className="h-8 text-sm text-black hover:text-foreground w-full sm:w-auto lg:w-full mt-2"
+          className="h-8 text-sm text-muted-foreground hover:text-foreground w-full"
         >
-          <X className="h-3.5 w-3.5 mr-1.5 text-black" />
+          <X className="h-3.5 w-3.5 mr-1.5" />
           Clear All Filters
         </Button>
       )}
@@ -354,17 +543,14 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
             <h2 className="text-base md:text-xl lg:text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary flex-shrink-0" />
               <span className="truncate">EResources Collection</span>
-              <Badge
-                variant="secondary"
-                className="ml-1 text-xs flex-shrink-0 text-black"
-              >
-                {ebooksCount}
+              <Badge variant="secondary" className="ml-1 text-xs flex-shrink-0">
+                {filteredBooks.length}
               </Badge>
             </h2>
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Responsive Filter trigger sheet */}
+            {/* Mobile filter trigger */}
             <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -374,34 +560,48 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-1.5 text-black" />
                   <span className="hidden sm:inline text-black">Filters</span>
-                  {isFiltered && (
+                  {hasActiveFilters && (
                     <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" />
                   )}
                 </Button>
               </SheetTrigger>
               <SheetContent
-                side="bottom"
-                className="h-[85vh] rounded-t-xl overflow-y-auto px-4 py-6"
+                side="left"
+                className="h-[85vh] rounded-r-xl overflow-y-auto px-4 py-6 w-80"
               >
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-2 text-lg text-black">
-                    <Filter className="h-4 w-4 text-black" />
+                    <SlidersHorizontal className="h-4 w-4 text-black" />
                     Filters
                   </SheetTitle>
                 </SheetHeader>
-                <div className="mt-6">
-                  <FilterPills />
-                  <div className="mt-6 flex gap-3">
-                    <Button
-                      onClick={() => setMobileFiltersOpen(false)}
-                      className="flex-1 text-black"
-                    >
-                      Apply Filters
-                    </Button>
-                  </div>
-                </div>
+                <div className="mt-6">{sidebar}</div>
               </SheetContent>
             </Sheet>
+
+            {/* Year/Semester Filter */}
+            <Select
+              value={activeSemesterFilter}
+              onValueChange={setActiveSemesterFilter}
+            >
+              <SelectTrigger className="h-8 md:h-9 text-sm text-black min-w-[140px]">
+                <SelectValue placeholder="All Years" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-black">
+                  All Years
+                </SelectItem>
+                {semesters.map((sem) => (
+                  <SelectItem
+                    key={sem.id}
+                    value={sem.id}
+                    className="text-black"
+                  >
+                    {sem.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {/* View toggle */}
             {onViewChange && (
@@ -440,22 +640,57 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
             )}
           </div>
         </div>
-
-        <ActiveFiltersDisplay />
       </div>
 
-      <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 lg:items-start">
-        {/* DESKTOP SIDEBAR */}
-        <aside className="hidden lg:block sticky top-6 bg-muted/20 rounded-xl p-5 border border-border/20 self-start">
-          <h3 className="font-semibold text-sm mb-4 text-black flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4" />
-            Filter Framework
-          </h3>
-          <FilterPills />
+      {/* Master-Detail Layout using 12-Column Grid (4 cols for Sidebar, 8 cols for Main) */}
+      <div className="lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
+        {/* LEFT SIDEBAR - Expanded column span */}
+        <aside className="hidden lg:block lg:col-span-4 sticky top-6 bg-muted/20 rounded-xl p-4 border border-border/20 self-start w-full">
+          {sidebar}
         </aside>
 
-        {/* RESULTS ACCORDION WINDOW */}
-        <div className="space-y-4 md:space-y-6">
+        {/* RIGHT MAIN PANEL - Reduced column span */}
+        <div className="lg:col-span-8 space-y-4 md:space-y-6 min-w-0">
+          {/* Active filter indicator */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-1.5 py-1 px-0.5">
+              {activeSubCategory !== "all" && (
+                <Badge
+                  variant="secondary"
+                  className="flex items-center gap-1 text-xs py-1 px-2.5 bg-primary/5 hover:bg-primary/10 border-primary/10 text-black cursor-pointer"
+                  onClick={() => setActiveSubCategory("all")}
+                >
+                  <span className="text-black">
+                    {ALL_SUBS.find((s) => s.key === activeSubCategory)?.label}
+                  </span>
+                  <X className="h-3 w-3 text-black" />
+                </Badge>
+              )}
+              {activeSemesterFilter !== "all" && (
+                <Badge
+                  variant="secondary"
+                  className="flex items-center gap-1 text-xs py-1 px-2.5 bg-primary/5 hover:bg-primary/10 border-primary/10 text-black cursor-pointer"
+                  onClick={() => setActiveSemesterFilter("all")}
+                >
+                  <span className="text-black">
+                    {semesters.find((s) => s.id === activeSemesterFilter)
+                      ?.name || "Selected Year"}
+                  </span>
+                  <X className="h-3 w-3 text-black" />
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="h-6 text-xs text-black hover:text-foreground px-2 hover:bg-destructive/10"
+              >
+                Clear all
+              </Button>
+            </div>
+          )}
+
+          {/* Semester Accordion */}
           <div className="space-y-3 md:space-y-4 w-full">
             {sortedSemesterIds.map((semId) => {
               const semesterBooks = groupedSemesters[semId];
@@ -473,7 +708,6 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                   key={semId}
                   className="bg-white dark:bg-gray-950 rounded-xl border border-muted-foreground/10 shadow-xs overflow-hidden w-full"
                 >
-                  {/* Unified Dynamic Semester Accordion Trigger */}
                   <Button
                     variant="ghost"
                     id={semHeaderId}
@@ -500,7 +734,6 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                     </div>
                   </Button>
 
-                  {/* Level Content Display Grid */}
                   <AnimatePresence initial={false}>
                     {isSemOpen && (
                       <motion.div
@@ -528,12 +761,11 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
               );
             })}
 
-            {/* Empty state component fallback */}
             {sortedSemesterIds.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
-                <Filter className="h-8 w-8 mx-auto mb-4 opacity-40 text-black" />
+                <BookOpen className="h-8 w-8 mx-auto mb-4 opacity-40 text-black" />
                 <p className="font-medium text-black">
-                  No eBooks matched your configuration
+                  No eBooks matched your selection
                 </p>
               </div>
             )}

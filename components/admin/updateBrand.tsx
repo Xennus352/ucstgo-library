@@ -89,7 +89,7 @@ export default function BrandForm({
   };
 
   return (
-    <Card className="w-full max-w-xl mx-auto overflow-hidden">
+    <Card className="w-full  overflow-hidden">
       <CardHeader className="bg-gradient-to-r from-royal/5 to-transparent border-b">
         <CardTitle className="text-xl font-semibold tracking-tight text-navy">
           Identity &amp; Branding
@@ -204,7 +204,9 @@ export default function BrandForm({
                   </svg>
                 )}
                 <span className="text-sm font-medium text-navy mt-2">
-                  {logoPreview ? "Click to change or drag new file" : "Click to change or drag file here"}
+                  {logoPreview
+                    ? "Click to change or drag new file"
+                    : "Click to change or drag file here"}
                 </span>
                 <span className="text-xs text-muted-foreground mt-1">
                   PNG, JPG, or SVG up to 5MB (Overwrites old version)
@@ -248,7 +250,9 @@ export default function BrandForm({
                   </svg>
                 )}
                 <span className="text-sm font-medium text-navy mt-2">
-                  {faviconPreview ? "Click to change or drag new file" : "Click to upload favicon"}
+                  {faviconPreview
+                    ? "Click to change or drag new file"
+                    : "Click to upload favicon"}
                 </span>
                 <span className="text-xs text-muted-foreground mt-1">
                   PNG, ICO, or SVG (32x32 or 16x16 recommended)
