@@ -1,8 +1,9 @@
 "use server";
 
-import { groq } from "@/lib/ai/groq";
+import { getGroqClient } from "@/lib/ai/groq";
 
 export async function summarizeBook(text: string) {
+  const groq = getGroqClient();
   const res = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
     messages: [

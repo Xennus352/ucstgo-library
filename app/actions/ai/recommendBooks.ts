@@ -1,6 +1,7 @@
 "use server";
 
-import { groq } from "@/lib/ai/groq";
+import { getGroqClient } from "@/lib/ai/groq";
+
 import prisma from "@/lib/prisma";
 
 type AIResponse = {
@@ -8,6 +9,8 @@ type AIResponse = {
 };
 
 export async function recommendBooks(userId: string) {
+  const groq = getGroqClient();
+
   try {
     // 1. Get user history
     const history = await prisma.borrowRecord.findMany({
