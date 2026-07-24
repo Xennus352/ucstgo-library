@@ -1,9 +1,9 @@
 import prisma from "@/lib/prisma";
-import { groq } from "@/lib/ai/groq";
+import { getGroqClient } from "@/lib/ai/groq";
 import { getKnowledge, safeJsonParse } from "@/lib/ai/knowledge";
 
 export const runtime = "nodejs";
-
+const groq = getGroqClient();
 const personality = `
 You are a friendly university librarian assistant at UCSTGO.
 Style rules:
@@ -14,9 +14,7 @@ Style rules:
 `;
 
 function cleanJson(text: string) {
-  return text
-    .replace(/```json|```/g, "") // ✅ FIXED regex
-    .trim();
+  return text.replace(/```json|```/g, "").trim();
 }
 
 export async function POST(req: Request) {
