@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "next lint",
-    "deploy": "git pull && pnpm install && pnpm prisma generate && pnpm prisma migrate deploy && pnpm build && pm2 reload ucstgo-library"
+    "deploy": "git pull && docker compose up -d --build && docker compose exec app pnpm prisma migrate deploy"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
