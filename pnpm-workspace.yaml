@@ -1,8 +1,8 @@
-onlyBuiltDependencies:
-  - '@prisma/engines'
-  - prisma
-  - esbuild
-  - sharp
-  - unrs-resolver
-  - core-js
-  - argon2
+allowBuilds:
+  '@prisma/engines': true
+  prisma: true
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
+  core-js: true
+  argon2: true

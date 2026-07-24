@@ -12,8 +12,8 @@ WORKDIR /app
 # Copy dependency files first for Docker cache
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Install dependencies with approved build scripts from pnpm-workspace.yaml
-RUN pnpm install --frozen-lockfile
+# Install dependencies with strict dep builds disabled
+RUN pnpm install --frozen-lockfile --config.strict-dep-builds=false
 
 # Copy application source
 COPY . .
@@ -21,7 +21,7 @@ COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Generate Prisma client (Better Auth Prisma adapter needs this)
+# Generate Prisma client
 RUN pnpm prisma generate
 
 # Build Next.js application
@@ -48,7 +48,7 @@ COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.ya
 
 
 # Install production dependencies
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --config.strict-dep-builds=false
 
 
 # Copy Next.js build output
@@ -65,13 +65,6 @@ COPY --from=builder /app/server.js ./server.js
 # Prisma schema and generated client
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/app/generated/prisma ./app/generated/prisma
-
-
-# Better Auth / Prisma may need environment variables:
-# DATABASE_URL
-# BETTER_AUTH_SECRET
-# BETTER_AUTH_URL
-# should come from docker-compose env
 
 
 USER nextjs
