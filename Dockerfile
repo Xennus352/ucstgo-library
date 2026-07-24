@@ -21,6 +21,14 @@ COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Build-time env vars (passed via docker compose build.args)
+ARG BETTER_AUTH_SECRET
+ARG BETTER_AUTH_URL
+ARG GROQ_API_KEY
+ENV BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
+ENV BETTER_AUTH_URL=$BETTER_AUTH_URL
+ENV GROQ_API_KEY=$GROQ_API_KEY
+
 # Generate Prisma client
 RUN pnpm prisma generate
 

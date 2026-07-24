@@ -3,7 +3,7 @@ import { getGroqClient } from "@/lib/ai/groq";
 import { getKnowledge, safeJsonParse } from "@/lib/ai/knowledge";
 
 export const runtime = "nodejs";
-const groq = getGroqClient();
+let groq: ReturnType<typeof getGroqClient> | null = null;
 const personality = `
 You are a friendly university librarian assistant at UCSTGO.
 Style rules:
@@ -19,6 +19,7 @@ function cleanJson(text: string) {
 
 export async function POST(req: Request) {
   try {
+    if (!groq) groq = getGroqClient();
     const { message } = await req.json();
 
     if (!message?.trim()) {
