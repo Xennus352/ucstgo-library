@@ -1,6 +1,8 @@
 "use client";
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { BookOpen, Tablet, Book, User } from "lucide-react";
+import { DotLottiePlayer } from "@dotlottie/react-player";
+import infinityAnimation from "@/components/animations/InfinityLoading.json";
 
 import {
   BookWithDetails,
@@ -453,8 +455,18 @@ export default function LibraryApp() {
         {renderTabContent()}
 
         {activeTab !== "Home" && activeTab !== "Profile" && hasMore && (
-          <div ref={loadMoreRef} className="py-12 text-center">
-            {isBooksLoading ? "Loading..." : "Scroll to load more"}
+          <div ref={loadMoreRef} className="py-12 flex flex-col items-center gap-2">
+            <div className="w-16 h-16">
+              <DotLottiePlayer
+                autoplay
+                loop
+                src={infinityAnimation}
+                style={{ width: "100%", height: "100%" }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground animate-pulse">
+              {isBooksLoading ? "Loading more books..." : "Scroll to load more"}
+            </p>
           </div>
         )}
       </main>

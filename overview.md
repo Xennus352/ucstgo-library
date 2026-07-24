@@ -16,6 +16,8 @@
 | Runtime | Custom Node.js HTTP server (server.js) with Socket.IO |
 | AI | Groq SDK (Llama-based chat/summarization) |
 | Charts | Recharts |
+| Animation | framer-motion, GSAP, DotLottie |
+| Real-time | socket.io + socket.io-client |
 
 ---
 
@@ -24,6 +26,9 @@
 ```
 ucstgo-library/
 ├── .env                                  # Environment variables
+├── .dockerignore                         # Docker build exclusions
+├── Dockerfile                            # Multi-stage production build
+├── docker-compose.yml                    # Container orchestration
 ├── next.config.ts                        # Next.js configuration
 ├── server.js                             # Custom HTTP server (Socket.IO)
 ├── proxy.ts                              # Next.js 16 Middleware (route guard)
@@ -42,7 +47,7 @@ ucstgo-library/
 │   │   ├── analytics.ts
 │   │   ├── banUserAction.ts
 │   │   ├── bookStatus.ts
-│   │   ├── borrow.ts
+│   │   ├── borrow.ts                     # Emits borrow:created via socket
 │   │   ├── chart-stats.ts
 │   │   ├── circulation.ts
 │   │   ├── get-borrows.ts
@@ -51,7 +56,7 @@ ucstgo-library/
 │   │   ├── library.ts
 │   │   ├── libraryStats.ts
 │   │   ├── profile.ts
-│   │   ├── return.ts
+│   │   ├── return.ts                     # Emits borrow:returned via socket
 │   │   ├── section-stats.ts
 │   │   ├── semesters.ts
 │   │   ├── settings.ts
@@ -105,7 +110,7 @@ ucstgo-library/
 │   │   ├── manage-ebooks/page.tsx
 │   │   └── profile/page.tsx
 │   │
-│   ├── student/dashboard/page.tsx       # Student portal (4 tabs)
+│   ├── student/dashboard/page.tsx       # Student portal (4 tabs + infinite scroll)
 │   │
 │   ├── portal/page.tsx                   # Login page
 │   ├── 403/page.tsx                      # Forbidden
@@ -121,12 +126,20 @@ ucstgo-library/
 │   ├── reservations/                     # Reservation UI
 │   ├── reader/                           # Ebook reader (PDF.js)
 │   ├── ai/                               # AI chat/summarize widgets
-│   ├── animations/                       # Lottie, splash screen
+│   ├── animations/                       # Lottie JSON animations, splash screen
+│   │   ├── Loading.tsx                   # DotLottie global loading (library.json)
+│   │   ├── TextToSvg.tsx                 # DotLottie text-to-svg animation
+│   │   ├── InfinityLoading.json          # Lottie infinite scroll indicator
+│   │   ├── library.json
+│   │   └── (other .json animation files)
 │   ├── app-sidebar.tsx                   # Shared sidebar
 │   ├── brand-config-provider.tsx         # Dynamic brand React context
 │   ├── data-table.tsx                    # Generic table (tanstack/react-table)
 │   ├── EbookReader.tsx                   # Ebook reader container
 │   ├── LoginDialog.tsx
+│   ├── StatusBadge.tsx                   # CVA-based status indicator
+│   ├── RoleBadge.tsx                     # CVA-based role indicator
+│   ├── MetricCard.tsx                    # CVA-based dashboard stat card
 │   └── ... (other shared components)
 │
 ├── config/
@@ -154,11 +167,12 @@ ucstgo-library/
 │
 ├── hooks/                                # Custom React hooks
 │   ├── use-books.ts                      # SWR: book search
-│   ├── useBooksInfinite.ts               # SWR infinite: paginated books
+│   ├── useBooksInfinite.ts               # SWR infinite: paginated books (socket-synced)
 │   ├── use-categories.ts                 # SWR: categories
 │   ├── use-current-user.ts               # SWR: /api/me
 │   ├── use-media-query.ts                # Responsive breakpoint
 │   ├── use-mobile.ts                     # Mobile detection (768px)
+│   ├── use-socket.ts                     # useSocketEvent hook (singleton Socket.IO client)
 │   └── usePushNotifications.ts           # Web push subscription
 │
 ├── lib/                                # Shared utilities (production-grade)
@@ -170,7 +184,7 @@ ucstgo-library/
 │   ├── fetcher.ts                        # SWR fetch wrapper
 │   ├── get-current-user.ts               # Server-side user getter
 │   ├── role-routes.ts                    # Role → default route mapping
-│   ├── socket.ts                         # Socket.IO getIO()
+│   ├── socket.ts                         # Socket.IO setIO()/getIO() (server-side)
 │   ├── ebookCache.ts                     # IndexedDB offline cache
 │   ├── sendPush.ts                       # Web push sender
 │   ├── webpush.ts                        # VAPID config
@@ -178,9 +192,9 @@ ucstgo-library/
 │   ├── design-tokens.ts                  # CVA primitives: statusBadge, roleBadge, metricCard, actionButton
 │   ├── services/                         # Data Access Layer (DAL)
 │   │   ├── auth.service.ts               # getSession, requireSession, requireRole, getDbUserRole
-│   │   ├── book.service.ts               # listBooks, getBookById, createBook, updateBook, deleteBook
-│   │   ├── borrow.service.ts             # borrowBook, returnBook, createReservation, fulfillReservation
-│   │   └── user.service.ts               # listUsers, createUser, updateUser, deleteUser, banUser
+│   │   ├── book.service.ts               # listBooks, getBookById, createBook, updateBook, deleteBook (+ socket emits)
+│   │   ├── borrow.service.ts             # borrowBook, returnBook, createReservation, fulfillReservation (+ socket emits)
+│   │   └── user.service.ts               # listUsers, createUser, updateUser, deleteUser, banUser (+ socket emits)
 │   ├── ai/groq.ts                        # Groq SDK client
 │   ├── ai/knowledge.ts                   # Knowledge base loader
 │   └── validations/auth.ts               # Zod login schema
@@ -200,7 +214,7 @@ ucstgo-library/
 ├── prisma/
 │   ├── schema.prisma                     # Database schema
 │   ├── seed.ts                           # Seed data
-│   └── migrations/                       # 21 migration files
+│   └── migrations/                       # Migration files
 │
 ├── public/
 │   ├── images/                           # Brand logos, avatars, hero images
@@ -219,8 +233,25 @@ ucstgo-library/
 
 ```
 Browser → Next.js Proxy (proxy.ts) → Route Handler / Server Action → Prisma → PostgreSQL
-                                   ↕
-                              Socket.IO (real-time notifications)
+                                   ↕                              ↕
+                              Socket.IO (real-time)       Socket.IO emits (DAL)
+```
+
+### Real-Time Event Flow
+
+```
+Server (DAL)                          Server (Socket.IO)          Client (Browser)
+    │                                      │                          │
+    ├─ book.service.ts ──emit("catalog:*")─┤                          │
+    ├─ borrow.service.ts ─emit("reservation:*", "borrow:*")─┤         │
+    ├─ user.service.ts ──emit("user:changed", "user:banned")─┤        │
+    │                                      │                          │
+    │                                      │──socket.emit(event, data)─┤
+    │                                      │                          ├─ useSocketEvent()
+    │                                      │                          ├─ useCatalogSync()
+    │                                      │                          ├─ useCirculationSync()
+    │                                      │                          ├─ useUserSync()
+    │                                      │                          └─ useBooksInfinite (mutate)
 ```
 
 ### Authentication Flow
@@ -345,7 +376,41 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 
 ---
 
-## 6. Key Components
+## 6. Real-Time Socket.IO System
+
+### Server-Side (`server.js`)
+- Custom Node.js HTTP server wrapping Next.js request handler
+- Socket.IO server attached to HTTP server via engine.io (ordered listener intercept)
+- `global.io = io` exposed for DAL access
+- Events: `join` (user room), `disconnect`
+
+### DAL Socket Emits (`lib/socket.ts`)
+- `setIO(io)` / `getIO()` — singleton accessor for the Socket.IO server instance
+
+| Service | Events Emitted |
+|---------|---------------|
+| `book.service.ts` | `catalog:created`, `catalog:updated`, `catalog:deleted` |
+| `borrow.service.ts` | `reservation:created`, `reservation:status`, `borrow:created` |
+| `app/actions/borrow.ts` | `borrow:created` |
+| `app/actions/return.ts` | `borrow:returned` |
+| `user.service.ts` | `user:changed`, `user:banned` |
+
+### Client-Side (`hooks/use-socket.ts`)
+- Singleton Socket.IO client connection (`io()` with WebSocket-only transport)
+- `useSocketEvent(event, callback)` — ref-based callback hook with connection logging
+- Automatically connects on mount, disconnects on unmount
+
+### SWR Sync Hooks
+| Hook | File | Listens To |
+|------|------|------------|
+| `useBooksInfinite` | `hooks/useBooksInfinite.ts` | `catalog:*` events → `mutate()` |
+| `useCatalogSync` | `features/catalog/hooks/use-book-catalog.ts` | `catalog:*` events → `mutate()` |
+| `useCirculationSync` | `features/circulation/hooks/use-circulation.ts` | `reservation:*`, `borrow:*` → `mutate()` |
+| `useUserSync` | `features/user-management/hooks/use-user-management.ts` | `user:changed`, `user:banned` → `mutate()` |
+
+---
+
+## 7. Key Components
 
 ### Brand Configuration System
 - `config/brand.ts`: Source-of-truth file (rewritten at runtime)
@@ -370,6 +435,7 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 - `components/students/tabs/ProfileTab.tsx`: Borrowing history, fines, bookmarks
 - `components/students/layout/TopNav.tsx`: Top navigation bar
 - `components/students/layout/BottomNav.tsx`: Mobile bottom navigation
+- `app/student/dashboard/page.tsx`: 4-tab portal with InfiniteScroll Lottie animation
 
 ### Ebook Reader
 - `components/EbookReader.tsx`: PDF.js-based reader with pagination
@@ -385,6 +451,12 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 - `lib/ai/groq.ts`: Groq SDK configuration
 - `app/api/ai/chat/route.ts`: Server endpoint with intent detection
 
+### Animations (Lottie)
+- `components/animations/Loading.tsx`: Full-screen DotLottie loading (library.json)
+- `components/animations/TextToSvg.tsx`: DotLottie text-to-SVG animation
+- `components/animations/InfinityLoading.json`: Infinite scroll Lottie (used in student dashboard)
+- Player: `@dotlottie/react-player`
+
 ### Proxy (Middleware)
 - `proxy.ts`: Next.js 16 middleware that enforces authentication + role-based routing
 - Runs on all `/admin/*`, `/student/*`, `/librarian/*`, `/lecturer/*` routes
@@ -395,7 +467,7 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 
 ---
 
-## 7. File Upload System
+## 8. File Upload System
 
 ### Limits (configured in `lib/upload.ts`)
 
@@ -430,7 +502,7 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 
 ---
 
-## 8. Key Configurations
+## 9. Key Configurations
 
 ### `next.config.ts`
 
@@ -453,73 +525,88 @@ Custom Node.js HTTP server wrapping Next.js request handler with Socket.IO for r
 - Port: 3000 (configurable via `PORT` env)
 - Socket.IO CORS: origin `*`
 - Socket events: `join` (user room), `disconnect`
+- `global.io = io` exposed for DAL socket emits
 
 ### Environment Variables
 
 ```
-DATABASE_URL        → PostgreSQL connection (Supabase)
-BETTER_AUTH_SECRET  → Session signing secret
-BETTER_AUTH_URL     → Auth callback URL
-GROQ_API_KEY        → Groq AI SDK key
+DATABASE_URL            → PostgreSQL connection (Supabase)
+BETTER_AUTH_SECRET      → Session signing secret
+BETTER_AUTH_URL         → Auth callback URL
+GROQ_API_KEY            → Groq AI SDK key
 NEXT_PUBLIC_VAPID_PUBLIC_KEY → Web push public key
-VAPID_PRIVATE_KEY   → Web push private key
-CRON_SECRET         → CRON endpoint security
+VAPID_PRIVATE_KEY       → Web push private key
+CRON_SECRET             → CRON endpoint security
+PORT                    → Server port (default 3000)
+NEXT_PUBLIC_SITE_URL    → Public site URL
 ```
 
 ---
 
-## 9. Dependencies (Key Packages)
+## 10. Dependencies (Key Packages)
 
 | Purpose | Packages |
 |---------|----------|
 | Framework | next, react, react-dom |
 | Database | @prisma/client, @prisma/adapter-pg, pg |
 | Auth | better-auth, @better-auth/prisma-adapter |
-| UI | tailwindcss, @radix-ui/*, lucide-react, framer-motion, vaul |
+| UI | tailwindcss, @radix-ui/*, lucide-react, framer-motion, gsap, vaul |
 | Tables | @tanstack/react-table, @tanstack/react-virtual |
 | Forms | react-hook-form, @hookform/resolvers, zod |
 | Charts | recharts |
-| PDF | react-pdf, pdfjs-dist, jspdf |
+| PDF | react-pdf, pdfjs-dist, jspdf, jspdf-autotable |
 | AI | groq-sdk |
 | Realtime | socket.io, socket.io-client |
 | Push | web-push |
 | File | xlsx, unzipper, mime-types, @aws-sdk/client-s3 |
+| Animation | @dotlottie/react-player |
 | Utilities | date-fns, clsx, tailwind-merge, swr, sonner |
 
 ---
 
-## 10. Build & Deploy
+## 11. Docker Deployment
 
-### Commands
+### Files
 
-| Command | Action |
-|---------|--------|
-| `pnpm dev` | Development (node server.js) |
-| `pnpm build` | Prisma generate + Next.js build |
-| `pnpm start` | Production (NODE_ENV=production node server.js) |
-| `pnpm lint` | ESLint |
-| `pnpm deploy` | Full deploy: git pull → install → generate → migrate → build → pm2 reload |
+| File | Purpose |
+|------|---------|
+| `Dockerfile` | Multi-stage build (alpine, pnpm, non-root nextjs user) |
+| `.dockerignore` | Excludes node_modules, .next, .git, .env, etc. |
+| `docker-compose.yml` | Container service with restart, env_file, healthcheck |
 
-### Deploy Script
+### Dockerfile Stages
+
+1. **`deps`** — Install production dependencies with pnpm (frozen lockfile)
+2. **`builder`** — Full install + prisma generate + next build
+3. **`runner`** — Minimal runtime with node:22-alpine, non-root `nextjs` user, copies only built artifacts + prod deps
+
+### Deployment Commands
 
 ```bash
-git pull && pnpm install && pnpm prisma generate && pnpm prisma migrate deploy && pnpm build && pm2 reload ucstgo-library
+# Build and start
+docker compose up -d --build
+
+# Run database migrations
+docker exec ucstgo-library npx prisma migrate deploy
+
+# View logs
+docker logs -f ucstgo-library
 ```
 
 ---
 
-## 11. Production Refactoring Architecture
+## 12. Production Refactoring Architecture
 
-### 11.1 Service Layer (DAL)
+### 12.1 Service Layer (DAL)
 
 All database and auth logic is isolated in `lib/services/` — a clean Data Access Layer. Route handlers and server actions call these services instead of touching Prisma or Better-Auth directly.
 
 | Service | File | Responsibility |
 |---------|------|----------------|
 | `AuthService` | `lib/services/auth.service.ts` | Session, role verification, role hierarchy, route guard helpers |
-| `BookService` | `lib/services/book.service.ts` | Book CRUD, search/pagination, author/category management, barcode generation |
-| `BorrowService` | `lib/services/borrow.service.ts` | Borrow/return, reservations, overdue checks |
-| `UserService` | `lib/services/user.service.ts` | User CRUD per role, bulk creation, ban/unban |
+| `BookService` | `lib/services/book.service.ts` | Book CRUD, search/pagination, author/category management, barcode generation (+ socket emits) |
+| `BorrowService` | `lib/services/borrow.service.ts` | Borrow/return, reservations, overdue checks (+ socket emits) |
+| `UserService` | `lib/services/user.service.ts` | User CRUD per role, bulk creation, ban/unban (+ socket emits) |
 
 **Pattern:**
 
@@ -532,7 +619,7 @@ export async function updateBook(id: string, input: BookUpdateInput, userId: str
 export async function deleteBook(id: string) { ... }
 ```
 
-### 11.2 Error Handling System
+### 12.2 Error Handling System
 
 `lib/errors.ts` provides a typed error system:
 
@@ -544,7 +631,7 @@ const ErrorCodes = { UNAUTHORIZED, FORBIDDEN, NOT_FOUND, VALIDATION_ERROR, CONFL
 function toNextResponse(error): NextResponse  // Centralized error → JSON response
 ```
 
-### 11.3 Design Token System
+### 12.3 Design Token System
 
 **CSS Variables** in `app/globals.css`:
 
@@ -572,26 +659,26 @@ function toNextResponse(error): NextResponse  // Centralized error → JSON resp
 | `sectionHeader` | — | Flex row header with gap |
 | `emptyState` | — | Dashed-border placeholder |
 
-### 11.4 Feature-Based Directory Scaffold
+### 12.4 Feature-Based Directory Scaffold
 
 ```
 features/
 ├── catalog/            # Books, authors, categories
 │   ├── hooks/
-│   │   └── use-book-catalog.ts     # SWR hooks for search, list, detail, categories
+│   │   └── use-book-catalog.ts     # SWR hooks for search, list, detail, categories (+ socket sync)
 │   ├── components/     # Presentation UI (migrate from components/books/)
 │   ├── services/       # Feature-specific server actions
 │   └── types/
 ├── circulation/        # Borrows, returns, reservations
 │   ├── hooks/
-│   │   └── use-circulation.ts      # SWR hooks for reservations, notifications
+│   │   └── use-circulation.ts      # SWR hooks for reservations, notifications (+ socket sync)
 │   └── components/
 ├── ebooks/             # Reader, uploads, reading history
 │   └── hooks/
 ├── auth/               # Login, sessions, role management
 ├── user-management/    # Admin CRUD for users
 │   └── hooks/
-│       └── use-user-management.ts  # SWR hooks + mutations for user CRUD
+│       └── use-user-management.ts  # SWR hooks + mutations for user CRUD (+ socket sync)
 ├── notifications/
 ├── analytics/
 ├── ai-assistant/
@@ -600,7 +687,7 @@ features/
 
 Each feature contains `components/`, `hooks/`, `services/`, and `types/` directories. The `hooks/` in `features/` are **feature-specific** (SWR queries for that domain), while `lib/services/` are **shared** (Prisma DAL).
 
-### 11.5 Migration Status
+### 12.5 Migration Status
 
 | Layer | Status | Files Affected |
 |-------|--------|----------------|
@@ -610,7 +697,7 @@ Each feature contains `components/`, `hooks/`, `services/`, and `types/` directo
 | `lib/services/borrow.service.ts` | ✅ Complete | `/api/reservations` (GET), `/api/reservations/create`, `/api/reservations/[id]/cancel`, `/api/reservations/[id]/fullfill`, `/api/cron/check-due-dates` |
 | `lib/services/user.service.ts` | ✅ Complete | Used by `/api/admin/students`, `/api/admin/teachers`, `/api/admin/librarians` (12 route files) |
 | `lib/design-tokens.ts` | ✅ Complete | CVA primitives for badges, cards, buttons, layout |
-| `features/*/hooks/` | ✅ Adopted in pages | `use-book-catalog.ts` (augmented with pagination), `use-circulation.ts`, `use-user-management.ts` |
+| `features/*/hooks/` | ✅ Adopted in pages | `use-book-catalog.ts` (augmented with pagination + socket sync), `use-circulation.ts` (+ socket sync), `use-user-management.ts` (+ socket sync) |
 | Proxy (`proxy.ts`) | ✅ Refactored | Uses `AuthService` |
 | Remaining routes | ✅ Refactored | `/api/notifications`, `/api/notifications/announcement`, `/api/notifications/read`, `/api/me` |
 | Route handlers | ✅ All refactored | All 33 API route files use service layer + `toNextResponse()` |
@@ -619,7 +706,9 @@ Each feature contains `components/`, `hooks/`, `services/`, and `types/` directo
 | Feature hooks in pages | ✅ Partial | Admin/librarian books, reservations, students, teachers, librarians (9 pages) |
 | Feature directory migration | ❌ Not started | Move components into `features/*/components/` |
 
-## 11.6 File Counts
+---
+
+## 13. File Counts & Stats
 
 | Metric | Count |
 |--------|-------|
@@ -629,10 +718,15 @@ Each feature contains `components/`, `hooks/`, `services/`, and `types/` directo
 | Feature hooks | 3 (`use-book-catalog`, `use-circulation`, `use-user-management`) |
 | Pages refactored to feature hooks | 9 (admin/librarian books, reservations, students, teachers, librarians) |
 | Components using CVA primitives | 6 (`data-table`, `section-cards`, `BookPreview`, `ReservationTable`, `PhysicalBookDetailsModal`, `ProfileTab`) |
-| New production files created | `lib/errors.ts`, `lib/design-tokens.ts`, `lib/services/*.ts` (4), `features/*/hooks/*.ts` (3), `components/StatusBadge.tsx`, `components/RoleBadge.tsx`, `components/MetricCard.tsx`, `features/README.md` |
+| Socket event hooks | 5 (`useBooksInfinite`, `useCatalogSync`, `useCirculationSync`, `useUserSync`, `useSocketEvent`) |
+| Lottie animation files | 3 (`Loading.tsx`, `TextToSvg.tsx`, `InfinityLoading.json`) |
+| Docker deployment files | 3 (`Dockerfile`, `.dockerignore`, `docker-compose.yml`) |
+| Production files created | `lib/errors.ts`, `lib/design-tokens.ts`, `lib/socket.ts`, `lib/services/*.ts` (4), `hooks/use-socket.ts`, `features/*/hooks/*.ts` (3), `components/StatusBadge.tsx`, `components/RoleBadge.tsx`, `components/MetricCard.tsx`, `features/README.md`, `Dockerfile`, `.dockerignore`, `docker-compose.yml` |
 | Lines of code removed from route files | ~2,500+ (inline Prisma queries, availability calcs, manual auth checks consolidated into services) |
 
-## 12. File Size Limits
+---
+
+## 14. File Size Limits
 
 | Location | File Type | Limit |
 |----------|-----------|-------|

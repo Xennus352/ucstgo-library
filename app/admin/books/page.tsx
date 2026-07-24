@@ -40,7 +40,7 @@ export default function BooksPage() {
   };
 
   const books = data?.data || [];
-  const pagination = data?.pagination;
+  const pagination = data?.pagination ?? { page: 1, limit: 20, total: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false };
 
   return (
     <div className=" ">

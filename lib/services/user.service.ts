@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { notFound, validation } from "@/lib/errors";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { getIO } from "@/lib/socket";
 
 export type UserCreateInput = {
   name: string;
@@ -106,6 +107,8 @@ export async function createUser(input: UserCreateInput) {
     },
   });
 
+  try { getIO()?.emit("user:changed", created.user); } catch {}
+
   return created.user;
 }
 
@@ -122,11 +125,13 @@ export async function updateUser(id: string, input: UserUpdateInput) {
   if (input.phone !== undefined) data.phone = input.phone;
   if (input.banned !== undefined) data.banned = input.banned;
 
-  return prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id },
     data,
     select: userListSelect,
   });
+  try { getIO()?.emit("user:changed", updated); } catch {}
+  return updated;
 }
 
 export async function deleteUser(id: string) {
@@ -134,6 +139,7 @@ export async function deleteUser(id: string) {
   if (!user) throw notFound("User");
 
   await prisma.user.delete({ where: { id } });
+  try { getIO()?.emit("user:changed", { id, deleted: true }); } catch {}
 }
 
 export async function bulkCreateUsers(
@@ -158,9 +164,11 @@ export async function banUser(userId: string, banned: boolean) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw notFound("User");
 
-  return prisma.user.update({
+  const result = await prisma.user.update({
     where: { id: userId },
     data: { banned },
     select: userListSelect,
   });
+  try { getIO()?.emit(banned ? "user:banned" : "user:changed", result); } catch {}
+  return result;
 }

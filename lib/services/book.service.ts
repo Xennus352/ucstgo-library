@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { notFound, validation, conflict } from "@/lib/errors";
+import { getIO } from "@/lib/socket";
 
 export type BookQueryParams = {
   page?: number;
@@ -295,6 +296,18 @@ export async function createBook(input: BookCreateInput) {
     })),
   });
 
+  try {
+    const io = getIO();
+    if (io) {
+      io.emit("catalog:created", book);
+      console.log("[socket] Emitted catalog:created", book.id);
+    } else {
+      console.warn("[socket] getIO() returned undefined, cannot emit");
+    }
+  } catch {
+    console.error("[socket] Error emitting catalog:created");
+  }
+
   return book;
 }
 
@@ -363,6 +376,8 @@ export async function updateBook(
     });
   }
 
+  try { getIO()?.emit("catalog:updated", updated); } catch {}
+
   return updated;
 }
 
@@ -378,6 +393,18 @@ export async function deleteBook(id: string) {
     prisma.ebook.deleteMany({ where: { bookId: id } }),
     prisma.book.delete({ where: { id } }),
   ]);
+
+  try {
+    const io = getIO();
+    if (io) {
+      io.emit("catalog:deleted", { id });
+      console.log("[socket] Emitted catalog:deleted", id);
+    } else {
+      console.warn("[socket] getIO() returned undefined, cannot emit catalog:deleted");
+    }
+  } catch {
+    console.error("[socket] Error emitting catalog:deleted");
+  }
 
   return { coverImage: book.coverImage, ebookPath: book.ebook?.filePath ?? null };
 }

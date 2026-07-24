@@ -9,6 +9,7 @@ import {
   ReservationStatus,
 } from "../generated/prisma/enums";
 import prisma from "@/lib/prisma";
+import { getIO } from "@/lib/socket";
 
 export async function returnBookAction(borrowRecordId: string) {
   try {
@@ -93,6 +94,8 @@ export async function returnBookAction(borrowRecordId: string) {
         });
       }
     });
+
+    try { getIO()?.emit("borrow:returned", { borrowRecordId, bookId }); } catch {}
 
     // 4. Clean paths cache
     revalidatePath("/librarian/books");

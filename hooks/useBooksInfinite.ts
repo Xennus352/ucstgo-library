@@ -4,6 +4,7 @@ import useSWRInfinite from "swr/infinite";
 import { fetcher } from "@/lib/fetcher";
 import { transformApiBooks } from "@/utils/dataAdapter";
 import { BookWithDetails } from "@/components/students/types";
+import { useSocketEvent } from "@/hooks/use-socket";
 
 type BookType = "all" | "EResources" | "physical";
 
@@ -11,7 +12,6 @@ const PAGE_SIZE = 20;
 
 export function useBooksInfinite(type: BookType) {
   const getKey = (pageIndex: number, previousPageData: any) => {
-    // stop when no more data
     if (previousPageData && previousPageData.data?.length === 0) return null;
 
     return `/api/books?page=${pageIndex + 1}&limit=${PAGE_SIZE}&type=${type}`;
@@ -20,10 +20,11 @@ export function useBooksInfinite(type: BookType) {
   const { data, error, isLoading, size, setSize, mutate } = useSWRInfinite(
     getKey,
     fetcher,
-    {
-      revalidateFirstPage: false,
-    },
   );
+
+  useSocketEvent("catalog:created", () => mutate());
+  useSocketEvent("catalog:updated", () => mutate());
+  useSocketEvent("catalog:deleted", () => mutate());
 
   const books: BookWithDetails[] = data
     ? data.flatMap((page) => {

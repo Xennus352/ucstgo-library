@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { BorrowStatus, CopyStatus } from "../generated/prisma/enums";
 import prisma from "@/lib/prisma";
+import { getIO } from "@/lib/socket";
 
 export async function borrowBookAction(bookId: string) {
   try {
@@ -99,6 +100,8 @@ export async function borrowBookAction(bookId: string) {
         data: { status: CopyStatus.BORROWED },
       });
     });
+
+    try { getIO()?.emit("borrow:created", { userId, bookId, dueDate }); } catch {}
 
     revalidatePath("/student/dashboard");
     revalidatePath("/teacher/dashboard");

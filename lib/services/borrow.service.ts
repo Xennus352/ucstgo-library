@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { notFound, validation } from "@/lib/errors";
+import { getIO } from "@/lib/socket";
 
 export type ReservationQueryParams = {
   page?: number;
@@ -116,6 +117,8 @@ export async function createReservation(
     },
   });
 
+  try { getIO()?.emit("reservation:created", reservation); } catch {}
+
   return { status: "RESERVED" as const, reservation };
 }
 
@@ -138,10 +141,12 @@ export async function cancelReservation(
     throw validation("Only active reservations can be cancelled");
   }
 
-  return prisma.reservation.update({
+  const cancelled = await prisma.reservation.update({
     where: { id: reservationId },
     data: { status: "CANCELLED" },
   });
+  try { getIO()?.emit("reservation:status", cancelled); } catch {}
+  return cancelled;
 }
 
 export async function fulfillReservation(reservationId: string) {
@@ -180,6 +185,9 @@ export async function fulfillReservation(reservationId: string) {
       where: { id: reservationId },
       data: { status: "FULFILLED" },
     });
+
+    try { getIO()?.emit("reservation:status", { reservationId, status: "FULFILLED" }); } catch {}
+    try { getIO()?.emit("borrow:created", borrowRecord); } catch {}
 
     return { borrowRecord };
   });

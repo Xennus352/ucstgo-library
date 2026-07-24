@@ -1,6 +1,17 @@
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import useSWRMutation from "swr/mutation";
 import { fetcher } from "@/lib/fetcher";
+import { useSocketEvent } from "@/hooks/use-socket";
+
+function useUserSync() {
+  const { mutate } = useSWRConfig();
+  useSocketEvent("user:changed", () => {
+    mutate((key) => typeof key === "string" && key.startsWith("/api/admin/"));
+  });
+  useSocketEvent("user:banned", () => {
+    mutate((key) => typeof key === "string" && key.startsWith("/api/admin/"));
+  });
+}
 
 type UserRole = "STUDENT" | "LIBRARIAN" | "TEACHER";
 
@@ -9,6 +20,7 @@ function userEndpoint(role: UserRole) {
 }
 
 export function useUserList(role: UserRole, params?: { page?: number; q?: string }) {
+  useUserSync();
   const query = new URLSearchParams(
     Object.entries(params || {}).filter(([_, v]) => v !== undefined) as [string, string][],
   ).toString();
