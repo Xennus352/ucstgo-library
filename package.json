@@ -2,6 +2,7 @@
   "name": "library-ucstgo",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.12.4",
   "scripts": {
     "dev": "node server.js",
     "build": "prisma generate && next build",
