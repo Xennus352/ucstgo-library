@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import {  Plus, BookOpen, Pencil, X, FileUp, BookMarked } from "lucide-react";
+import { Plus, BookOpen, Pencil, X, FileUp, BookMarked } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useSWR from "swr";
@@ -12,8 +12,6 @@ import { fetcher } from "@/lib/fetcher";
 import { ImportModal } from "@/components/books/ImportModal";
 import { BookZipImport } from "@/components/books/BookZipImport";
 import { BookFormFields } from "@/components/lecturer/BookFormFields";
-import { AcademicResourcesManager } from "@/components/admin/AcademicResourcesManager";
-
 
 // Types matching your existing setup
 interface Book {
@@ -557,11 +555,6 @@ export default function ManageEbooks() {
                 {pending ? "Updating..." : "Update Details"}
               </Button>
             </div>
-          </TabsContent>
-
-          {/* RESOURCES TAB */}
-          <TabsContent value="resources" className="mt-0 outline-hidden">
-            <AcademicResourcesManager />
           </TabsContent>
         </Tabs>
       </div>
