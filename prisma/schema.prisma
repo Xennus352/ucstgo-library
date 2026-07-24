@@ -383,3 +383,27 @@ model SystemSetting {
 
   @@map("system_setting")
 }
+
+// ----------------------------------------------------
+// 6. NOTICE BOARD & LIBRARY RULES
+// ----------------------------------------------------
+
+model Notice {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text
+  color     String   @default("red") // dot color: red, emerald, cyan, etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notice")
+}
+
+model LibraryRule {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("library_rule")
+}

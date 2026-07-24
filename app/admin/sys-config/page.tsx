@@ -1,13 +1,17 @@
 import React from "react";
 import fs from "fs/promises";
 import path from "path";
-import { Settings, Palette, GraduationCap } from "lucide-react";
+import { Settings, Palette, GraduationCap, Bell, CheckSquare } from "lucide-react";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { getLibrarySettings } from "@/app/actions/settings";
 import { getAllSemesters } from "@/app/actions/semesters";
 import { AddSemesterForm } from "@/components/admin/AddSemesterForm";
 import DeleteSemesterButton from "@/components/admin/DeleteSemesterButton";
 import UpdateBrandForm from "@/components/admin/updateBrand";
+import { NoticeBoardManager } from "@/components/admin/NoticeBoardManager";
+import { LibraryRulesManager } from "@/components/admin/LibraryRulesManager";
+import { getNotices } from "@/app/actions/notice";
+import { getLibraryRules } from "@/app/actions/library-rules";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -18,9 +22,11 @@ import {
 } from "@/components/ui/card";
 
 const SystemConfiguration = async () => {
-  const [settings, semestersRes] = await Promise.all([
+  const [settings, semestersRes, noticesRes, rulesRes] = await Promise.all([
     getLibrarySettings(),
     getAllSemesters(),
+    getNotices(),
+    getLibraryRules(),
   ]);
 
   const configPath = path.join(process.cwd(), "config", "brand.ts");
@@ -37,6 +43,8 @@ const SystemConfiguration = async () => {
   } catch {}
 
   const semesters = semestersRes.success ? semestersRes.data : [];
+  const notices = noticesRes.success && noticesRes.data ? noticesRes.data : [];
+  const rules = rulesRes.success && rulesRes.data ? rulesRes.data : [];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -62,6 +70,14 @@ const SystemConfiguration = async () => {
           <TabsTrigger value="semesters" className="gap-2">
             <GraduationCap className="size-4" />
             Semesters
+          </TabsTrigger>
+          <TabsTrigger value="notice-board" className="gap-2">
+            <Bell className="size-4" />
+            Notice Board
+          </TabsTrigger>
+          <TabsTrigger value="library-rules" className="gap-2">
+            <CheckSquare className="size-4" />
+            Library Rules
           </TabsTrigger>
         </TabsList>
 
@@ -118,6 +134,14 @@ const SystemConfiguration = async () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="notice-board" className="mt-6">
+          <NoticeBoardManager notices={notices} />
+        </TabsContent>
+
+        <TabsContent value="library-rules" className="mt-6">
+          <LibraryRulesManager rules={rules} />
         </TabsContent>
       </Tabs>
     </div>

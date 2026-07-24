@@ -34,9 +34,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import TextType from "@/components/TextType";
 import Stack from "@/components/Stack";
 import { LibrarySettings } from "@/app/actions/settings";
+import { getNotices } from "@/app/actions/notice";
+import { getLibraryRules } from "@/app/actions/library-rules";
 import Image from "next/image";
 import { useBrandConfig } from "@/components/brand-config-provider";
-import { rules } from "@/libraryRules/rules";
 
 const Counter = ({ value }: { value: number }) => (
   <span>{value.toLocaleString()}</span>
@@ -91,6 +92,9 @@ export const LibraryHome: React.FC<HomePageProps> = ({
     totalAuthors: initialCounts?.totalAuthors ?? 1240,
   });
 
+  const [notices, setNotices] = useState<{ id: string; title: string; content: string; color: string; createdAt: Date }[]>([]);
+  const [rules, setRules] = useState<{ id: string; content: string; createdAt: Date }[]>([]);
+
   useEffect(() => {
     if (initialCounts) {
       setCounts({
@@ -101,6 +105,18 @@ export const LibraryHome: React.FC<HomePageProps> = ({
       });
     }
   }, [initialCounts]);
+
+  useEffect(() => {
+    async function fetchData() {
+      const [noticesRes, rulesRes] = await Promise.all([
+        getNotices(),
+        getLibraryRules(),
+      ]);
+      if (noticesRes.success && noticesRes.data) setNotices(noticesRes.data);
+      if (rulesRes.success && rulesRes.data) setRules(rulesRes.data);
+    }
+    fetchData();
+  }, []);
 
   const images = [
     "https://images.stockcake.com/public/2/5/0/2501b248-7abb-4dfc-b76c-153b7253e5b7_large/coding-among-books-stockcake.jpg",
@@ -619,8 +635,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
           })}
         </section>
 
-        {/* NOTICE BOARD */}
-
+        {/* NOTICE BOARD & LIBRARY RULES */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             {/* Notice Board */}
@@ -630,7 +645,6 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                   <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
                     <Bell className="w-6 h-6 text-white" />
                   </div>
-
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900">
                       Notice Board
@@ -639,67 +653,51 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                   </div>
                 </div>
               </div>
-
               <div className="space-y-5">
-                <hr className="border-slate-100" />
-
-                {/* Library Closure */}
-                <div className="flex gap-4">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-red-500 shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-slate-800">
-                      စာကြည့်တိုက်ပိတ်ရက် အသိပေးချက်
-                    </h3>
-                    <p className="text-sm text-slate-600 mt-1">
-                      ၂၀၂၆ ခုနှစ်၊ ဩဂုတ်လ ၁၂ ရက်နေ့တွင် စာကြည့်တိုက်
-                      ပိတ်မည်ဖြစ်ပါသည်။
-                    </p>
-                  </div>
-                </div>
-
-                <hr className="border-slate-100" />
-
-                {/* New Book Arrival */}
-                <div className="flex gap-4">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-emerald-500 shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-slate-800">
-                      စာအုပ်အသစ် ရောက်ရှိခြင်း
-                    </h3>
-                    <p className="text-sm text-slate-600 mt-1">
-                      Computer Science ဘာသာရပ်ဆိုင်ရာ စာအုပ်အသစ် (၂၅) အုပ်
-                      ထပ်မံရောက်ရှိထားပါသည်။
-                    </p>
-                  </div>
-                </div>
-
-                <hr className="border-slate-100" />
-
-                {/* E-Resources */}
-                <div className="flex gap-4">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-cyan-500 shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-slate-800">
-                      E-Resources အသိပေးချက်
-                    </h3>
-                    <p className="text-sm text-slate-600 mt-1">
-                      IEEE E-Resources များကို ယခုအခါ အသုံးပြုနိုင်ပြီဖြစ်ပါသည်။
-                    </p>
-                  </div>
-                </div>
-
-                <hr className="border-slate-100 pb-3" />
+                {notices.length === 0 ? (
+                  <p className="text-sm text-slate-400 italic py-4 text-center">
+                    No notices yet.
+                  </p>
+                ) : (
+                  notices.map((notice, index) => (
+                    <div key={notice.id}>
+                      {index > 0 && <hr className="border-slate-100" />}
+                      <div className="flex gap-4">
+                        <span
+                          className="w-2 h-2 mt-2 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: {
+                              red: "#ef4444",
+                              emerald: "#10b981",
+                              cyan: "#06b6d4",
+                              blue: "#3b82f6",
+                              amber: "#f59e0b",
+                            }[notice.color] || "#ef4444",
+                          }}
+                        />
+                        <div>
+                          <h3 className="font-semibold text-slate-800">
+                            {notice.title}
+                          </h3>
+                          <p className="text-sm text-slate-600 mt-1">
+                            {notice.content}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {notices.length > 0 && <hr className="border-slate-100 pb-3" />}
               </div>
             </aside>
 
-            {/* Library Rules  */}
+            {/* Library Rules */}
             <aside className="lg:sticky lg:top-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
               <div className="mb-8">
                 <div className="inline-flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-md shadow-emerald-200">
                     <CheckCircle2 className="w-6 h-6 text-white" />
                   </div>
-
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900">
                       Library Rules
@@ -708,23 +706,28 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                   </div>
                 </div>
               </div>
-
               <div className="space-y-5">
-                {rules.map((rule, index) => (
-                  <div key={index} className="group">
-                    <div className="flex gap-4">
-                      <div className="w-2 h-2 mt-2 rounded-full bg-emerald-500 shrink-0" />
-                      <div>
-                        <p className="text-slate-700 text-sm leading-relaxed">
-                          {rule}
-                        </p>
+                {rules.length === 0 ? (
+                  <p className="text-sm text-slate-400 italic py-4 text-center">
+                    No rules added yet.
+                  </p>
+                ) : (
+                  rules.map((rule, index) => (
+                    <div key={rule.id} className="group">
+                      <div className="flex gap-4">
+                        <span className="w-2 h-2 mt-2 rounded-full bg-emerald-500 shrink-0" />
+                        <div>
+                          <p className="text-slate-700 text-sm leading-relaxed">
+                            {rule.content}
+                          </p>
+                        </div>
                       </div>
+                      {index !== rules.length - 1 && (
+                        <hr className="border-slate-100 mt-5" />
+                      )}
                     </div>
-                    {index !== rules.length - 1 && (
-                      <hr className="border-slate-100 mt-5" />
-                    )}
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </aside>
           </div>
