@@ -7,6 +7,7 @@ services:
         BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
         BETTER_AUTH_URL: ${BETTER_AUTH_URL}
         GROQ_API_KEY: ${GROQ_API_KEY}
+        DATABASE_URL: ${DATABASE_URL}
     container_name: ucstgo-library
     restart: unless-stopped
     ports:
