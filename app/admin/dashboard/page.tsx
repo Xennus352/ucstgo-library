@@ -8,7 +8,6 @@ export default async function DashboardPage() {
   const result = await getLiveCirculationData();
   const liveLibraryData = result.success && result.data ? result.data : [];
 
-  console.log('live data',liveLibraryData)
   return (
     <>
       <SectionCards />

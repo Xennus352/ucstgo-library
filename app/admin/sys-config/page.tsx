@@ -8,6 +8,7 @@ import {
   Bell,
   CheckSquare,
   BookMarked,
+  Database,
 } from "lucide-react";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { getLibrarySettings } from "@/app/actions/settings";
@@ -19,6 +20,7 @@ import { NoticeBoardManager } from "@/components/admin/NoticeBoardManager";
 import { LibraryRulesManager } from "@/components/admin/LibraryRulesManager";
 import { getNotices } from "@/app/actions/notice";
 import { getLibraryRules } from "@/app/actions/library-rules";
+import { BackupDataButton } from "@/components/admin/BackupDataButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -90,6 +92,10 @@ const SystemConfiguration = async () => {
             <CheckSquare className="size-4" />
             Library Rules
           </TabsTrigger>
+          <TabsTrigger value="backup" className="gap-2">
+            <Database className="size-4" />
+            Backup
+          </TabsTrigger>
        
         </TabsList>
 
@@ -154,6 +160,21 @@ const SystemConfiguration = async () => {
 
         <TabsContent value="library-rules" className="mt-6">
           <LibraryRulesManager rules={rules} />
+        </TabsContent>
+
+        <TabsContent value="backup" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Database Backup</CardTitle>
+              <CardDescription>
+                Download a complete SQL dump of all database tables and data.
+                Only administrators can perform backups.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BackupDataButton />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -6,3 +6,11 @@ allowBuilds:
   unrs-resolver: true
   core-js: true
   argon2: true
+
+onlyBuiltDependencies:
+  - '@prisma/engines'
+  - core-js
+  - esbuild
+  - prisma
+  - sharp
+  - unrs-resolver
