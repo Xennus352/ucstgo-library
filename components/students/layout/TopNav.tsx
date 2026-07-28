@@ -57,7 +57,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                 priority
               />
             </div>
-            <span className="text-lg text-primary hidden lg:inline font-bold tracking-tight">
+            <span className="text-lg text-primary font-bold tracking-tight">
               {brandConfig.name}
             </span>
           </motion.div>
@@ -200,11 +200,13 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* BOTTOM ROW / RIGHT ROW */}
         <div className="flex items-center gap-4 w-full md:w-auto md:max-w-md md:justify-end flex-1">
           {/* SEARCH BAR */}
-          <SearchBar
-            value={searchValue}
-            onChange={onSearch}
-            className="w-full md:w-[220px] lg:w-[260px] xl:w-[300px]"
-          />
+          {activeTab !== "Home" && activeTab !== "Profile" && (
+            <SearchBar
+              value={searchValue}
+              onChange={onSearch}
+              className="w-full md:w-[220px] lg:w-[260px] xl:w-[300px]"
+            />
+          )}
 
           {/* DESKTOP/TABLET NOTIFICATION BELL */}
           {isLoggedIn && (

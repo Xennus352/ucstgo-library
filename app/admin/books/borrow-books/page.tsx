@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // Import your server actions
-import { getAllActiveBorrows } from "@/app/actions/get-borrows";
+import { getAllBorrows } from "@/app/actions/get-borrows";
 import { returnBookAction } from "@/app/actions/return";
 
 interface BorrowRecordWithDetails {
@@ -133,7 +133,7 @@ export default function AdminBorrowManagement() {
   // 1. Fetch data from DB on mount
   const loadDatabaseRecords = useCallback(async () => {
     setIsRefreshing(true);
-    const result = await getAllActiveBorrows();
+    const result = await getAllBorrows();
     if (result.success && result.data) {
       // Parse ISO string dates into real JavaScript Date instances
       const formatted = result.data.map((record: any) => ({
@@ -253,6 +253,9 @@ export default function AdminBorrowManagement() {
       "Student ID": record.user.studentId || "N/A",
       "Borrow Date": format(record.borrowDate, "yyyy-MM-dd"),
       "Due Date": format(record.dueDate, "yyyy-MM-dd"),
+      "Return Date": record.returnDate
+        ? format(record.returnDate, "yyyy-MM-dd")
+        : "Not returned",
       Status: record.status,
     }));
   };
@@ -309,6 +312,7 @@ export default function AdminBorrowManagement() {
       "Student ID",
       "Borrow Date",
       "Due Date",
+      "Return Date",
       "Status",
     ];
 
@@ -324,6 +328,7 @@ export default function AdminBorrowManagement() {
       `"${record.user.studentId || "N/A"}"`,
       `"${format(record.borrowDate, "yyyy-MM-dd")}"`,
       `"${format(record.dueDate, "yyyy-MM-dd")}"`,
+      `"${record.returnDate ? format(record.returnDate, "yyyy-MM-dd") : "Not returned"}"`,
       `"${record.status}"`,
     ]);
 
@@ -371,6 +376,7 @@ export default function AdminBorrowManagement() {
         "Student ID",
         "Borrow Date",
         "Due Date",
+        "Return Date",
         "Barcode",
         "Status",
       ],
@@ -383,6 +389,7 @@ export default function AdminBorrowManagement() {
       record.user.studentId || "N/A",
       format(record.borrowDate, "yyyy-MM-dd"),
       format(record.dueDate, "yyyy-MM-dd"),
+      record.returnDate ? format(record.returnDate, "yyyy-MM-dd") : "Not returned",
       record.copy.barcode,
       record.status,
     ]);
@@ -778,6 +785,9 @@ export default function AdminBorrowManagement() {
                   Due Date
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:text-black">
+                  Return Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:text-black">
                   Location / Barcode
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:text-black">
@@ -851,6 +861,11 @@ export default function AdminBorrowManagement() {
                             : `${daysUntilDue} days left`}
                         </div>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 print:text-black">
+                      {record.returnDate
+                        ? format(record.returnDate, "MMM d, yyyy")
+                        : "—"}
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-xs text-gray-700 dark:text-gray-300 print:text-black">

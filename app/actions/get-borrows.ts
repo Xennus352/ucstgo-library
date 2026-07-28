@@ -3,12 +3,12 @@
 import prisma from "@/lib/prisma";
 import { BorrowStatus } from "../generated/prisma/enums";
 
-export async function getAllActiveBorrows() {
+export async function getAllBorrows() {
   try {
     const activeBorrows = await prisma.borrowRecord.findMany({
       where: {
         status: {
-          in: [BorrowStatus.BORROWED, BorrowStatus.OVERDUE],
+          in: [BorrowStatus.BORROWED, BorrowStatus.OVERDUE, BorrowStatus.RETURNED],
         },
       },
       include: {
