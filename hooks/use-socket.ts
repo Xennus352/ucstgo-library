@@ -26,6 +26,10 @@ function getSocket(): Socket {
   return socket;
 }
 
+export function getSocketInstance(): Socket {
+  return getSocket();
+}
+
 export function useSocketEvent(
   event: string,
   callback: (...args: unknown[]) => void,

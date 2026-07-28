@@ -42,6 +42,7 @@ model User {
   reservations   Reservation[]
   readingHistory ReadingHistory[]
   bookmarks      Bookmark[]
+  passwordResetRequests PasswordResetRequest[]
 
   // Explicitly named notification relations
   notificationsReceived Notification[]     @relation("NotificationRecipient")
@@ -332,7 +333,28 @@ model Bookmark {
 }
 
 // ----------------------------------------------------
-// 5. NOTIFICATIONS
+// 5. PASSWORD RESET REQUESTS
+// ----------------------------------------------------
+
+model PasswordResetRequest {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  status    String   @default("PENDING")
+  requestedPasswordHash String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([status])
+}
+
+// ----------------------------------------------------
+// 6. NOTIFICATIONS
 // ----------------------------------------------------
 
 model Notification {

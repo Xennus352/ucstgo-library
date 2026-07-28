@@ -38,6 +38,7 @@ import { getNotices } from "@/app/actions/notice";
 import { getLibraryRules } from "@/app/actions/library-rules";
 import Image from "next/image";
 import { useBrandConfig } from "@/components/brand-config-provider";
+import { StudentReadingStats } from "@/components/students/StudentReadingStats";
 
 const Counter = ({ value }: { value: number }) => (
   <span>{value.toLocaleString()}</span>
@@ -92,8 +93,18 @@ export const LibraryHome: React.FC<HomePageProps> = ({
     totalAuthors: initialCounts?.totalAuthors ?? 1240,
   });
 
-  const [notices, setNotices] = useState<{ id: string; title: string; content: string; color: string; createdAt: Date }[]>([]);
-  const [rules, setRules] = useState<{ id: string; content: string; createdAt: Date }[]>([]);
+  const [notices, setNotices] = useState<
+    {
+      id: string;
+      title: string;
+      content: string;
+      color: string;
+      createdAt: Date;
+    }[]
+  >([]);
+  const [rules, setRules] = useState<
+    { id: string; content: string; createdAt: Date }[]
+  >([]);
 
   useEffect(() => {
     if (initialCounts) {
@@ -635,6 +646,11 @@ export const LibraryHome: React.FC<HomePageProps> = ({
           })}
         </section>
 
+        {/* STUDENT READING STATS */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <StudentReadingStats />
+        </div>
+
         {/* NOTICE BOARD & LIBRARY RULES */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
@@ -666,13 +682,14 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                         <span
                           className="w-2 h-2 mt-2 rounded-full shrink-0"
                           style={{
-                            backgroundColor: {
-                              red: "#ef4444",
-                              emerald: "#10b981",
-                              cyan: "#06b6d4",
-                              blue: "#3b82f6",
-                              amber: "#f59e0b",
-                            }[notice.color] || "#ef4444",
+                            backgroundColor:
+                              {
+                                red: "#ef4444",
+                                emerald: "#10b981",
+                                cyan: "#06b6d4",
+                                blue: "#3b82f6",
+                                amber: "#f59e0b",
+                              }[notice.color] || "#ef4444",
                           }}
                         />
                         <div>
@@ -735,11 +752,13 @@ export const LibraryHome: React.FC<HomePageProps> = ({
       </div>
 
       {/* FOOTER */}
-      <footer className="bg-slate-900 w-full text-gray-300 pt-12 sm:pt-16 pb-6 sm:pb-8 border-t-4 border-blue-600 mt-8 sm:mt-12">
+      <footer className="bg-slate-900 w-full text-gray-300 pt-12 sm:pt-16 pb-6 border-t-4 border-blue-600 mt-8 sm:mt-12">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-12 mb-8 sm:mb-12">
-              <div className="sm:col-span-2 lg:col-span-1">
+            {/* Main Footer Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12 mb-8 sm:mb-12">
+              {/* Brand & Mission */}
+              <div>
                 <div className="flex items-center mb-4 sm:mb-6">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 bg-transparent rounded-lg flex items-center justify-center text-white font-bold text-base sm:text-xl mr-2 sm:mr-3">
                     <Image
@@ -757,37 +776,20 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                       UCS Taungoo
                     </h2>
                     <p className="text-[10px] sm:text-xs text-blue-400 font-medium uppercase tracking-wider">
-                      Library Portal
+                      Digital Library
                     </p>
                   </div>
                 </div>
                 <p className="text-xs sm:text-sm text-gray-400 mb-4 sm:mb-6 leading-relaxed">
-                  Empowering computer science education through dynamic learning
-                  resources and digital archives.
+                  Your hub for academic research, digital archives, and computer
+                  science study materials.
                 </p>
               </div>
 
+              {/* Quick Navigation */}
               <div>
                 <h3 className="font-bold text-xs sm:text-sm text-white mb-4 sm:mb-6 uppercase tracking-wider text-blue-500">
-                  Quick Links
-                </h3>
-                <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-                  <li>
-                    <a
-                      href="http://www.ucstaungoo.edu.mm"
-                      className="hover:text-blue-400 transition flex items-center group"
-                    >
-                      <ArrowRight className="w-3 h-3 mr-1.5 text-blue-500 transition-transform group-hover:translate-x-1" />
-                      www.ucstaungoo.edu.mm
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {/*  LINKS HERE */}
-              <div>
-                <h3 className="font-bold text-xs sm:text-sm text-white mb-4 sm:mb-6 uppercase tracking-wider text-blue-500">
-                  Library Resources
+                  Library Navigation
                 </h3>
                 <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                   <li>
@@ -829,6 +831,7 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                 </ul>
               </div>
 
+              {/* Opening Hours */}
               <div>
                 <h3 className="font-bold text-xs sm:text-sm text-white mb-4 sm:mb-6 uppercase tracking-wider text-blue-500">
                   Opening Hours
@@ -841,54 +844,62 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                       <p className="text-[11px]">9:00 AM - 4:00 PM</p>
                     </div>
                   </li>
+                  <li className="flex items-start">
+                    <Clock className="w-3.5 h-3.5 text-gray-500 mt-0.5 mr-2 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-gray-400">
+                        Sat - Sun & Holidays
+                      </p>
+                      <p className="text-[11px] text-red-400">Closed</p>
+                    </div>
+                  </li>
                 </ul>
               </div>
 
-              <div className="sm:col-span-2 lg:col-span-1">
+              {/* Library Contact Info */}
+              <div>
                 <h3 className="font-bold text-xs sm:text-sm text-white mb-4 sm:mb-6 uppercase tracking-wider text-blue-500">
-                  Contact Info
+                  Library Helpdesk
                 </h3>
                 <ul className="space-y-3 sm:space-y-4 text-xs sm:text-sm">
                   <li className="flex items-start">
                     <MapPin className="w-3.5 h-3.5 text-blue-500 mt-0.5 mr-2 sm:mr-3 flex-shrink-0" />
-                    <span>
-                      University of Computer Studies,
-                      <br />
-                      Taungoo Campus, Myanmar
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <PhoneCall className="w-3.5 h-3.5 text-blue-500 mt-0.5 mr-2 sm:mr-3 flex-shrink-0" />
-                    <a
-                      href="tel:+95123456789"
-                      className="hover:text-blue-500 hover:underline"
-                    >
-                      +95 123 456 789
-                    </a>
+                    <span>UCS Taungoo Campus</span>
                   </li>
                   <li className="flex items-start min-w-0">
                     <MailIcon className="w-3.5 h-3.5 text-blue-500 mt-1 mr-2 sm:mr-3 shrink-0" />
                     <a
-                      href="mailto:ucstgostuaffair2024@gmail.com"
+                      href="mailto:library@ucstaungoo.edu.mm"
                       className="hover:text-blue-500 hover:underline break-all"
                     >
-                      ucstgostuaffair2024@gmail.com
-                    </a>
-                  </li>
-                  <li className="flex items-center text-xs text-muted-foreground">
-                    <Code2Icon className="w-3.5 h-3.5 text-blue-500 mr-2 sm:mr-3 shrink-0" />
-                    <span className="mr-1">Developed by</span>
-                    <a
-                      href="https://github.com/Xennus352"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-white hover:text-blue-500 hover:underline transition-colors"
-                    >
-                      SMK
+                      library@ucstaungoo.edu.mm
                     </a>
                   </li>
                 </ul>
               </div>
+            </div>
+
+            {/* Sub-Footer Bar */}
+            <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+              {/* Developer Credit  */}
+              <div className="flex items-center space-x-1.5">
+                <Code2Icon className="w-3.5 h-3.5 text-blue-500" />
+                <span>Developed by</span>
+                <a
+                  href="https://github.com/Xennus352"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-white hover:text-blue-400 hover:underline transition-colors"
+                >
+                  SMK
+                </a>
+              </div>
+
+              {/* Copyright (Moved to Right) */}
+              <p>
+                © {new Date().getFullYear()} UCS Taungoo Library. All rights
+                reserved.
+              </p>
             </div>
           </div>
         </div>

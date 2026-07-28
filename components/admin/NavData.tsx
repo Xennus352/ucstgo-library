@@ -43,6 +43,7 @@ export const navData = {
         { title: "Books Inventory", url: "/admin/books" },
         { title: "Borrowing", url: "/admin/books/borrow-books" },
         { title: "Reservations", url: "/admin/books/reservations" },
+        { title: "Password Resets", url: "/admin/password-resets" },
       ],
     },
   ],

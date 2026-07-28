@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginFormValues } from "@/lib/validations/auth";
-import { useCurrentUser } from "@/hooks/use-current-user"; 
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 import {
   Dialog,
@@ -25,8 +25,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeClosed } from "lucide-react";
+import { Eye, EyeClosed, Lock } from "lucide-react";
 import { useBrandConfig } from "@/components/brand-config-provider";
+import { forgotPasswordAction } from "@/app/actions/password-reset";
 
 interface LoginDialogProps {
   isOpen?: boolean;
@@ -50,6 +51,11 @@ export default function LoginDialog({
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotPassword, setForgotPassword] = useState("");
+  const [showForgotPasswordInput, setShowForgotPasswordInput] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const {
     register,
@@ -105,6 +111,28 @@ export default function LoginDialog({
       toast.error("Something went wrong");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (forgotLoading || !forgotEmail.trim() || !forgotPassword.trim()) return;
+
+    try {
+      setForgotLoading(true);
+      const res = await forgotPasswordAction(forgotEmail.trim(), forgotPassword);
+
+      if (res.success) {
+        toast.success(res.message);
+        setShowForgotPassword(false);
+        setForgotEmail("");
+        setForgotPassword("");
+      } else {
+        toast.error(res.error || "Failed to submit request");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -167,6 +195,16 @@ export default function LoginDialog({
             )}
           </div>
 
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(!showForgotPassword)}
+              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline cursor-pointer"
+            >
+              Forgot Password?
+            </button>
+          </div>
+
           <Button
             type="submit"
             disabled={loading}
@@ -175,6 +213,58 @@ export default function LoginDialog({
             {loading ? "Signing In..." : "Sign In"}
           </Button>
         </form>
+
+        {showForgotPassword && (
+          <div className="mt-4 p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900">
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Forgot Password
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Enter your email and desired new password. An admin will review your request.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email Address</Label>
+                <Input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="h-11 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>New Password</Label>
+                <div className="relative">
+                  <Input
+                    type={showForgotPasswordInput ? "text" : "password"}
+                    placeholder="Enter your desired new password"
+                    value={forgotPassword}
+                    onChange={(e) => setForgotPassword(e.target.value)}
+                    className="h-11 rounded-xl pr-12"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => setShowForgotPasswordInput((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground bg-transparent hover:cursor-pointer hover:bg-blue-200"
+                  >
+                    {showForgotPasswordInput ? <EyeClosed className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={forgotLoading || !forgotEmail.trim() || !forgotPassword.trim()}
+                className="w-full h-11 rounded-xl font-bold cursor-pointer"
+              >
+                {forgotLoading ? "Submitting..." : "Submit Request"}
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -1,4 +1,9 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { motion, useSpring, useTransform, useMotionValue } from "framer-motion";
 import { getTopBorrowedBooks, getTopBorrowers } from "@/app/actions/analytics";
+import { useSocketEvent } from "@/hooks/use-socket";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -13,21 +18,55 @@ import {
   UserCheck,
 } from "lucide-react";
 
-export default async function CirculationAnalyticsDashboard() {
-  const [booksRes, usersRes] = await Promise.all([
-    getTopBorrowedBooks(),
-    getTopBorrowers(),
-  ]);
+function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }) {
+  const motionValue = useMotionValue(value);
+  const spring = useSpring(motionValue, { stiffness: 80, damping: 20 });
+  const display = useTransform(spring, (v) => v.toFixed(decimals));
 
-  const books = booksRes.success ? booksRes.data || [] : [];
-  const users = usersRes.success ? usersRes.data || [] : [];
+  useEffect(() => { motionValue.set(value); }, [value, motionValue]);
 
+  return <motion.span>{display}</motion.span>;
+}
+
+interface BookData {
+  id: string;
+  title: string;
+  categoryName: string;
+  borrowCount: number;
+}
+
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  borrowCount: number;
+}
+
+export default function CirculationAnalyticsDashboard() {
+  const [books, setBooks] = useState<BookData[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [updatedAt, setUpdatedAt] = useState<string>("");
+
+  const loadData = useCallback(async () => {
+    const [booksRes, usersRes] = await Promise.all([
+      getTopBorrowedBooks(),
+      getTopBorrowers(),
+    ]);
+    if (booksRes.success) setBooks(booksRes.data || []);
+    if (usersRes.success) setUsers(usersRes.data || []);
+    setUpdatedAt(new Date().toLocaleTimeString());
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSocketEvent("borrow:created", loadData);
+  useSocketEvent("borrow:returned", loadData);
+
+  const totalBorrows = books.reduce((acc, b) => acc + (b.borrowCount || 0), 0);
   const totalBooks = books.length;
   const totalUsers = users.length;
 
-  const totalBorrows = books.reduce((acc, b) => acc + (b.borrowCount || 0), 0);
-
-  // Math calculations for averages
   const avgBorrowsPerBook = totalBooks
     ? (totalBorrows / totalBooks).toFixed(1)
     : "0.0";
@@ -58,8 +97,10 @@ export default async function CirculationAnalyticsDashboard() {
     );
 
   return (
-    <div className="space-y-10 p-6 w-full mx-auto bg-gradient-to-b from-background to-muted/10">
-      {/* HEADER */}
+    <motion.div
+      layout
+      className="space-y-10 p-6 w-full mx-auto bg-gradient-to-b from-background to-muted/10"
+    >
       <div className="flex flex-col gap-2 border-b pb-6">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Activity className="w-4 h-4" />
@@ -75,73 +116,77 @@ export default async function CirculationAnalyticsDashboard() {
         </p>
       </div>
 
-      {/* HERO METRICS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 rounded-2xl border bg-card shadow-sm">
+      <motion.div layout className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <motion.div layout className="p-6 rounded-2xl border bg-card shadow-sm">
           <p className="text-sm text-muted-foreground">Total Borrows</p>
           <p className="text-3xl font-bold mt-2">
-            {totalBorrows.toLocaleString()}
+            <AnimatedNumber value={totalBorrows} />
           </p>
-        </div>
+        </motion.div>
 
-        <div className="p-6 rounded-2xl border bg-card shadow-sm">
+        <motion.div layout className="p-6 rounded-2xl border bg-card shadow-sm">
           <p className="text-sm text-muted-foreground">Active Patrons</p>
-          <p className="text-3xl font-bold mt-2">{totalUsers}</p>
-        </div>
+          <p className="text-3xl font-bold mt-2">
+            <AnimatedNumber value={totalUsers} />
+          </p>
+        </motion.div>
 
-        <div className="p-6 rounded-2xl border bg-card shadow-sm">
+        <motion.div layout className="p-6 rounded-2xl border bg-card shadow-sm">
           <p className="text-sm text-muted-foreground">Collection Size</p>
-          <p className="text-3xl font-bold mt-2">{totalBooks}</p>
-        </div>
-      </div>
+          <p className="text-3xl font-bold mt-2">
+            <AnimatedNumber value={totalBooks} />
+          </p>
+        </motion.div>
+      </motion.div>
 
-      {/* NEW: DETAILED AVERAGES & INSIGHTS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-xl border bg-muted/20">
+      <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div layout className="p-5 rounded-xl border bg-muted/20">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <BookCopy className="w-3 h-3" /> Avg. Borrows / Book
           </p>
-          <p className="text-xl font-bold mt-1">{avgBorrowsPerBook}x</p>
+          <p className="text-xl font-bold mt-1">
+            <AnimatedNumber value={parseFloat(avgBorrowsPerBook)} decimals={1} />x
+          </p>
           <p className="text-[10px] text-muted-foreground mt-1">
             Turnover rate per title
           </p>
-        </div>
+        </motion.div>
 
-        <div className="p-5 rounded-xl border bg-muted/20">
+        <motion.div layout className="p-5 rounded-xl border bg-muted/20">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <UserCheck className="w-3 h-3" /> Avg. Borrows / User
           </p>
-          <p className="text-xl font-bold mt-1">{avgBorrowsPerUser}x</p>
+          <p className="text-xl font-bold mt-1">
+            <AnimatedNumber value={parseFloat(avgBorrowsPerUser)} decimals={1} />x
+          </p>
           <p className="text-[10px] text-muted-foreground mt-1">
             Circulation per patron
           </p>
-        </div>
+        </motion.div>
 
-        <div className="p-5 rounded-xl border bg-muted/20">
+        <motion.div layout className="p-5 rounded-xl border bg-muted/20">
           <p className="text-xs text-muted-foreground">Top Book</p>
           <p className="text-sm font-semibold mt-1 truncate">
             {books[0]?.title || "N/A"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {books[0]?.borrowCount || 0} borrows ({topBookPercentage}%)
+            <AnimatedNumber value={books[0]?.borrowCount || 0} /> borrows ({topBookPercentage}%)
           </p>
-        </div>
+        </motion.div>
 
-        <div className="p-5 rounded-xl border bg-muted/20">
+        <motion.div layout className="p-5 rounded-xl border bg-muted/20">
           <p className="text-xs text-muted-foreground">Top Patron</p>
           <p className="text-sm font-semibold mt-1 truncate">
             {users[0]?.name || "N/A"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {users[0]?.borrowCount || 0} loans ({topUserPercentage}%)
+            <AnimatedNumber value={users[0]?.borrowCount || 0} /> loans ({topUserPercentage}%)
           </p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      {/* LEADERBOARDS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* BOOKS */}
-        <div className="border rounded-xl bg-card">
+      <motion.div layout className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <motion.div layout className="border rounded-xl bg-card">
           <div className="p-5 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" />
@@ -154,42 +199,40 @@ export default async function CirculationAnalyticsDashboard() {
               const pct = totalBorrows
                 ? Math.round((book.borrowCount / totalBorrows) * 100)
                 : 0;
-
               const trend = getTrend(i);
 
               return (
-                <div
-                  key={`${book.id}-${i}`}
+                <motion.div
+                  key={book.id}
+                  layout
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
                   className="flex items-center justify-between px-5 py-4 hover:bg-muted/30"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-8 flex items-center justify-center border rounded-md text-xs">
                       {i + 1}
                     </div>
-
                     <div>
-                      <p className="text-sm font-medium truncate">
-                        {book.title}
-                      </p>
+                      <p className="text-sm font-medium truncate">{book.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {book.borrowCount} borrows
+                        <AnimatedNumber value={book.borrowCount} /> borrows
                       </p>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-2 text-xs">
                     {getTrendIcon(trend)}
                     <span>{pct}%</span>
                     <ChevronRight className="w-3 h-3 text-muted-foreground" />
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </ScrollArea>
-        </div>
+        </motion.div>
 
-        {/* USERS */}
-        <div className="border rounded-xl bg-card">
+        <motion.div layout className="border rounded-xl bg-card">
           <div className="p-5 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4" />
@@ -202,46 +245,44 @@ export default async function CirculationAnalyticsDashboard() {
               const pct = totalBorrows
                 ? Math.round((user.borrowCount / totalBorrows) * 100)
                 : 0;
-
               const trend = getTrend(i + 2);
 
               return (
-                <div
-                  key={`${user.id}-${i}`}
+                <motion.div
+                  key={user.id}
+                  layout
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
                   className="flex items-center justify-between px-5 py-4 hover:bg-muted/30"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-8 flex items-center justify-center border rounded-md text-xs">
                       {i + 1}
                     </div>
-
                     <div>
-                      <p className="text-sm font-medium truncate">
-                        {user.name}
-                      </p>
+                      <p className="text-sm font-medium truncate">{user.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {user.borrowCount} loans
+                        <AnimatedNumber value={user.borrowCount} /> loans
                       </p>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-2 text-xs">
                     {getTrendIcon(trend)}
                     <span>{pct}%</span>
                     <ChevronRight className="w-3 h-3 text-muted-foreground" />
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </ScrollArea>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      {/* FOOTER */}
-      <div className="pt-6 border-t text-xs text-muted-foreground flex justify-between">
+      <motion.div layout className="pt-6 border-t text-xs text-muted-foreground flex justify-between">
         <span>System active</span>
-        <span>Updated {new Date().toLocaleTimeString()}</span>
-      </div>
-    </div>
+        <span>Updated {updatedAt}</span>
+      </motion.div>
+    </motion.div>
   );
 }

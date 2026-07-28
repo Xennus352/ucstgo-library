@@ -59,3 +59,64 @@ export async function getUserProfileData() {
     };
   }
 }
+
+export async function getStudentReadingStats() {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session || !session.user) {
+      return { success: false, error: "Authentication required." };
+    }
+
+    const userId = session.user.id;
+
+    const [studentCount, allCounts, totalUnique] = await Promise.all([
+      prisma.borrowRecord.count({ where: { userId } }),
+      prisma.borrowRecord.count(),
+      prisma.borrowRecord.groupBy({
+        by: ["userId"],
+        _count: { id: true },
+      }),
+    ]);
+
+    const sortedCounts = allCounts > 0
+      ? totalUnique.map((u) => u._count.id).sort((a, b) => b - a)
+      : [];
+
+    let rank = 1;
+    for (const c of sortedCounts) {
+      if (c <= studentCount) break;
+      rank++;
+    }
+
+    const totalBorrowers = totalUnique.length;
+    const percentile = totalBorrowers > 0
+      ? Math.round(((totalBorrowers - rank) / totalBorrowers) * 100)
+      : 0;
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthlyBorrowed = await prisma.borrowRecord.count({
+      where: { userId, borrowDate: { gte: startOfMonth } },
+    });
+
+    return {
+      success: true,
+      data: {
+        totalBorrowed: studentCount,
+        totalBorrowsInSystem: allCounts,
+        totalBorrowers,
+        rank,
+        percentile,
+        monthlyBorrowed,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to load reading stats.",
+    };
+  }
+}

@@ -4,32 +4,35 @@ import prisma from "@/lib/prisma";
 
 export async function getTopBorrowedBooks() {
   try {
-    // Group borrow records by book ID through the BookCopy relation
-    const borrowCounts = await prisma.borrowRecord.groupBy({
-      by: ["copyId"],
-      _count: {
-        id: true,
-      },
-      orderBy: {
-        _count: {
-          id: "desc",
+    const rows = await prisma.borrowRecord.findMany({
+      select: {
+        copy: {
+          select: { bookId: true },
         },
       },
-      take: 5,
     });
 
-    // Resolve the copy IDs to actual Book details
+    const countMap = new Map<string, number>();
+    for (const row of rows) {
+      const bookId = row.copy?.bookId;
+      if (bookId) countMap.set(bookId, (countMap.get(bookId) || 0) + 1);
+    }
+
+    const sorted = [...countMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
     const topBooks = await Promise.all(
-      borrowCounts.map(async (record) => {
-        const copy = await prisma.bookCopy.findUnique({
-          where: { id: record.copyId },
-          include: { book: true },
+      sorted.map(async ([bookId, count]) => {
+        const book = await prisma.book.findUnique({
+          where: { id: bookId },
+          select: { id: true, title: true, category: { select: { name: true } } },
         });
         return {
-          id: copy?.book.id || "unknown",
-          title: copy?.book.title || "Unknown Title",
-          isbn: copy?.book.isbn || "N/A",
-          borrowCount: record._count.id,
+          id: book?.id || bookId,
+          title: book?.title || "Unknown Title",
+          categoryName: book?.category?.name || "Uncategorized",
+          borrowCount: count,
         };
       }),
     );
@@ -46,25 +49,18 @@ export async function getTopBorrowedBooks() {
 
 export async function getTopBorrowers() {
   try {
-    // Group borrow records by user ID
     const borrowerCounts = await prisma.borrowRecord.groupBy({
       by: ["userId"],
-      _count: {
-        id: true,
-      },
-      orderBy: {
-        _count: {
-          id: "desc",
-        },
-      },
+      _count: { id: true },
+      orderBy: { _count: { id: "desc" } },
       take: 5,
     });
 
-    // Resolve user IDs to explicit profiles
     const topUsers = await Promise.all(
       borrowerCounts.map(async (record) => {
         const user = await prisma.user.findUnique({
           where: { id: record.userId },
+          select: { id: true, name: true, email: true, role: true },
         });
         return {
           id: user?.id || "unknown",

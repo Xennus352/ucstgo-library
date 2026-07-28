@@ -4,8 +4,8 @@ import { join } from "path";
 import { NextResponse } from "next/server";
 
 export const FILE_LIMITS = {
-  cover: 10 * 1024 * 1024,
-  ebook: 100 * 1024 * 1024,
+  cover: 5 * 1024 * 1024,
+  ebook: 200 * 1024 * 1024,
   zipImport: 200 * 1024 * 1024,
 } as const;
 

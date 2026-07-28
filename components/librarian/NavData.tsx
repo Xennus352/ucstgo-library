@@ -30,6 +30,7 @@ export const navData = {
         { title: "Books Inventory", url: "/librarian/books" },
         { title: "Borrowing", url: "/librarian/books/borrow-books" },
         { title: "Reservations", url: "/librarian/books/reservations" },
+        { title: "Password Resets", url: "/admin/password-resets" },
       ],
     },
   ],

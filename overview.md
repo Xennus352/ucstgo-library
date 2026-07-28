@@ -44,7 +44,7 @@ ucstgo-library/
 │   ├── icon.png                          # PWA icon
 │   │
 │   ├── actions/                          # Server Actions
-│   │   ├── analytics.ts
+│   │   ├── analytics.ts                  # getTopBorrowedBooks (deduplicated by book), getTopBorrowers
 │   │   ├── banUserAction.ts
 │   │   ├── bookStatus.ts
 │   │   ├── borrow.ts                     # Emits borrow:created via socket
@@ -55,6 +55,7 @@ ucstgo-library/
 │   │   ├── issueWarningAction.ts
 │   │   ├── library.ts
 │   │   ├── libraryStats.ts
+│   │   ├── password-reset.ts             # forgotPassword, accept/reject, get requests
 │   │   ├── profile.ts
 │   │   ├── return.ts                     # Emits borrow:returned via socket
 │   │   ├── section-stats.ts
@@ -90,6 +91,7 @@ ucstgo-library/
 │   │   ├── dashboard/page.tsx
 │   │   ├── books/                        # Catalog management
 │   │   ├── librarians/page.tsx
+│   │   ├── password-resets/page.tsx      # Password reset request management
 │   │   ├── students/page.tsx
 │   │   ├── teachers/page.tsx
 │   │   └── sys-config/page.tsx           # Brand, settings, semesters
@@ -137,6 +139,8 @@ ucstgo-library/
 │   ├── data-table.tsx                    # Generic table (tanstack/react-table)
 │   ├── EbookReader.tsx                   # Ebook reader container
 │   ├── LoginDialog.tsx
+│   ├── CirculationAnalyticsDashboard.tsx  # Real-time client component with animated counters, socket-synced
+│   ├── PasswordResetToast.tsx            # Global socket toast for password-reset events
 │   ├── StatusBadge.tsx                   # CVA-based status indicator
 │   ├── RoleBadge.tsx                     # CVA-based role indicator
 │   ├── MetricCard.tsx                    # CVA-based dashboard stat card
@@ -172,7 +176,7 @@ ucstgo-library/
 │   ├── use-current-user.ts               # SWR: /api/me
 │   ├── use-media-query.ts                # Responsive breakpoint
 │   ├── use-mobile.ts                     # Mobile detection (768px)
-│   ├── use-socket.ts                     # useSocketEvent hook (singleton Socket.IO client)
+│   ├── use-socket.ts                     # useSocketEvent + getSocketInstance (singleton Socket.IO client)
 │   └── usePushNotifications.ts           # Web push subscription
 │
 ├── lib/                                # Shared utilities (production-grade)
@@ -265,6 +269,20 @@ Better-Auth (email/password)
   → Individual API routes verify via auth.api.getSession()
 ```
 
+### Password Reset Flow
+
+```
+User submits email + desired new password
+  → forgotPasswordAction() hashes password immediately, creates PasswordResetRequest (PENDING, 24h expiry, only hash stored)
+  → Socket emits "password-reset:requested" (global)
+  → Admin sees request in /admin/password-resets with "Password provided" indicator (hash never exposed)
+  → Admin clicks Accept — acceptPasswordResetAction() applies stored hash to Account,
+    updates Account, deletes sessions, emits "password-reset:completed" to user room
+  → Admin clicks Reject — rejectPasswordResetAction() marks REJECTED,
+    creates Notification, emits "password-reset:rejected" to user room
+  → User receives real-time toast via PasswordResetToast component
+```
+
 ### File Upload Flow
 
 ```
@@ -288,6 +306,11 @@ Client (FormData with File)
 | LECTURER | `/lecturer/*` | Own book management, ebooks with LECTURER_ONLY access |
 | STUDENT | `/student/*` | Browse, borrow, reserve, read ebooks, profile |
 
+### Borrow Audit Trail
+- `app/actions/get-borrows.ts`: `getAllBorrows()` fetches all records including `RETURNED` for audit/history
+- Return Date column in admin/librarian borrow tables + Excel/CSV/PDF exports
+- `returnBookAction` restricted to LIBRARIAN and ADMIN roles
+
 ---
 
 ## 4. Database Schema (Prisma)
@@ -308,6 +331,7 @@ Client (FormData with File)
 | **ReadingHistory** | userId, ebookId, lastPage, progress | Reading progress |
 | **Bookmark** | userId, ebookId, pageNumber, note | User bookmarks |
 | **Notification** | id, title, message, userId, senderId | Notifications |
+| **PasswordResetRequest** | id, userId, token (unique), status (PENDING/COMPLETED/REJECTED/EXPIRED), requestedPasswordHash, expiresAt | Admin-mediated password resets (hash stored, never plaintext) |
 | **SystemSetting** | key (PK), value | System configuration |
 
 ### Enums
@@ -394,11 +418,21 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 | `app/actions/borrow.ts` | `borrow:created` |
 | `app/actions/return.ts` | `borrow:returned` |
 | `user.service.ts` | `user:changed`, `user:banned` |
+| `app/actions/password-reset.ts` | `password-reset:requested` (global), `password-reset:completed` (user room), `password-reset:rejected` (user room) |
 
 ### Client-Side (`hooks/use-socket.ts`)
 - Singleton Socket.IO client connection (`io()` with WebSocket-only transport)
-- `useSocketEvent(event, callback)` — ref-based callback hook with connection logging
+- `useSocketEvent(event, callback)` and `getSocketInstance()` — ref-based callback hook with connection logging
 - Automatically connects on mount, disconnects on unmount
+
+### Client-Side Socket Consumers
+| Component | Listens To | Behavior |
+|-----------|-----------|----------|
+| `NotificationBell` | `new-notification` | Appends notification to bell popover |
+| `CirculationAnalyticsDashboard` | `borrow:created`, `borrow:returned` | Re-fetches top books/top patrons, all numbers animate with spring transitions |
+| `PasswordResetToast` | `password-reset:requested`, `password-reset:completed`, `password-reset:rejected` | Global toasts for admins/users |
+| `AdminPasswordResetPage` | `password-reset:requested`, `password-reset:completed`, `password-reset:rejected` | Auto-refreshes request table |
+| `PasswordResetToast` | global socket join | Joins user room on mount |
 
 ### SWR Sync Hooks
 | Hook | File | Listens To |
@@ -473,10 +507,10 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 
 | File Type | Max Size |
 |-----------|----------|
-| Cover images | 10 MB |
-| Ebook files (PDF) | 100 MB |
+| Cover images | 5 MB |
+| Ebook files (PDF) | 200 MB |
 | ZIP imports | 200 MB |
-| Server actions (brand) | 50 MB |
+| Server actions (brand) | 20 MB |
 
 ### Storage Layout
 
@@ -513,7 +547,7 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "50mb",
+      bodySizeLimit: "20mb",
     },
   },
 };
@@ -719,10 +753,12 @@ Each feature contains `components/`, `hooks/`, `services/`, and `types/` directo
 | Pages refactored to feature hooks | 9 (admin/librarian books, reservations, students, teachers, librarians) |
 | Components using CVA primitives | 6 (`data-table`, `section-cards`, `BookPreview`, `ReservationTable`, `PhysicalBookDetailsModal`, `ProfileTab`) |
 | Socket event hooks | 5 (`useBooksInfinite`, `useCatalogSync`, `useCirculationSync`, `useUserSync`, `useSocketEvent`) |
+| Socket consumers (components) | 4 (`NotificationBell`, `CirculationAnalyticsDashboard`, `PasswordResetToast`, `AdminPasswordResetPage`) |
 | Lottie animation files | 3 (`Loading.tsx`, `TextToSvg.tsx`, `InfinityLoading.json`) |
 | Docker deployment files | 3 (`Dockerfile`, `.dockerignore`, `docker-compose.yml`) |
-| Production files created | `lib/errors.ts`, `lib/design-tokens.ts`, `lib/socket.ts`, `lib/services/*.ts` (4), `hooks/use-socket.ts`, `features/*/hooks/*.ts` (3), `components/StatusBadge.tsx`, `components/RoleBadge.tsx`, `components/MetricCard.tsx`, `features/README.md`, `Dockerfile`, `.dockerignore`, `docker-compose.yml` |
+| Production files created | `lib/errors.ts`, `lib/design-tokens.ts`, `lib/socket.ts`, `lib/services/*.ts` (4), `hooks/use-socket.ts`, `features/*/hooks/*.ts` (3), `components/StatusBadge.tsx`, `components/RoleBadge.tsx`, `components/MetricCard.tsx`, `components/PasswordResetToast.tsx`, `features/README.md`, `Dockerfile`, `.dockerignore`, `docker-compose.yml` |
 | Lines of code removed from route files | ~2,500+ (inline Prisma queries, availability calcs, manual auth checks consolidated into services) |
+| Password reset flow | 3 server actions (`forgotPassword`, `acceptPasswordReset`, `rejectPasswordReset`), admin page (`password-resets/page.tsx`), global toast component, `PasswordResetRequest` model + migration, 3 socket events
 
 ---
 
@@ -730,7 +766,7 @@ Each feature contains `components/`, `hooks/`, `services/`, and `types/` directo
 
 | Location | File Type | Limit |
 |----------|-----------|-------|
-| `lib/upload.ts` | Book covers | 10 MB |
-| `lib/upload.ts` | Ebook PDFs | 100 MB |
+| `lib/upload.ts` | Book covers | 5 MB |
+| `lib/upload.ts` | Ebook PDFs | 200 MB |
 | `lib/upload.ts` | ZIP imports | 200 MB |
-| `next.config.ts` | Server action bodies | 50 MB |
+| `next.config.ts` | Server action bodies | 20 MB |

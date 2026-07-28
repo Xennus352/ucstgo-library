@@ -5,7 +5,7 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "50mb",
+      bodySizeLimit: "20mb",
       allowedOrigins: [
         "library.ucstaungoo.edu.mm",
         "*.ucstaungoo.edu.mm",
