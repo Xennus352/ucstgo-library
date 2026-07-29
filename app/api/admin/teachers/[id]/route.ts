@@ -12,10 +12,11 @@ export async function PATCH(
   try {
     await requireRole(req.headers, ALLOWED_STAFF_ROLES);
     const { id } = await params;
-    const { name, phone, faculty, password, banned } = await req.json();
+    const { name, email, phone, faculty, password, banned } = await req.json();
 
     const data: any = {};
     if (name !== undefined) data.name = name;
+    if (email !== undefined) data.email = email;
     if (phone !== undefined) data.phone = phone;
     if (faculty !== undefined) data.faculty = faculty;
     if (banned !== undefined) data.banned = banned;

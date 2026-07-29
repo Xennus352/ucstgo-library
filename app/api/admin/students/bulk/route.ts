@@ -15,21 +15,21 @@ export async function POST(req: Request) {
     const results: any[] = [];
     for (const s of students) {
       try {
-        const newUser = await auth.api.signUpEmail({
+        const created = await auth.api.createUser({
           body: {
             email: s.email,
             password: s.password || "UCSTgoStudent@2026",
             name: s.name,
+            role: "STUDENT" as any,
+            data: { emailVerified: true },
           },
         });
         await prisma.user.update({
-          where: { id: newUser.user.id },
+          where: { id: created.user.id },
           data: {
-            role: "STUDENT",
             studentId: s.studentId || null,
             faculty: s.faculty || null,
             phone: s.phone || null,
-            emailVerified: true,
           },
         });
         results.push({ email: s.email, status: "success" });

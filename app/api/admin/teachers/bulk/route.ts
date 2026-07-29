@@ -15,20 +15,20 @@ export async function POST(req: Request) {
     const results: any[] = [];
     for (const t of teachers) {
       try {
-        const newUser = await auth.api.signUpEmail({
+        const created = await auth.api.createUser({
           body: {
             email: t.email,
             password: t.password || "UCSTgoTeacher@2026",
             name: t.name,
+            role: "LECTURER" as any,
+            data: { emailVerified: true },
           },
         });
         await prisma.user.update({
-          where: { id: newUser.user.id },
+          where: { id: created.user.id },
           data: {
-            role: "LECTURER",
             faculty: t.faculty || null,
             phone: t.phone || null,
-            emailVerified: true,
           },
         });
         results.push({ email: t.email, status: "success" });

@@ -15,16 +15,14 @@ export async function POST(req: Request) {
     const results: any[] = [];
     for (const lib of librarians) {
       try {
-        const newUser = await auth.api.signUpEmail({
+        const created = await auth.api.createUser({
           body: {
             email: lib.email,
             password: lib.password || "UCSTgoLibraryAdmin@2026",
             name: lib.name,
+            role: "LIBRARIAN" as any,
+            data: { emailVerified: true },
           },
-        });
-        await prisma.user.update({
-          where: { id: newUser.user.id },
-          data: { role: "LIBRARIAN", emailVerified: true },
         });
         results.push({ email: lib.email, status: "success" });
       } catch (err: any) {

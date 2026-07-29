@@ -99,17 +99,28 @@ export async function createUser(input: UserCreateInput) {
       password: input.password,
       role: input.role as any,
       data: {
-        studentId: input.studentId,
-        faculty: input.faculty,
-        phone: input.phone,
         emailVerified: true,
       },
     },
   });
 
-  try { getIO()?.emit("user:changed", created.user); } catch {}
+  await prisma.user.update({
+    where: { id: created.user.id },
+    data: {
+      studentId: input.studentId || null,
+      faculty: input.faculty || null,
+      phone: input.phone || null,
+    },
+  });
 
-  return created.user;
+  const user = await prisma.user.findUnique({
+    where: { id: created.user.id },
+    select: userListSelect,
+  });
+
+  try { getIO()?.emit("user:changed", user); } catch {}
+
+  return user!;
 }
 
 export async function updateUser(id: string, input: UserUpdateInput) {

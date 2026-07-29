@@ -5,7 +5,20 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getIO } from "@/lib/socket";
+import { sendEmail } from "@/lib/email";
 import { randomBytes, scrypt } from "node:crypto";
+
+async function sendResetStatusEmail(email: string, status: string) {
+  const subject = status === "COMPLETED"
+    ? "Password Reset Accepted - UCST Go Library"
+    : "Password Reset Rejected - UCST Go Library";
+
+  const text = status === "COMPLETED"
+    ? `Your password reset request has been accepted. You can now log in with your new password.\n\nIf you did not request this change, please contact the library administration immediately.`
+    : `Your password reset request has been rejected by an administrator. Please contact the library administration for assistance.`;
+
+  await sendEmail({ to: email, subject, text });
+}
 
 const N = 16384;
 const r = 16;
@@ -159,7 +172,10 @@ export async function acceptPasswordResetAction(requestId: string) {
       getIO()?.to(userId).emit("password-reset:completed", { userId });
     } catch {}
 
-    revalidatePath("/admin/books");
+      const user_ = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      if (user_?.email) sendResetStatusEmail(user_.email, "COMPLETED");
+
+      revalidatePath("/admin/books");
     revalidatePath("/librarian/books");
 
     return {
@@ -223,6 +239,9 @@ export async function rejectPasswordResetAction(requestId: string) {
       getIO()?.to(userId).emit("password-reset:rejected", { userId });
     } catch {}
 
+    const user_ = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (user_?.email) sendResetStatusEmail(user_.email, "REJECTED");
+
     revalidatePath("/admin/books");
     revalidatePath("/librarian/books");
 
@@ -234,6 +253,45 @@ export async function rejectPasswordResetAction(requestId: string) {
     return {
       success: false,
       error: error.message || "An unexpected error occurred.",
+    };
+  }
+}
+
+export async function checkPasswordResetStatusAction(email: string) {
+  try {
+    if (!email?.trim()) {
+      return { success: false, error: "Email is required." };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: email.trim() },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return { success: true, requests: [] };
+    }
+
+    const requests = await prisma.passwordResetRequest.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: { id: true, status: true, createdAt: true, updatedAt: true },
+    });
+
+    return {
+      success: true,
+      requests: requests.map((r) => ({
+        id: r.id,
+        status: r.status,
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+      })),
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to check reset status.",
     };
   }
 }
