@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, FlaskConical, ChevronDown } from "lucide-react";
+import { GraduationCap, FlaskConical, BookOpen, ChevronDown } from "lucide-react";
 
 import { SearchBar } from "../ui/SearchBar";
 import { TabConfig, TabId } from "../types";
@@ -150,6 +150,24 @@ export const TopNav: React.FC<TopNavProps> = ({
                                 </span>
                                 <span className="text-[11px] text-muted-foreground">
                                   Theses, Publications & Journals
+                                </span>
+                              </div>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                onTabChange(tab.id as TabId, "public");
+                                setIsEResourcesHovered(false);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors text-left mt-1"
+                            >
+                              <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-foreground text-sm">
+                                  Public Ebooks
+                                </span>
+                                <span className="text-[11px] text-muted-foreground">
+                                  Free browsing, no login required
                                 </span>
                               </div>
                             </button>

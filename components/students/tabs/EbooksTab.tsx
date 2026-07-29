@@ -39,6 +39,8 @@ interface EbooksTabProps {
   onBookClick?: (book: BookWithDetails) => void;
   onViewChange?: (view: ViewMode) => void;
   viewMode?: ViewMode;
+  sectionFilter?: "academic" | "research" | "public";
+  isLoggedIn?: boolean;
 }
 
 type SubCategoryKey =
@@ -48,12 +50,16 @@ type SubCategoryKey =
   | "thesis"
   | "publication"
   | "other_research"
+  | "general_reading"
+  | "computer_basics"
+  | "fiction"
+  | "other_public"
   | "all";
 
 interface SubCategoryItem {
   key: SubCategoryKey;
   label: string;
-  section: "academic" | "research";
+  section: "academic" | "research" | "public";
 }
 
 const ACADEMIC_SUBS: SubCategoryItem[] = [
@@ -76,9 +82,16 @@ const RESEARCH_SUBS: SubCategoryItem[] = [
   { key: "other_research", label: "Others", section: "research" },
 ];
 
-const ALL_SUBS: SubCategoryItem[] = [...ACADEMIC_SUBS, ...RESEARCH_SUBS];
+const PUBLIC_SUBS: SubCategoryItem[] = [
+  { key: "general_reading", label: "General Reading", section: "public" },
+  { key: "computer_basics", label: "Computer Basics", section: "public" },
+  { key: "fiction", label: "Fiction & Literature", section: "public" },
+  { key: "other_public", label: "Others", section: "public" },
+];
 
-function mapCategoryToSubCategory(categoryName: string): SubCategoryKey {
+const ALL_SUBS: SubCategoryItem[] = [...ACADEMIC_SUBS, ...RESEARCH_SUBS, ...PUBLIC_SUBS];
+
+export function mapCategoryToSubCategory(categoryName: string): SubCategoryKey {
   const name = categoryName.toLowerCase();
 
   if (
@@ -118,12 +131,41 @@ function mapCategoryToSubCategory(categoryName: string): SubCategoryKey {
     return "publication";
   }
 
+  if (
+    name.includes("computer") ||
+    name.includes("programming") ||
+    name.includes("software") ||
+    name.includes("coding") ||
+    name.includes("it ") ||
+    name.includes("technology") ||
+    name.includes("web") ||
+    name.includes("data")
+  ) {
+    return "computer_basics";
+  }
+
+  if (
+    name.includes("general") ||
+    name.includes("fiction") ||
+    name.includes("novel") ||
+    name.includes("biography") ||
+    name.includes("history") ||
+    name.includes("culture") ||
+    name.includes("art") ||
+    name.includes("literature") ||
+    name.includes("story") ||
+    name.includes("public")
+  ) {
+    return "general_reading";
+  }
+
   const { main } = getSectionForCategory(categoryName);
+  if (main === "public") return "other_public";
   return main === "academic" ? "other_academic" : "other_research";
 }
 
 function getSectionForCategory(categoryName: string): {
-  main: "academic" | "research";
+  main: "academic" | "research" | "public";
 } {
   const name = categoryName.toLowerCase();
 
@@ -164,6 +206,34 @@ function getSectionForCategory(categoryName: string): {
     return { main: "research" };
   }
 
+  if (
+    name.includes("computer") ||
+    name.includes("programming") ||
+    name.includes("software") ||
+    name.includes("coding") ||
+    name.includes("it ") ||
+    name.includes("technology") ||
+    name.includes("web") ||
+    name.includes("data")
+  ) {
+    return { main: "public" };
+  }
+
+  if (
+    name.includes("general") ||
+    name.includes("fiction") ||
+    name.includes("novel") ||
+    name.includes("biography") ||
+    name.includes("history") ||
+    name.includes("culture") ||
+    name.includes("art") ||
+    name.includes("literature") ||
+    name.includes("story") ||
+    name.includes("public")
+  ) {
+    return { main: "public" };
+  }
+
   return { main: "academic" };
 }
 
@@ -185,7 +255,8 @@ function SidebarContent({
   semesters,
   activeSemesterFilter,
   onSemesterChange,
-}: SidebarContentProps) {
+  sectionFilter,
+}: SidebarContentProps & { sectionFilter?: "academic" | "research" | "public" }) {
   const getSubCategoryCount = (
     key: SubCategoryKey,
     books: BookWithDetails[],
@@ -202,76 +273,118 @@ function SidebarContent({
   return (
     <div className="flex flex-col gap-6">
       {/* Academic Resources */}
-      <div>
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-          <GraduationCap className="h-4 w-4 text-primary" />
-          Academic Resources
-        </div>
-        <div className="space-y-1">
-          {ACADEMIC_SUBS.map((sub) => {
-            const isActive = activeSubCategory === sub.key;
-            const count = getSubCategoryCount(sub.key, []);
-            return (
-              <button
-                key={sub.key}
-                onClick={() => onSubCategoryChange(isActive ? "all" : sub.key)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
-                  isActive
-                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
-                }`}
-              >
-                <span className="truncate">{sub.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+      {(!sectionFilter || sectionFilter === "academic") && (
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+            <GraduationCap className="h-4 w-4 text-primary" />
+            Academic Resources
+          </div>
+          <div className="space-y-1">
+            {ACADEMIC_SUBS.map((sub) => {
+              const isActive = activeSubCategory === sub.key;
+              const count = getSubCategoryCount(sub.key, []);
+              return (
+                <button
+                  key={sub.key}
+                  onClick={() => onSubCategoryChange(isActive ? "all" : sub.key)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
                     isActive
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground"
+                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
                   }`}
                 >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+                  <span className="truncate">{sub.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+                      isActive
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Research Resources */}
-      <div>
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-          <FlaskConical className="h-4 w-4 text-primary" />
-          Research Resources
-        </div>
-        <div className="space-y-1">
-          {RESEARCH_SUBS.map((sub) => {
-            const isActive = activeSubCategory === sub.key;
-            const count = getSubCategoryCount(sub.key, []);
-            return (
-              <button
-                key={sub.key}
-                onClick={() => onSubCategoryChange(isActive ? "all" : sub.key)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
-                  isActive
-                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
-                }`}
-              >
-                <span className="truncate">{sub.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+      {(!sectionFilter || sectionFilter === "research") && (
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+            <FlaskConical className="h-4 w-4 text-primary" />
+            Research Resources
+          </div>
+          <div className="space-y-1">
+            {RESEARCH_SUBS.map((sub) => {
+              const isActive = activeSubCategory === sub.key;
+              const count = getSubCategoryCount(sub.key, []);
+              return (
+                <button
+                  key={sub.key}
+                  onClick={() => onSubCategoryChange(isActive ? "all" : sub.key)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
                     isActive
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground"
+                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
                   }`}
                 >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+                  <span className="truncate">{sub.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+                      isActive
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Public Resources */}
+      {(!sectionFilter || sectionFilter === "public") && (
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+            <BookOpen className="h-4 w-4 text-primary" />
+            Public Resources
+          </div>
+          <div className="space-y-1">
+            {PUBLIC_SUBS.map((sub) => {
+              const isActive = activeSubCategory === sub.key;
+              const count = getSubCategoryCount(sub.key, []);
+              return (
+                <button
+                  key={sub.key}
+                  onClick={() => onSubCategoryChange(isActive ? "all" : sub.key)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
+                    isActive
+                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                  }`}
+                >
+                  <span className="truncate">{sub.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+                      isActive
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Year Filter */}
       <div>
@@ -315,9 +428,10 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
   onBookClick,
   onViewChange,
   viewMode = "grid",
+  sectionFilter,
+  isLoggedIn = true,
 }) => {
-  const [activeSubCategory, setActiveSubCategory] =
-    useState<SubCategoryKey>("all");
+  const [activeSubCategory, setActiveSubCategory] = useState<SubCategoryKey>("all");
   const [activeSemesterFilter, setActiveSemesterFilter] =
     useState<string>("all");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -348,6 +462,14 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
   const filteredBooks = useMemo(() => {
     let result = books.filter((b) => b.ebook !== null && b.ebook !== undefined);
 
+    if (sectionFilter) {
+      result = result.filter((book) => {
+        const category = book.category?.name || "Other";
+        const { main } = getSectionForCategory(category);
+        return main === sectionFilter;
+      });
+    }
+
     if (activeSubCategory !== "all") {
       result = result.filter((book) => {
         const category = book.category?.name || "Other";
@@ -365,7 +487,7 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
     }
 
     return result;
-  }, [books, activeSubCategory, activeSemesterFilter]);
+  }, [books, activeSubCategory, activeSemesterFilter, sectionFilter]);
 
   const { groupedSemesters, sortedSemesterIds } = useMemo(() => {
     const groups = filteredBooks.reduce(
@@ -424,76 +546,118 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
   const sidebar = (
     <div className="flex flex-col gap-6">
       {/* Academic Resources */}
-      <div>
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-          <GraduationCap className="h-4 w-4 text-primary" />
-          Academic Resources
-        </div>
-        <div className="space-y-1">
-          {ACADEMIC_SUBS.map((sub) => {
-            const isActive = activeSubCategory === sub.key;
-            const count = getSubCategoryCount(sub.key);
-            return (
-              <button
-                key={sub.key}
-                onClick={() => setActiveSubCategory(isActive ? "all" : sub.key)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
-                  isActive
-                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
-                }`}
-              >
-                <span className="truncate">{sub.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+      {(!sectionFilter || sectionFilter === "academic") && (
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+            <GraduationCap className="h-4 w-4 text-primary" />
+            Academic Resources
+          </div>
+          <div className="space-y-1">
+            {ACADEMIC_SUBS.map((sub) => {
+              const isActive = activeSubCategory === sub.key;
+              const count = getSubCategoryCount(sub.key);
+              return (
+                <button
+                  key={sub.key}
+                  onClick={() => setActiveSubCategory(isActive ? "all" : sub.key)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
                     isActive
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground"
+                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
                   }`}
                 >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+                  <span className="truncate">{sub.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+                      isActive
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Research Resources */}
-      <div>
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-          <FlaskConical className="h-4 w-4 text-primary" />
-          Research Resources
-        </div>
-        <div className="space-y-1">
-          {RESEARCH_SUBS.map((sub) => {
-            const isActive = activeSubCategory === sub.key;
-            const count = getSubCategoryCount(sub.key);
-            return (
-              <button
-                key={sub.key}
-                onClick={() => setActiveSubCategory(isActive ? "all" : sub.key)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
-                  isActive
-                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
-                }`}
-              >
-                <span className="truncate">{sub.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+      {(!sectionFilter || sectionFilter === "research") && (
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+            <FlaskConical className="h-4 w-4 text-primary" />
+            Research Resources
+          </div>
+          <div className="space-y-1">
+            {RESEARCH_SUBS.map((sub) => {
+              const isActive = activeSubCategory === sub.key;
+              const count = getSubCategoryCount(sub.key);
+              return (
+                <button
+                  key={sub.key}
+                  onClick={() => setActiveSubCategory(isActive ? "all" : sub.key)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
                     isActive
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground"
+                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
                   }`}
                 >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+                  <span className="truncate">{sub.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+                      isActive
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Public Resources */}
+      {(!sectionFilter || sectionFilter === "public") && (
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+            <BookOpen className="h-4 w-4 text-primary" />
+            Public Resources
+          </div>
+          <div className="space-y-1">
+            {PUBLIC_SUBS.map((sub) => {
+              const isActive = activeSubCategory === sub.key;
+              const count = getSubCategoryCount(sub.key);
+              return (
+                <button
+                  key={sub.key}
+                  onClick={() => setActiveSubCategory(isActive ? "all" : sub.key)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
+                    isActive
+                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                  }`}
+                >
+                  <span className="truncate">{sub.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
+                      isActive
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Year Filter */}
       <div>

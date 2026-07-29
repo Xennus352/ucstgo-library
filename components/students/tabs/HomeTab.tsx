@@ -828,6 +828,15 @@ export const LibraryHome: React.FC<HomePageProps> = ({
                       New Arrivals
                     </a>
                   </li>
+                  <li>
+                    <button
+                      onClick={() => onNavigate?.("public-ebooks")}
+                      className="hover:text-blue-400 transition flex items-center group w-full text-left"
+                    >
+                      <ArrowRight className="w-3 h-3 mr-1.5 text-blue-500 transition-transform group-hover:translate-x-1" />
+                      Public Ebooks
+                    </button>
+                  </li>
                 </ul>
               </div>
 

@@ -60,6 +60,7 @@ export default function LibraryApp() {
 
   const [activeEbookUrl, setActiveEbookUrl] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [sectionFilter, setSectionFilter] = useState<"academic" | "research" | "public" | undefined>(undefined);
 
   const [selectedPhysicalBook, setSelectedPhysicalBook] =
     useState<BookWithDetails | null>(null);
@@ -201,15 +202,22 @@ export default function LibraryApp() {
   }, [setSize, hasMore, isBooksLoading]);
 
   const handleTabChange = useCallback(
-    (tabId: TabId) => {
-      if (!isLoggedIn && tabId !== "Home") {
+    (tabId: TabId, subCategory?: string) => {
+      if (!isLoggedIn && tabId !== "Home" && subCategory !== "public") {
         setIsAuthModalOpen(true);
         return;
       }
+      setSectionFilter(subCategory as "academic" | "research" | "public" | undefined);
       setActiveTab(tabId);
     },
     [isLoggedIn],
   );
+
+  useEffect(() => {
+    if (activeTab !== "EResources") {
+      setSectionFilter(undefined);
+    }
+  }, [activeTab]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -363,19 +371,24 @@ export default function LibraryApp() {
             dynamicSettings={dynamicSettings}
             initialCounts={homeMetrics}
             initialLatestBooks={latestBooks}
-            onNavigate={(route) => {
-              if (!isLoggedIn) {
-                setIsAuthModalOpen(true);
-                return;
-              }
-              if (route === "borrow-books" || route === "search-catalog") {
-                setActiveTab("Physical");
-              } else if (route === "e-books") {
-                setActiveTab("EResources");
-              } else if (route === "study-rooms") {
-                toast.info("Study room reservation feature coming soon!");
-              }
-            }}
+              onNavigate={(route) => {
+                if (route === "public-ebooks") {
+                  setSectionFilter("public");
+                  setActiveTab("EResources");
+                  return;
+                }
+                if (!isLoggedIn) {
+                  setIsAuthModalOpen(true);
+                  return;
+                }
+                if (route === "borrow-books" || route === "search-catalog") {
+                  setActiveTab("Physical");
+                } else if (route === "e-books") {
+                  setActiveTab("EResources");
+                } else if (route === "study-rooms") {
+                  toast.info("Study room reservation feature coming soon!");
+                }
+              }}
           />
         );
 
@@ -387,6 +400,8 @@ export default function LibraryApp() {
               onViewChange={setViewMode}
               viewMode={viewMode}
               onBookClick={handleBookClick}
+              sectionFilter={sectionFilter}
+              isLoggedIn={isLoggedIn}
             />
           </div>
         );
