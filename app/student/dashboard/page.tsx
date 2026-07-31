@@ -1,5 +1,6 @@
 "use client";
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BookOpen, Tablet, Book, User } from "lucide-react";
 import { DotLottiePlayer } from "@dotlottie/react-player";
 import infinityAnimation from "@/components/animations/InfinityLoading.json";
@@ -51,11 +52,42 @@ const tabsConfig = [
   { id: "Profile", label: "Profile", icon: User },
 ] as const satisfies TabConfig[];
 
-export default function LibraryApp() {
+const TAB_SLUGS: Record<TabId, string> = {
+  Home: "home",
+  EResources: "eresources",
+  Physical: "books",
+  Profile: "profile",
+};
+
+const SLUG_TO_TAB: Record<string, TabId> = {
+  home: "Home",
+  eresources: "EResources",
+  books: "Physical",
+  profile: "Profile",
+};
+
+function LibraryApp() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: isUserLoading } = useCurrentUser();
   const isLoggedIn = !!user;
 
-  const [activeTab, setActiveTab] = useState<TabId>("Home");
+  const activeTab = useMemo<TabId>(() => {
+    const slug = searchParams.get("tab")?.toLowerCase();
+    return (slug && SLUG_TO_TAB[slug]) || "Home";
+  }, [searchParams]);
+
+  const setActiveTab = useCallback(
+    (tabId: TabId) => {
+      const slug = TAB_SLUGS[tabId];
+      const url =
+        slug === "home"
+          ? "/student/dashboard"
+          : `/student/dashboard?tab=${slug}`;
+      router.replace(url, { scroll: false });
+    },
+    [router],
+  );
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -153,7 +185,7 @@ export default function LibraryApp() {
     if (!isUserLoading && !isLoggedIn && activeTab === "Profile") {
       setActiveTab("Home");
     }
-  }, [isLoggedIn, isUserLoading, activeTab]);
+  }, [isLoggedIn, isUserLoading, activeTab, setActiveTab]);
 
   const apiType = useMemo(() => {
     if (activeTab === "EResources") return "EResources";
@@ -527,5 +559,19 @@ export default function LibraryApp() {
         showTrigger={false}
       />
     </div>
+  );
+}
+
+export default function StudentDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-screen text-muted-foreground animate-pulse">
+          Loading library...
+        </div>
+      }
+    >
+      <LibraryApp />
+    </Suspense>
   );
 }
