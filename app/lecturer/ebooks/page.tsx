@@ -18,6 +18,7 @@ const EbookPage = () => {
   const {
     books: liveBooks,
     isLoading,
+    isValidating,
     error,
     setSize,
     hasMore,
@@ -41,7 +42,7 @@ const EbookPage = () => {
 
   useEffect(() => {
     const el = loadMoreRef.current;
-    if (!el || !hasMore || isLoading) return;
+    if (!el || !hasMore || isValidating) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -54,7 +55,7 @@ const EbookPage = () => {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [setSize, hasMore, isLoading]);
+  }, [setSize, hasMore, isValidating]);
 
   const handleBookClick = (book: any) => {
     console.log("Book clicked:", book);

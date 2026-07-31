@@ -26,17 +26,10 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
 
   const { data: categoryResponse } = useCategories();
 
-  // FIX: Screen items selectively based on copy numbers
+  // Show any item that has at least one physical copy track assigned
   const booksToDisplay = useMemo(() => {
     return books.filter((b) => {
       const physicalCopiesCount = b.copies ? b.copies.length : 0;
-
-      // If it's an eBook, check if it has more than 1 physical copy track assigned
-      if (b.ebook) {
-        return physicalCopiesCount > 1;
-      }
-
-      // For pure physical books, standard tracking rule applies (shows if >= 1)
       return physicalCopiesCount > 0;
     });
   }, [books]);

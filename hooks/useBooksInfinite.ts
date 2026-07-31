@@ -12,15 +12,14 @@ const PAGE_SIZE = 20;
 
 export function useBooksInfinite(type: BookType) {
   const getKey = (pageIndex: number, previousPageData: any) => {
-    if (previousPageData && previousPageData.data?.length === 0) return null;
+    if (previousPageData && !previousPageData?.pagination?.hasNextPage)
+      return null;
 
     return `/api/books?page=${pageIndex + 1}&limit=${PAGE_SIZE}&type=${type}`;
   };
 
-  const { data, error, isLoading, size, setSize, mutate } = useSWRInfinite(
-    getKey,
-    fetcher,
-  );
+  const { data, error, isLoading, isValidating, size, setSize, mutate } =
+    useSWRInfinite(getKey, fetcher);
 
   useSocketEvent("catalog:created", () => mutate());
   useSocketEvent("catalog:updated", () => mutate());
@@ -33,11 +32,13 @@ export function useBooksInfinite(type: BookType) {
       })
     : [];
 
-  const hasMore = data?.[data.length - 1]?.data?.length === PAGE_SIZE;
+  const hasMore =
+    data?.[data.length - 1]?.pagination?.hasNextPage ?? false;
 
   return {
     books,
     isLoading,
+    isValidating,
     error,
     size,
     setSize,

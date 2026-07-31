@@ -28,6 +28,8 @@ export const navData = {
       icon: <BookOpenIcon />,
       items: [
         { title: "Books Inventory", url: "/librarian/books" },
+        { title: "Categories", url: "/librarian/catalog/categories" },
+        { title: "Authors", url: "/librarian/catalog/authors" },
         { title: "Borrowing", url: "/librarian/books/borrow-books" },
         { title: "Reservations", url: "/librarian/books/reservations" },
         { title: "Password Resets", url: "/admin/password-resets" },

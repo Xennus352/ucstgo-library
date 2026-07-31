@@ -17,6 +17,7 @@ const PhysicalBooks = () => {
   const {
     books: liveBooks,
     isLoading,
+    isValidating,
     error,
     setSize,
     hasMore,
@@ -41,7 +42,7 @@ const PhysicalBooks = () => {
 
   useEffect(() => {
     const el = loadMoreRef.current;
-    if (!el || !hasMore || isLoading) return;
+    if (!el || !hasMore || isValidating) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -54,7 +55,7 @@ const PhysicalBooks = () => {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [setSize, hasMore, isLoading]);
+  }, [setSize, hasMore, isValidating]);
 
   const handleBookClick = (book: any) => {
     console.log("Physical book selected:", book);

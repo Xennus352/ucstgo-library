@@ -41,6 +41,8 @@ export const navData = {
       icon: <BookOpenIcon />,
       items: [
         { title: "Books Inventory", url: "/admin/books" },
+        { title: "Categories", url: "/admin/catalog/categories" },
+        { title: "Authors", url: "/admin/catalog/authors" },
         { title: "Borrowing", url: "/admin/books/borrow-books" },
         { title: "Reservations", url: "/admin/books/reservations" },
         { title: "Password Resets", url: "/admin/password-resets" },

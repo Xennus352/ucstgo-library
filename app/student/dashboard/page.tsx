@@ -17,6 +17,7 @@ import { ProfileTab } from "@/components/students/tabs/ProfileTab";
 
 import { TopNav } from "@/components/students/layout/TopNav";
 import BottomNav from "@/components/students/layout/BottomNav";
+import { StudentFooter } from "@/components/students/layout/StudentFooter";
 
 import { useBooksInfinite } from "@/hooks/useBooksInfinite";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -163,6 +164,7 @@ export default function LibraryApp() {
   const {
     books: liveBooks,
     isLoading: isBooksLoading,
+    isValidating: isBooksValidating,
     error,
     setSize,
     hasMore,
@@ -186,7 +188,7 @@ export default function LibraryApp() {
 
   useEffect(() => {
     const el = loadMoreRef.current;
-    if (!el || !hasMore || isBooksLoading) return;
+    if (!el || !hasMore || isBooksValidating) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -199,7 +201,7 @@ export default function LibraryApp() {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [setSize, hasMore, isBooksLoading]);
+  }, [setSize, hasMore, isBooksValidating]);
 
   const handleTabChange = useCallback(
     (tabId: TabId, subCategory?: string) => {
@@ -339,6 +341,28 @@ export default function LibraryApp() {
     [isLoggedIn],
   );
 
+  const handleNavigate = useCallback(
+    (route: string) => {
+      if (route === "public-ebooks") {
+        setSectionFilter("public");
+        setActiveTab("EResources");
+        return;
+      }
+      if (!isLoggedIn) {
+        setIsAuthModalOpen(true);
+        return;
+      }
+      if (route === "borrow-books" || route === "search-catalog") {
+        setActiveTab("Physical");
+      } else if (route === "e-books") {
+        setActiveTab("EResources");
+      } else if (route === "study-rooms") {
+        toast.info("Study room reservation feature coming soon!");
+      }
+    },
+    [isLoggedIn],
+  );
+
   const renderTabContent = useCallback(() => {
     if (isUserLoading) {
       return (
@@ -371,24 +395,7 @@ export default function LibraryApp() {
             dynamicSettings={dynamicSettings}
             initialCounts={homeMetrics}
             initialLatestBooks={latestBooks}
-              onNavigate={(route) => {
-                if (route === "public-ebooks") {
-                  setSectionFilter("public");
-                  setActiveTab("EResources");
-                  return;
-                }
-                if (!isLoggedIn) {
-                  setIsAuthModalOpen(true);
-                  return;
-                }
-                if (route === "borrow-books" || route === "search-catalog") {
-                  setActiveTab("Physical");
-                } else if (route === "e-books") {
-                  setActiveTab("EResources");
-                } else if (route === "study-rooms") {
-                  toast.info("Study room reservation feature coming soon!");
-                }
-              }}
+              onNavigate={handleNavigate}
           />
         );
 
@@ -491,6 +498,8 @@ export default function LibraryApp() {
         activeTab={activeTab}
         onTabChange={handleTabChange}
       />
+
+      <StudentFooter onNavigate={handleNavigate} />
 
       {activeEbookUrl && (
         <EbookReaderContainer

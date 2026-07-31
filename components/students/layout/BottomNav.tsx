@@ -36,170 +36,87 @@ const BottomNav: React.FC<NavProps> = ({ tabs, activeTab, onTabChange }) => {
   const isMobile = useIsMobile();
 
   // CRITICAL: If not on mobile, return null to completely wipe out layoutId contexts
-  // from the DOM tree. This stops the multi-bubble bug completely.
+  // from the DOM tree. This stops the layout-animation bug completely.
   if (!isMobile) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 pointer-events-none">
+    <div
+      className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pointer-events-none"
+      style={{
+        maskImage:
+          "linear-gradient(to top, black 82%, transparent 100%)",
+        WebkitMaskImage:
+          "linear-gradient(to top, black 82%, transparent 100%)",
+      }}
+    >
       <div className="relative max-w-md mx-auto pointer-events-auto">
-        {/* Dock Background with shimmer effect */}
-        <motion.div
-          className="
-            absolute inset-0
-            h-16
-            bg-white/95
-            backdrop-blur-xl
-            border border-slate-200/50
-            rounded-3xl
-            shadow-[0_8px_30px_rgba(0,0,0,0.08)]
-          "
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        >
-          {/* Animated gradient border */}
-          <motion.div
-            className="absolute inset-0 rounded-3xl bg-linear-to-r from-sky-400/20 via-cyan-400/20 to-sky-400/20 opacity-0"
-            animate={{
-              opacity: activeTab ? 0.3 : 0,
-              background: [
-                "linear-gradient(90deg, rgba(14,165,233,0) 0%, rgba(14,165,233,0.3) 50%, rgba(14,165,233,0) 100%)",
-                "linear-gradient(270deg, rgba(14,165,233,0) 0%, rgba(14,165,233,0.3) 50%, rgba(14,165,233,0) 100%)",
-              ],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-          />
-        </motion.div>
+        {/* Glass bar */}
+        <div className="relative h-16 rounded-2xl bg-white/75 dark:bg-slate-900/75 backdrop-blur-2xl border border-slate-200/70 dark:border-slate-700/50 shadow-[0_12px_40px_-8px_rgba(2,6,23,0.18),0_2px_8px_-2px_rgba(2,6,23,0.06)]">
+          {/* Top hairline glass highlight */}
+          <div className="absolute inset-x-3 top-0 h-px bg-linear-to-r from-transparent via-white/70 dark:via-white/15 to-transparent" />
 
-        {/* Navigation Grid */}
-        <div className="relative h-16 grid grid-cols-4 items-center">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+          {/* Navigation Grid */}
+          <div className="relative h-full grid grid-cols-4 items-center">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
 
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                className="
-                  relative
-                  flex
-                  flex-col
-                  items-center
-                  justify-end
-                  h-full
-                  w-full
-                  pb-2.5
-                  outline-none
-                  cursor-pointer
-                "
-              >
-                {/* 1. ICON TRACK & BUBBLE ZONE */}
-                <div className="absolute top-0 inset-x-0 bottom-6 flex items-center justify-center">
-                  {/* Sliding Active Bubble Layer Restored */}
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  aria-current={isActive ? "page" : undefined}
+                  className="relative flex flex-col items-center justify-center h-full w-full outline-none cursor-pointer"
+                >
+                  {/* Sliding active pill */}
                   {isActive && (
                     <motion.div
-                      layoutId="active-nav-bubble-mobile"
+                      layoutId="active-nav-pill"
                       transition={{
                         type: "spring",
-                        stiffness: 430,
-                        damping: 28,
+                        stiffness: 400,
+                        damping: 34,
                         mass: 0.9,
                       }}
-                      className="
-                        absolute
-                        -top-5
-                        w-14
-                        h-14
-                        rounded-full
-                        bg-linear-to-r
-                        from-sky-500
-                        to-cyan-500
-                        shadow-[0_10px_25px_rgba(14,165,233,0.35)]
-                        z-0
-                      "
-                    >
-                      {/* Inner Ring Glow */}
-                      <motion.div
-                        className="absolute inset-1 rounded-full bg-white/10"
-                        animate={{
-                          scale: [1, 1.05, 1],
-                          opacity: [0.3, 0.5, 0.3],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                      />
-                    </motion.div>
+                      className="absolute inset-x-4 inset-y-2.5 rounded-xl bg-sky-500/10 dark:bg-sky-400/10 border border-sky-500/15 dark:border-sky-400/15"
+                    />
                   )}
 
-                  {/* Interactive Icon Component */}
-                  <motion.div
-                    animate={{
-                      y: isActive ? -20 : 0,
-                      scale: isActive ? 1.15 : 1,
-                    }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 450,
-                      damping: 25,
-                      mass: 0.8,
-                    }}
-                    className="relative z-10 flex items-center justify-center w-6 h-6"
-                  >
+                  <div className="relative z-10 flex flex-col items-center gap-1">
                     <motion.div
                       animate={{
-                        rotate: isActive ? [0, -6, 6, -6, 0] : 0,
+                        scale: isActive ? 1.08 : 1,
+                        opacity: isActive ? 1 : 0.55,
                       }}
-                      transition={{
-                        duration: 0.4,
-                        ease: "easeInOut",
-                      }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
                     >
                       <Icon
                         className={`h-5 w-5 transition-colors duration-300 ${
                           isActive
-                            ? "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
-                            : "text-slate-400"
+                            ? "text-sky-600 dark:text-sky-400"
+                            : "text-slate-500 dark:text-slate-400"
                         }`}
                       />
                     </motion.div>
-                  </motion.div>
-                </div>
-
-                {/* 2. LABEL TRACK */}
-                <div className="relative z-10 h-3 flex items-center justify-center">
-                  <motion.span
-                    animate={{
-                      scale: isActive ? 1.02 : 0.98,
-                      opacity: isActive ? 1 : 0.7,
-                    }}
-                    transition={{ duration: 0.15 }}
-                    className={`
-                      text-[10px]
-                      font-medium
-                      tracking-wide
-                      transition-colors
-                      duration-300
-                      ${isActive ? "text-sky-600 font-bold" : "text-slate-500"}
-                    `}
-                  >
-                    {tab.label}
-                  </motion.span>
-                </div>
-              </button>
-            );
-          })}
+                    <motion.span
+                      animate={{
+                        opacity: isActive ? 1 : 0.65,
+                      }}
+                      transition={{ duration: 0.2 }}
+                      className={`text-[10px] font-medium tracking-wide ${
+                        isActive
+                          ? "text-sky-700 dark:text-sky-300 font-semibold"
+                          : "text-slate-500 dark:text-slate-400"
+                      }`}
+                    >
+                      {tab.label}
+                    </motion.span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-
-        {/* Top decorative accent line */}
-        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-20 h-1 bg-linear-to-r from-sky-400/0 via-sky-400/20 to-sky-400/0 rounded-full" />
       </div>
     </div>
   );
