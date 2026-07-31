@@ -21,7 +21,7 @@ const PhysicalBooks = () => {
     setSize,
     hasMore,
     mutate,
-  } = useBooksInfinite("physical");
+  } = useBooksInfinite("all");
 
   // 3. Your existing filter logic stays exactly the same! It automatically reruns when searchQuery changes.
   const filteredBooks = useMemo(() => {

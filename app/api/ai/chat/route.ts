@@ -23,15 +23,27 @@ type BookWithRelations = Prisma.BookGetPayload<{
 }>;
 
 // Helper to determine the correct Burmese honorific prefix based on role
-function getRoleHonorific(role?: string): { honorific: string; title: string } {
+function getRoleHonorific(role?: string): {
+  honorific: string;
+  title: string;
+  idCardLabel: string;
+} {
   switch (role) {
     case "LECTURER":
     case "ADMIN":
     case "LIBRARIAN":
-      return { honorific: "ဆရာ", title: "Lecturer/Admin/Librarian" };
+      return {
+        honorific: "ဆရာ",
+        title: "Lecturer/Admin/Librarian",
+        idCardLabel: "Staff ID (ဝန်ထမ်းကတ်)",
+      };
     case "STUDENT":
     default:
-      return { honorific: "ကလေး", title: "Student" };
+      return {
+        honorific: "ကလေး",
+        title: "Student",
+        idCardLabel: "Student ID (ကျောင်းသားကတ်)",
+      };
   }
 }
 
@@ -43,7 +55,7 @@ export async function POST(req: Request) {
     const session = await auth.api.getSession({ headers: req.headers });
     const userRole = session?.user?.role || "STUDENT";
     const userName = session?.user?.name || "ကျောင်းသား";
-    const { honorific } = getRoleHonorific(userRole);
+    const { honorific, idCardLabel } = getRoleHonorific(userRole);
 
     const { message, history = [] } = await req.json();
 
@@ -97,8 +109,9 @@ LIBRARY CONTEXT
 
 PHYSICAL BOOK RULES
 1. If a physical book is available, tell the user they can borrow it from the UCSTGO library counter.
-2. Mention that borrowing requires their Student ID.
-3. Do not invent borrowing policies beyond the provided context.
+2. Mention that borrowing requires ${idCardLabel}.
+3. Never mention any other form of verification card (e.g. do NOT tell ${honorific} to bring a student card if ${honorific} is a staff member).
+4. Do not invent borrowing policies beyond the provided context.
 
 RESPONSE GUIDELINES
 1. Base every answer on the provided database, retrieved context, or system information.
@@ -307,7 +320,7 @@ ${personalityPrompt}
 CRITICAL RULES FOR RECOMMENDATIONS:
 1. Express natural empathy for ${honorific} feeling bored (e.g. "ပျင်းနေရင် စာအုပ်လေးတွေ ဖတ်ကြည့်ပါလား 🙂").
 2. STRICT REQUIREMENT: You MUST ONLY mention books that exist in the provided "Available Books DB Payload". NEVER invent or guess book titles like "Human Computer Interaction".
-3. ONLY refer to physical borrowing using "Student ID" (ကျောင်းသားကတ်). Never use direct translated words like "အမှတ်တရ ကဒ်".
+3. ONLY refer to physical borrowing using ${idCardLabel}. Never use direct translated words like "အမှတ်တရ ကဒ်".
 4. List 2 to 3 titles from the DB list with warm, encouraging Burmese description.
             `,
           },
