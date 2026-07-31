@@ -15,6 +15,7 @@ import { getLibrarySettings } from "@/app/actions/settings";
 import { getAllSemesters } from "@/app/actions/semesters";
 import { AddSemesterForm } from "@/components/admin/AddSemesterForm";
 import DeleteSemesterButton from "@/components/admin/DeleteSemesterButton";
+import EditSemesterButton from "@/components/admin/EditSemesterButton";
 import UpdateBrandForm from "@/components/admin/updateBrand";
 import { NoticeBoardManager } from "@/components/admin/NoticeBoardManager";
 import { LibraryRulesManager } from "@/components/admin/LibraryRulesManager";
@@ -144,7 +145,13 @@ const SystemConfiguration = async () => {
                             {sem.slug}
                           </span>
                         </div>
-                        <DeleteSemesterButton semesterId={sem.id} />
+                        <div className="flex items-center gap-1 shrink-0">
+                          <EditSemesterButton
+                            semesterId={sem.id}
+                            semesterName={sem.name}
+                          />
+                          <DeleteSemesterButton semesterId={sem.id} />
+                        </div>
                       </div>
                     ))
                   )}

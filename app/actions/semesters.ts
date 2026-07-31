@@ -67,6 +67,37 @@ export async function getAllSemesters() {
 }
 
 /**
+ * UPDATE A SEMESTER
+ */
+export async function updateSemester(semesterId: string, name: string) {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || session.user.role !== Role.ADMIN) {
+      throw new Error("Unauthorized: Only administrators can update semesters.");
+    }
+
+    const slug = slugify(name);
+
+    const updatedSemester = await prisma.semester.update({
+      where: { id: semesterId },
+      data: { name, slug },
+    });
+
+    revalidatePath("/admin/books");
+    revalidatePath("/admin/sys-config");
+    revalidatePath("/student/dashboard");
+    revalidatePath("/lecturer/ebooks");
+
+    return { success: true, data: updatedSemester };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to update semester.",
+    };
+  }
+}
+
+/**
  * DELETE A SEMESTER
  */
 export async function deleteSemester(semesterId: string) {
