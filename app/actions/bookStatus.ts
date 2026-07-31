@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { logActionIssue, errorMessage, errorStack } from "@/lib/log-error";
 import dayjs from "dayjs";
 
 export async function getLibraryStats() {
@@ -34,8 +35,13 @@ export async function getLibraryStats() {
         totalCategories,
       },
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Failed to fetch library stats:", error);
+    void logActionIssue(
+      "getLibraryStats",
+      `Failed to load library metrics: ${errorMessage(error)}`,
+      { severity: "error", stack: errorStack(error) },
+    );
     return {
       success: false,
       error: "Could not load library metrics.",

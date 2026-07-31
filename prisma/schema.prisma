@@ -426,4 +426,89 @@ model LibraryRule {
   @@map("library_rule")
 }
 
+// ----------------------------------------------------
+// 7. MONITORING & SECURITY
+// ----------------------------------------------------
+
+model VisitLog {
+  id        String   @id @default(uuid())
+  path      String
+  ip        String?
+  userAgent String?
+  referrer  String?
+  visitedAt DateTime @default(now())
+
+  @@index([visitedAt])
+  @@index([path])
+  @@index([ip])
+  @@map("visit_log")
+}
+
+model SecurityEvent {
+  id        String   @id @default(uuid())
+  eventType String // SCANNER_UA | PATH_PROBE | RATE_BURST
+  ip        String
+  path      String?
+  userAgent String?
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([ip])
+  @@map("security_event")
+}
+
+model BlockedIp {
+  id        String   @id @default(uuid())
+  ip        String   @unique
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([ip])
+  @@map("blocked_ip")
+}
+
+// ----------------------------------------------------
+// 8. SYSTEM ERROR & ISSUE TRACKING
+// ----------------------------------------------------
+// source:   http (5xx responses) | api (handler exceptions) |
+//           client (browser JS errors) | db (database pool)
+// severity: error | warning | critical
+// status:   open | investigating | resolved
+model ErrorLog {
+  id        String   @id @default(uuid())
+  source    String   @default("http")
+  endpoint  String?
+  method    String?
+  message   String   @db.Text
+  stack     String?  @db.Text
+  severity  String   @default("error")
+  status    String   @default("open")
+  count     Int      @default(1)
+  firstSeen DateTime @default(now()) @map("firstSeen")
+  lastSeen  DateTime @default(now()) @map("lastSeen")
+  ip        String?
+
+  @@index([status])
+  @@index([source])
+  @@index([lastSeen])
+  @@map("error_log")
+}
+
+// Who is online right now — heartbeat from signed-in users.
+// Rows older than ~24h are pruned daily by lib/monitor.js.
+model ActiveUser {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  name       String
+  email      String?
+  studentId  String?
+  role       String?
+  path       String?
+  lastSeenAt DateTime @default(now()) @updatedAt @map("lastSeenAt")
+
+  @@index([lastSeenAt])
+  @@map("active_user")
+}
+
 

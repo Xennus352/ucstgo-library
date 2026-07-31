@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { Role } from "../generated/prisma/enums";
 import { auth } from "@/lib/auth";
+import { logActionIssue, errorMessage, errorStack } from "@/lib/log-error";
 
 async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -19,7 +20,12 @@ export async function getLibraryRules() {
       orderBy: { createdAt: "asc" },
     });
     return { success: true, data: rules };
-  } catch {
+  } catch (error: unknown) {
+    void logActionIssue(
+      "getLibraryRules",
+      `Failed to fetch library rules: ${errorMessage(error)}`,
+      { severity: "error", stack: errorStack(error) },
+    );
     return { success: false, error: "Failed to fetch library rules." };
   }
 }
@@ -41,6 +47,11 @@ export async function createLibraryRule(formData: FormData) {
     revalidatePath("/student/dashboard");
     return { success: true, message: "Library rule added successfully!" };
   } catch (error: any) {
+    void logActionIssue(
+      "createLibraryRule",
+      `Failed to add library rule: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return { success: false, error: error.message };
   }
 }
@@ -54,6 +65,41 @@ export async function deleteLibraryRule(id: string) {
     revalidatePath("/student/dashboard");
     return { success: true };
   } catch (error: any) {
+    void logActionIssue(
+      "deleteLibraryRule",
+      `Failed to delete library rule: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateLibraryRule(
+  id: string,
+  formData: FormData,
+) {
+  try {
+    await requireAdmin();
+
+    const content = formData.get("content") as string;
+    if (!content) {
+      throw new Error("Rule content is required.");
+    }
+
+    await prisma.libraryRule.update({
+      where: { id },
+      data: { content },
+    });
+
+    revalidatePath("/admin/sys-config");
+    revalidatePath("/student/dashboard");
+    return { success: true, message: "Library rule updated successfully!" };
+  } catch (error: any) {
+    void logActionIssue(
+      "updateLibraryRule",
+      `Failed to update library rule: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return { success: false, error: error.message };
   }
 }

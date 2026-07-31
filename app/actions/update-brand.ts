@@ -3,9 +3,11 @@
 import fs from "fs/promises";
 import path from "path";
 import { revalidatePath } from "next/cache";
+import { logActionIssue, errorMessage, errorStack } from "@/lib/log-error";
 
 export async function updateBrand(formData: FormData) {
-  const name = formData.get("name")?.toString().trim();
+  try {
+    const name = formData.get("name")?.toString().trim();
   const logo = formData.get("logo") as File | null;
   const faviconFile = formData.get("favicon") as File | null;
   const title = formData.get("title")?.toString().trim();
@@ -84,4 +86,12 @@ export async function updateBrand(formData: FormData) {
     title: title || currentTitle,
     updatedAt,
   };
+  } catch (error: unknown) {
+    void logActionIssue(
+      "updateBrand",
+      `Failed to update brand config: ${errorMessage(error)}`,
+      { severity: "error", stack: errorStack(error) },
+    );
+    throw error;
+  }
 }

@@ -37,6 +37,15 @@ export async function returnBookAction(borrowRecordId: string) {
     });
 
     if (!borrowRecord || borrowRecord.status === BorrowStatus.RETURNED) {
+      void import("@/lib/log-error").then(({ logSystemError }) =>
+        logSystemError({
+          source: "action",
+          endpoint: "returnBookAction",
+          method: null,
+          message: "Book return failed: record is invalid or already returned",
+          severity: "warning",
+        }),
+      );
       return {
         success: false,
         error: "This record is either invalid or already returned.",
@@ -108,6 +117,16 @@ export async function returnBookAction(borrowRecordId: string) {
       message: "Book returned successfully and matched to queue holds!",
     };
   } catch (error: any) {
+    void import("@/lib/log-error").then(({ logSystemError }) =>
+      logSystemError({
+        source: "action",
+        endpoint: "returnBookAction",
+        method: null,
+        message: `Book return failed: ${error?.message || "unknown error"}`,
+        stack: error?.stack ?? null,
+        severity: "error",
+      }),
+    );
     return {
       success: false,
       error: error.message || "An unexpected error occurred.",

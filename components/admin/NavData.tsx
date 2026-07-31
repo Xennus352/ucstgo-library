@@ -6,6 +6,7 @@ import {
   Settings,
   ShieldCheckIcon,
   UserCheckIcon,
+  ActivityIcon,
 } from "lucide-react";
 
 export const navData = {
@@ -34,6 +35,11 @@ export const navData = {
       title: "System Configuration",
       url: "/admin/sys-config",
       icon: <Settings />,
+    },
+    {
+      title: "Monitoring",
+      url: "/admin/monitoring",
+      icon: <ActivityIcon />,
     },
     {
       title: "Library Management",

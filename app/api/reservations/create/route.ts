@@ -8,6 +8,15 @@ export async function POST(req: Request) {
     const { user } = await requireSession(req.headers);
     const { bookId } = await req.json();
     if (!bookId) {
+      void import("@/lib/log-error").then(({ logSystemError }) =>
+        logSystemError({
+          source: "api",
+          endpoint: "/api/reservations/create",
+          method: "POST",
+          message: "Reservation failed: missing book identifier",
+          severity: "warning",
+        }),
+      );
       return NextResponse.json(
         { success: false, error: "Missing book identifier" },
         { status: 400 },

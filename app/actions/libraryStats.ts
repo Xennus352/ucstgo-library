@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { logActionIssue } from "@/lib/log-error";
 
 
 
@@ -40,6 +41,11 @@ export async function getLibraryDashboardMetrics(): Promise<{
     };
   } catch (error: any) {
     console.error("Database server action failed to aggregate library stats:", error);
+    void logActionIssue(
+      "libraryStats",
+      `Library stats aggregation failed: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return {
       success: false,
       error: "Failed to collect real-time database metric summaries.",

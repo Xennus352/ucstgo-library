@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { logActionIssue } from "@/lib/log-error";
 
 export async function getTopBorrowedBooks() {
   try {
@@ -40,6 +41,11 @@ export async function getTopBorrowedBooks() {
     return { success: true, data: topBooks };
   } catch (error: any) {
     console.error("Failed to fetch book analytics:", error);
+    void logActionIssue(
+      "bookAnalytics",
+      `Book analytics aggregation failed: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return {
       success: false,
       error: "Could not aggregate book analytics data.",
@@ -75,6 +81,11 @@ export async function getTopBorrowers() {
     return { success: true, data: topUsers };
   } catch (error: any) {
     console.error("Failed to fetch borrower analytics:", error);
+    void logActionIssue(
+      "borrowerAnalytics",
+      `Borrower analytics aggregation failed: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return {
       success: false,
       error: "Could not aggregate user analytics data.",

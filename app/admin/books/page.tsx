@@ -44,7 +44,7 @@ export default function BooksPage() {
 
   return (
     <div className=" ">
-      <div className="px-4 lg:px-8 py-8">
+      <div className="px-4 lg:px-8 pb-8">
         <div className="rounded-xl border bg-white p-4 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>

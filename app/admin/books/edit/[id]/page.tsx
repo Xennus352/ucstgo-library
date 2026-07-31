@@ -36,7 +36,7 @@ export default async function EditBookPage({
 
   return (
     <div className="min-h-screen bg-slate-50/50">
-      <div className=" px-4 sm:px-6 lg:px-8 py-8">
+      <div className=" px-4 sm:px-6 lg:px-8 pb-8">
         {/* Page Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 ">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">

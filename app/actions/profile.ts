@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { logActionIssue } from "@/lib/log-error";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
@@ -53,6 +54,11 @@ export async function getUserProfileData() {
       data: { borrowRecords, reservations },
     };
   } catch (error: any) {
+    void logActionIssue(
+      "getUserProfileData",
+      `Failed to load profile details: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return {
       success: false,
       error: error.message || "Failed to load profile details.",
@@ -114,6 +120,11 @@ export async function getStudentReadingStats() {
       },
     };
   } catch (error: any) {
+    void logActionIssue(
+      "getStudentReadingStats",
+      `Failed to load reading stats: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return {
       success: false,
       error: error.message || "Failed to load reading stats.",

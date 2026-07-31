@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { createNotice, deleteNotice } from "@/app/actions/notice";
+import {
+  createNotice,
+  deleteNotice,
+  updateNotice,
+} from "@/app/actions/notice";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Pencil, X } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -31,12 +35,35 @@ const colorOptions = [
   { value: "amber", label: "Amber", class: "bg-amber-500" },
 ];
 
+const colorHex: Record<string, string> = {
+  red: "#ef4444",
+  emerald: "#10b981",
+  cyan: "#06b6d4",
+  blue: "#3b82f6",
+  amber: "#f59e0b",
+};
+
 export function NoticeBoardManager({ notices: initial }: { notices: Notice[] }) {
   const [notices, setNotices] = useState(initial);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [color, setColor] = useState("red");
   const [isPending, setIsPending] = useState(false);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle("");
+    setContent("");
+    setColor("red");
+  };
+
+  const startEdit = (notice: Notice) => {
+    setEditingId(notice.id);
+    setTitle(notice.title);
+    setContent(notice.content);
+    setColor(notice.color);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,14 +74,23 @@ export function NoticeBoardManager({ notices: initial }: { notices: Notice[] }) 
     formData.append("content", content);
     formData.append("color", color);
 
-    const result = await createNotice(formData);
+    const result = editingId
+      ? await updateNotice(editingId, formData)
+      : await createNotice(formData);
     setIsPending(false);
 
     if (result.success) {
-      setTitle("");
-      setContent("");
-      setColor("red");
-      toast.success(result.message);
+      if (editingId) {
+        setNotices((prev) =>
+          prev.map((n) =>
+            n.id === editingId ? { ...n, title, content, color } : n,
+          ),
+        );
+        toast.success(result.message);
+      } else {
+        toast.success(result.message);
+      }
+      resetForm();
     } else {
       toast.error(result.error);
     }
@@ -67,6 +103,7 @@ export function NoticeBoardManager({ notices: initial }: { notices: Notice[] }) 
     const result = await deleteNotice(id);
     if (result.success) {
       setNotices((prev) => prev.filter((n) => n.id !== id));
+      if (editingId === id) resetForm();
       toast.success("Notice deleted.");
     } else {
       toast.error(result.error);
@@ -78,7 +115,7 @@ export function NoticeBoardManager({ notices: initial }: { notices: Notice[] }) 
       <CardHeader>
         <CardTitle>Notice Board Management</CardTitle>
         <CardDescription>
-          Add and manage notices displayed on the student dashboard.
+          Add, edit, and manage notices displayed on the student dashboard.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -120,16 +157,31 @@ export function NoticeBoardManager({ notices: initial }: { notices: Notice[] }) 
               ))}
             </div>
           </div>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              "Add Notice"
+          <div className="flex items-center gap-2">
+            <Button type="submit" disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {editingId ? "Updating..." : "Adding..."}
+                </>
+              ) : editingId ? (
+                "Update Notice"
+              ) : (
+                "Add Notice"
+              )}
+            </Button>
+            {editingId && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={resetForm}
+                className="text-slate-500"
+              >
+                <X className="mr-1 h-4 w-4" />
+                Cancel
+              </Button>
             )}
-          </Button>
+          </div>
         </form>
 
         <div className="space-y-3">
@@ -145,18 +197,16 @@ export function NoticeBoardManager({ notices: initial }: { notices: Notice[] }) 
               {notices.map((notice) => (
                 <div
                   key={notice.id}
-                  className="flex items-start gap-3 p-3 bg-card border rounded-lg text-sm hover:bg-accent/50 transition-colors"
+                  className={`flex items-start gap-3 p-3 bg-card border rounded-lg text-sm transition-colors ${
+                    editingId === notice.id
+                      ? "border-blue-400 ring-1 ring-blue-300"
+                      : "hover:bg-accent/50"
+                  }`}
                 >
                   <span
                     className="w-2 h-2 mt-1.5 rounded-full shrink-0"
                     style={{
-                      backgroundColor: {
-                        red: "#ef4444",
-                        emerald: "#10b981",
-                        cyan: "#06b6d4",
-                        blue: "#3b82f6",
-                        amber: "#f59e0b",
-                      }[notice.color] || "#ef4444",
+                      backgroundColor: colorHex[notice.color] || "#ef4444",
                     }}
                   />
                   <div className="flex-1 min-w-0">
@@ -165,6 +215,15 @@ export function NoticeBoardManager({ notices: initial }: { notices: Notice[] }) 
                       {notice.content}
                     </p>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                    onClick={() => startEdit(notice)}
+                    title="Edit notice"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"

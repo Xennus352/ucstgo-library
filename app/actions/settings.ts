@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import  prisma from "@/lib/prisma";
+import { logActionIssue, errorMessage, errorStack } from "@/lib/log-error";
 
 // Structure type for the frontend
 export interface LibrarySettings {
@@ -64,8 +65,13 @@ export async function updateLibrarySettings(data: Partial<LibrarySettings>) {
     // Refresh the home layout cache automatically
     revalidatePath("/");
     return { success: true, message: "Settings updated successfully!" };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Failed to save settings:", error);
+    void logActionIssue(
+      "updateLibrarySettings",
+      `Failed to save library settings: ${errorMessage(error)}`,
+      { severity: "error", stack: errorStack(error) },
+    );
     return { success: false, message: "Something went wrong saving settings." };
   }
 }

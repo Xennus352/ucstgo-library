@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { logActionIssue } from "@/lib/log-error";
 
 export async function issueWarningAction(userId: string, bookTitle: string) {
   try {
@@ -15,7 +16,13 @@ export async function issueWarningAction(userId: string, bookTitle: string) {
 
     //  Real-time broadcast via global Socket.io instance
     const io = (global as any).io;
-    if (io) {
+    if (!io) {
+      void logActionIssue(
+        "issueWarningAction",
+        "Socket.IO unavailable — warning delivered as database notification only",
+        { severity: "warning" },
+      );
+    } else {
       // Emit exclusively to the targeted user's socket room channel
       io.to(userId).emit("new-notification", {
         id: notification.id,
@@ -29,6 +36,11 @@ export async function issueWarningAction(userId: string, bookTitle: string) {
     return { success: true, message: "Warning sent over live channels." };
   } catch (error: any) {
     console.error("Notification pipeline break:", error);
+    void logActionIssue(
+      "issueWarningAction",
+      `Failed to dispatch overdue warning: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return { success: false, error: "Failed to dispatch system alerts." };
   }
 }

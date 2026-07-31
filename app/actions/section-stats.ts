@@ -1,6 +1,7 @@
 "use server";
 
 import  prisma  from "@/lib/prisma";
+import { logActionIssue, errorMessage, errorStack } from "@/lib/log-error";
 import dayjs from "dayjs";
 
 export async function getSectionCardStats() {
@@ -59,8 +60,13 @@ export async function getSectionCardStats() {
         overdueItems: overdueItems.toLocaleString(),
       },
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Failed to compile layout metric values:", error);
+    void logActionIssue(
+      "sectionStats",
+      `Dashboard section metrics failed: ${errorMessage(error)}`,
+      { severity: "error", stack: errorStack(error) },
+    );
     return { success: false, error: "Database aggregate computation failure." };
   }
 }

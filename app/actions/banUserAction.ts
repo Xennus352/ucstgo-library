@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { logActionIssue } from "@/lib/log-error";
 
 export async function banUserAction(userId: string) {
   try {
@@ -20,6 +21,11 @@ export async function banUserAction(userId: string) {
     };
   } catch (error: any) {
     console.error("Ban action error:", error);
+    void logActionIssue(
+      "banUserAction",
+      `Failed to ban user: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return {
       success: false,
       error: error.message || "Failed to update user profile.",

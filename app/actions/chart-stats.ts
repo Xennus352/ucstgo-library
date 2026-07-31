@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { logActionIssue, errorMessage, errorStack } from "@/lib/log-error";
 import dayjs from "dayjs";
 
 export async function getInteractiveChartStats() {
@@ -66,8 +67,13 @@ export async function getInteractiveChartStats() {
       success: true,
       data: chartData,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Failed to generate dynamic library metrics chart data:", error);
+    void logActionIssue(
+      "chartStats",
+      `Dashboard chart aggregation failed: ${errorMessage(error)}`,
+      { severity: "error", stack: errorStack(error) },
+    );
     return { success: false, error: "Database aggregation error." };
   }
 }

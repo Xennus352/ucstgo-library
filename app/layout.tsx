@@ -9,6 +9,8 @@ import { AiFloatingWidget } from "@/components/ai/AiFloatingWidget";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import PushInit from "@/components/PushInit";
 import { BrandConfigProvider } from "@/components/brand-config-provider";
+import { ClientErrorReporter } from "@/components/system/ClientErrorReporter";
+import { ActiveUserPing } from "@/components/system/ActiveUserPing";
 import { PasswordResetToast } from "@/components/PasswordResetToast";
 import { getBrandConfig } from "@/app/actions/get-brand";
 import fs from "fs/promises";
@@ -71,6 +73,8 @@ export default async function RootLayout({
               {/* <ServiceWorkerRegister />
               <PushInit /> */}
               {children}
+              <ClientErrorReporter />
+              <ActiveUserPing />
 
               {/* Global freely draggable AI Co-Pilot Widget */}
               {currentUserId && <AiFloatingWidget userId={currentUserId} />}

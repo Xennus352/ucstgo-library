@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { logActionIssue, errorMessage, errorStack } from "@/lib/log-error";
 
 export async function getLiveCirculationData() {
   try {
@@ -44,8 +45,13 @@ export async function getLiveCirculationData() {
     }));
 
     return { success: true, data: formattedData };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Dashboard table retrieval error:", error);
+    void logActionIssue(
+      "getLiveCirculationData",
+      `Circulation data retrieval failed: ${errorMessage(error)}`,
+      { severity: "error", stack: errorStack(error) },
+    );
     return { success: false, error: "Failed to parse system logs." };
   }
 }

@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { Role } from "../generated/prisma/enums";
 import { auth } from "@/lib/auth";
+import { logActionIssue, errorMessage, errorStack } from "@/lib/log-error";
 
 function slugify(text: string) {
   return text
@@ -42,6 +43,11 @@ export async function createSemester(name: string) {
 
     return { success: true, data: newSemester };
   } catch (error: any) {
+    void logActionIssue(
+      "createSemester",
+      `Failed to create semester: ${error?.message || "might already exist"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return {
       success: false,
       error:
@@ -61,7 +67,12 @@ export async function getAllSemesters() {
       },
     });
     return { success: true, data: semesters };
-  } catch (error) {
+  } catch (error: unknown) {
+    void logActionIssue(
+      "getAllSemesters",
+      `Failed to fetch semesters: ${errorMessage(error)}`,
+      { severity: "error", stack: errorStack(error) },
+    );
     return { success: false, error: "Failed to fetch semesters." };
   }
 }
@@ -90,6 +101,11 @@ export async function updateSemester(semesterId: string, name: string) {
 
     return { success: true, data: updatedSemester };
   } catch (error: any) {
+    void logActionIssue(
+      "updateSemester",
+      `Failed to update semester: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return {
       success: false,
       error: error.message || "Failed to update semester.",
@@ -125,6 +141,11 @@ export async function deleteSemester(semesterId: string) {
 
     return { success: true };
   } catch (error: any) {
+    void logActionIssue(
+      "deleteSemester",
+      `Failed to delete semester: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return { success: false, error: error.message };
   }
 }

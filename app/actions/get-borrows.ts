@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { logActionIssue } from "@/lib/log-error";
 import { BorrowStatus } from "../generated/prisma/enums";
 
 export async function getAllBorrows() {
@@ -43,6 +44,11 @@ export async function getAllBorrows() {
 
     return { success: true, data: activeBorrows };
   } catch (error: any) {
+    void logActionIssue(
+      "getBorrows",
+      `Failed to fetch borrow entries: ${error?.message || "unknown error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return {
       success: false,
       error: error.message || "Failed to fetch borrow entries.",

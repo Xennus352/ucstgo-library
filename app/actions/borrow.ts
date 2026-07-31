@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { BorrowStatus, CopyStatus } from "../generated/prisma/enums";
 import prisma from "@/lib/prisma";
 import { getIO } from "@/lib/socket";
+import { logActionIssue } from "@/lib/log-error";
 
 export async function borrowBookAction(bookId: string) {
   try {
@@ -30,6 +31,11 @@ export async function borrowBookAction(bookId: string) {
     });
 
     if (userStatus?.banned) {
+      void logActionIssue(
+        "borrowBookAction",
+        "Book borrow blocked: account is restricted (banned)",
+        { severity: "warning" },
+      );
       return {
         success: false,
         error:
@@ -111,6 +117,11 @@ export async function borrowBookAction(bookId: string) {
       message: "Book successfully borrowed! Enjoy your reading.",
     };
   } catch (error: any) {
+    void logActionIssue(
+      "borrowBookAction",
+      `Book borrow failed: ${error?.message || "unexpected error"}`,
+      { severity: "error", stack: error?.stack ?? null },
+    );
     return {
       success: false,
       error: error.message || "An unexpected error occurred.",

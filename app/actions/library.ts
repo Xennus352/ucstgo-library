@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { logActionIssue, errorMessage, errorStack } from "@/lib/log-error";
 export async function getLatestBooks() {
   try {
     const books = await prisma.book.findMany({
@@ -28,8 +29,13 @@ export async function getLatestBooks() {
     }));
 
     return { success: true, books: formattedBooks };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Database query failed for latest books:", error);
+    void logActionIssue(
+      "getLatestBooks",
+      `Failed to retrieve latest books: ${errorMessage(error)}`,
+      { severity: "error", stack: errorStack(error) },
+    );
     return {
       success: false,
       books: [],

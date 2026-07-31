@@ -1,6 +1,14 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+// Load .env in development (Next.js does this itself in production)
+try {
+  require("dotenv/config");
+} catch {
+  // dotenv is a devDependency — production servers use real env vars
+}
 const { createServer } = require("http");
 const next = require("next");
 const { Server } = require("socket.io");
+const { trackRequest, isBlocked, logIssue } = require("./lib/monitor");
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
@@ -14,7 +22,36 @@ app.prepare().then(() => {
   // so socket.io requests are intercepted and non-socket.io requests
   // still reach Next.js.
   const httpServer = createServer((req, res) => {
+    if (isBlocked(req)) {
+      res.writeHead(403, { "Content-Type": "text/plain" });
+      res.end("Forbidden");
+      return;
+    }
+    trackRequest(req);
+    const start = Date.now();
     handler(req, res);
+    res.on("finish", () => {
+      const duration = Date.now() - start;
+      if (res.statusCode >= 500) {
+        logIssue({
+          source: "http",
+          endpoint: req.url,
+          method: req.method,
+          severity: res.statusCode >= 500 ? "error" : "warning",
+          message: `Request failed with HTTP ${res.statusCode}`,
+          ip: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || null,
+        });
+      } else if (duration > 8000) {
+        logIssue({
+          source: "http",
+          endpoint: req.url,
+          method: req.method,
+          severity: "warning",
+          message: `Slow response (${Math.round(duration)}ms)`,
+          ip: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || null,
+        });
+      }
+    });
   });
 
   const io = new Server(httpServer, {
