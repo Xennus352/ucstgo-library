@@ -19,6 +19,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { useBrandConfig } from "@/components/brand-config-provider";
+import { MonitoringIssueBadge } from "@/components/admin/MonitoringIssueBadge";
 
 // Match the exact shape of your navData object
 interface NavSubItem {
@@ -93,6 +94,7 @@ export function AppSidebar({ navData, ...props }: DynamicSidebarProps) {
       ...item,
       isActive: isCurrent,
       className: isCurrent ? activeStyles : hoverStyles,
+      badge: item.title === "Monitoring" ? <MonitoringIssueBadge /> : undefined,
     };
   });
 

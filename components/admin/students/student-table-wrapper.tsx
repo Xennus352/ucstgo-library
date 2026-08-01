@@ -18,13 +18,12 @@ import {
   Trash2Icon,
   CheckIcon,
   Edit2Icon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   Loader2Icon,
   Ban,
   ShieldCheck,
   Download,
 } from "lucide-react";
+import { BookPagination } from "@/components/books/BookPagination";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
 import {
   AlertDialog,
@@ -704,25 +703,13 @@ export function StudentTableWrapper() {
           of <span className="font-mono">{totalRecords}</span> values
         </span>
 
-        <div className="flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-end">
-          <Button
-            onClick={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page === 1 || isLoading}
-            className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-md hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-          >
-            <ChevronLeftIcon className="size-3.5" />
-          </Button>
-          <span className="px-2 font-mono whitespace-nowrap">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-            disabled={page === totalPages || isLoading}
-            className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-md hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-          >
-            <ChevronRightIcon className="size-3.5" />
-          </Button>
-        </div>
+                <BookPagination
+          page={page}
+          totalPages={totalPages}
+          hasNextPage={page < totalPages}
+          isLoading={isLoading}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* --- ALERT COMPONENT: SINGLE PROFILE REMOVAL --- */}

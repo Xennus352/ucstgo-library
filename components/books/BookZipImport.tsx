@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Upload, FileArchive, CheckCircle, X, Loader2 } from "lucide-react";
+import { FILE_LIMITS } from "@/lib/upload-limits";
 
 interface BookZipImportProps {
   onComplete?: () => void;
@@ -13,6 +14,16 @@ export function BookZipImport({ onComplete }: BookZipImportProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+
+  const handleFileSelect = (f: File | null) => {
+    if (f && f.size > FILE_LIMITS.zipImport) {
+      toast.error(
+        `ZIP file too large (${(f.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed is ${Math.round(FILE_LIMITS.zipImport / 1024 / 1024)} MB.`,
+      );
+      return;
+    }
+    setFile(f);
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -35,7 +46,7 @@ export function BookZipImport({ onComplete }: BookZipImportProps) {
         droppedFile.type === "application/zip" ||
         droppedFile.name.endsWith(".zip")
       ) {
-        setFile(droppedFile);
+        handleFileSelect(droppedFile);
       } else {
         toast.error("Please upload a ZIP file");
       }
@@ -45,6 +56,14 @@ export function BookZipImport({ onComplete }: BookZipImportProps) {
   const upload = async () => {
     if (!file) {
       toast.error("Please select a ZIP file");
+      return;
+    }
+
+    if (file.size > FILE_LIMITS.zipImport) {
+      toast.error(
+        `ZIP file too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed is ${Math.round(FILE_LIMITS.zipImport / 1024 / 1024)} MB.`,
+      );
+      setFile(null);
       return;
     }
 
@@ -59,15 +78,46 @@ export function BookZipImport({ onComplete }: BookZipImportProps) {
         body: fd,
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+
+      if (!data) {
+        throw new Error(
+          res.status === 413
+            ? "File too large"
+            : `Upload failed (HTTP ${res.status})`,
+        );
+      }
 
       if (!res.ok) throw new Error(data.error || "Import failed");
 
-      toast.success(`Successfully imported ${data.inserted} books!`);
+      if (data.inserted > 0) {
+        toast.success(`Successfully imported ${data.inserted} books!`);
+      }
+      if (data.warnings?.length) {
+        toast.warning(
+          `${data.warnings.length} warning(s).\n${data.warnings
+            .slice(0, 5)
+            .join("\n")}${data.warnings.length > 5 ? "\n…" : ""}`,
+          { duration: 10000 },
+        );
+      }
+      if (data.skipped > 0) {
+        const reasons = (data.errors || []).slice(0, 5).join("\n");
+        const hint = data.hint ? `\n${data.hint}` : "";
+        toast.warning(
+          `${data.skipped} row(s) skipped. ${
+            reasons ? `\n${reasons}` : ""
+          }${hint}${(data.errors?.length || 0) > 5 ? "\n…" : ""}`,
+          { duration: 10000 },
+        );
+      }
+      if (data.inserted === 0 && data.skipped === 0) {
+        toast.error("No books were imported from this file");
+      }
       setFile(null);
       onComplete?.();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to import books");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to import books");
     } finally {
       setLoading(false);
     }
@@ -90,7 +140,7 @@ export function BookZipImport({ onComplete }: BookZipImportProps) {
           type="file"
           id="zip-upload"
           accept=".zip"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
 
@@ -126,7 +176,8 @@ export function BookZipImport({ onComplete }: BookZipImportProps) {
                   Drag & drop or <span className="text-blue-600">browse</span>
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  ZIP file containing book data (JSON/CSV) and covers
+                  ZIP file containing book data (JSON/CSV) and covers (max{" "}
+                  {Math.round(FILE_LIMITS.zipImport / 1024 / 1024)} MB)
                 </p>
               </div>
             </>

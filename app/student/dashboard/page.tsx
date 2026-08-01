@@ -220,7 +220,7 @@ function LibraryApp() {
 
   useEffect(() => {
     const el = loadMoreRef.current;
-    if (!el || !hasMore || isBooksValidating) return;
+    if (!el || !hasMore || isBooksValidating || error) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -228,12 +228,12 @@ function LibraryApp() {
           setSize((s) => s + 1);
         }
       },
-      { rootMargin: "200px" },
+      { rootMargin: "100px" },
     );
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [setSize, hasMore, isBooksValidating]);
+  }, [setSize, hasMore, isBooksValidating, error]);
 
   const handleTabChange = useCallback(
     (tabId: TabId, subCategory?: string) => {
@@ -557,6 +557,7 @@ function LibraryApp() {
         isOpen={isAuthModalOpen}
         onOpenChange={setIsAuthModalOpen}
         showTrigger={false}
+        allowRoles={["STUDENT"]}
       />
     </div>
   );

@@ -8,7 +8,7 @@ import { useSocketEvent } from "@/hooks/use-socket";
 
 type BookType = "all" | "EResources" | "physical";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 50;
 
 export function useBooksInfinite(type: BookType) {
   const getKey = (pageIndex: number, previousPageData: any) => {

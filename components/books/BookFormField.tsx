@@ -18,6 +18,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { getAllSemesters } from "@/app/actions/semesters";
+import { toAsciiDigits } from "@/lib/digits";
 import {
   Combobox,
   ComboboxContent,
@@ -27,6 +28,8 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { useCategories } from "@/hooks/use-categories";
+import { toast } from "sonner";
+import { FILE_LIMITS } from "@/lib/upload-limits";
 
 interface BookFormFieldsProps {
   form: {
@@ -253,11 +256,15 @@ export function BookFormFields({
               Publication Year
             </label>
             <Input
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="2024"
               value={form.publicationYear}
               onChange={(e) =>
-                setForm({ ...form, publicationYear: e.target.value })
+                setForm({
+                  ...form,
+                  publicationYear: toAsciiDigits(e.target.value),
+                })
               }
               className="h-9 text-sm"
             />
@@ -314,9 +321,17 @@ export function BookFormFields({
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) =>
-                    handleCoverChange(e.target.files?.[0] || null)
-                  }
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    if (f && f.size > FILE_LIMITS.cover) {
+                      toast.error(
+                        `Cover image too large (${(f.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed is ${Math.round(FILE_LIMITS.cover / 1024 / 1024)} MB.`,
+                      );
+                      e.target.value = "";
+                      return;
+                    }
+                    handleCoverChange(f);
+                  }}
                   className="hidden"
                 />
                 {coverPreview ? (
@@ -365,7 +380,17 @@ export function BookFormFields({
                 <input
                   type="file"
                   accept="application/pdf"
-                  onChange={(e) => setEbook(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    if (f && f.size > FILE_LIMITS.ebook) {
+                      toast.error(
+                        `PDF too large (${(f.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed is ${Math.round(FILE_LIMITS.ebook / 1024 / 1024)} MB.`,
+                      );
+                      e.target.value = "";
+                      return;
+                    }
+                    setEbook(f);
+                  }}
                   className="hidden"
                 />
                 {ebook ? (
@@ -395,7 +420,8 @@ export function BookFormFields({
                       Click to upload PDF
                     </p>
                     <p className="text-[10px] text-slate-500 mt-1">
-                      PDF format only (max 50MB)
+                      PDF format only (max{" "}
+                      {Math.round(FILE_LIMITS.ebook / 1024 / 1024)}MB)
                     </p>
                   </>
                 )}
@@ -445,10 +471,15 @@ export function BookFormFields({
               Number of Copies
             </label>
             <Input
-              type="number"
+              type="text"
+              inputMode="numeric"
               min={1}
               value={copies}
-              onChange={(e) => setCopies(Number(e.target.value))}
+              onChange={(e) =>
+                setCopies(
+                  Number(toAsciiDigits(e.target.value).replace(/\D/g, "")) || 0,
+                )
+              }
               className="w-full h-9 text-sm"
             />
           </div>

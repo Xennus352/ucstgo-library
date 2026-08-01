@@ -1,6 +1,8 @@
 // app/admin/reservations/components/Pagination.tsx
 "use client";
 
+import { getPageNumbers } from "@/lib/pagination";
+
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -20,6 +22,8 @@ export function Pagination({
 }: PaginationProps) {
   if (totalPages <= 1) return null;
 
+  const numbers = getPageNumbers(currentPage, totalPages);
+
   return (
     <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-white">
       <p className="text-sm text-gray-600">
@@ -33,17 +37,26 @@ export function Pagination({
         >
           Previous
         </button>
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-          <button
-            key={page}
-            onClick={() => setCurrentPage(page)}
-            className={`px-3 py-1 border rounded-lg text-sm ${
-              currentPage === page ? "bg-blue-600 text-white border-blue-600" : "border-gray-300 hover:bg-gray-50"
-            }`}
-          >
-            {page}
-          </button>
-        ))}
+        {numbers.map((page, i) =>
+          page === "…" ? (
+            <span
+              key={`ellipsis-${i}`}
+              className="px-1 py-1 text-sm text-gray-400"
+            >
+              …
+            </span>
+          ) : (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`px-3 py-1 border rounded-lg text-sm ${
+                currentPage === page ? "bg-blue-600 text-white border-blue-600" : "border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              {page}
+            </button>
+          ),
+        )}
         <button
           onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
           disabled={currentPage === totalPages}

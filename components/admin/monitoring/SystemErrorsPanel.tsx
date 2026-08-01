@@ -7,13 +7,13 @@ import { toast } from "sonner";
 import {
   BugIcon,
   Loader2Icon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   SearchCheckIcon,
   WrenchIcon,
   RotateCcwIcon,
 } from "lucide-react";
+import { BookPagination } from "@/components/books/BookPagination";
 import { Button } from "@/components/ui/button";
+import { useSocketEvent } from "@/hooks/use-socket";
 
 type SystemError = {
   id: string;
@@ -100,6 +100,10 @@ export function SystemErrorsPanel() {
     fetcher,
     { revalidateOnFocus: false, refreshInterval: 10000 },
   );
+
+  useSocketEvent("issue:new", () => {
+    void mutate();
+  });
 
   const errors = data?.data ?? [];
   const counts = data?.meta?.counts ?? { open: 0, investigating: 0, resolved: 0, last24h: 0 };
@@ -328,27 +332,13 @@ export function SystemErrorsPanel() {
           Showing <b className="text-slate-700 dark:text-slate-300">{errors.length}</b> of{" "}
           <span className="font-mono">{data?.meta?.total ?? 0}</span> issues
         </span>
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page === 1 || isLoading}
-            className="p-1.5 cursor-pointer"
-          >
-            <ChevronLeftIcon className="size-3.5" />
-          </Button>
-          <span className="px-2 font-mono whitespace-nowrap">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-            disabled={page === totalPages || isLoading}
-            className="p-1.5 cursor-pointer"
-          >
-            <ChevronRightIcon className="size-3.5" />
-          </Button>
-        </div>
+                <BookPagination
+          page={page}
+          totalPages={totalPages}
+          hasNextPage={page < totalPages}
+          isLoading={isLoading}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

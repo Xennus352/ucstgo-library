@@ -66,7 +66,7 @@ const BottomNav: React.FC<NavProps> = ({ tabs, activeTab, onTabChange }) => {
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
                   aria-current={isActive ? "page" : undefined}
-                  className="relative flex flex-col items-center justify-center h-full w-full outline-none cursor-pointer"
+                  className="relative flex flex-col items-center justify-center h-full w-full min-w-0 outline-none cursor-pointer overflow-hidden px-0.5"
                 >
                   {/* Sliding active pill */}
                   {isActive && (
@@ -103,7 +103,7 @@ const BottomNav: React.FC<NavProps> = ({ tabs, activeTab, onTabChange }) => {
                         opacity: isActive ? 1 : 0.65,
                       }}
                       transition={{ duration: 0.2 }}
-                      className={`text-[10px] font-medium tracking-wide ${
+                      className={`truncate max-w-full whitespace-nowrap text-[10px] font-medium tracking-wide ${
                         isActive
                           ? "text-sky-700 dark:text-sky-300 font-semibold"
                           : "text-slate-500 dark:text-slate-400"

@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { signIn } from "@/lib/auth-client";
+import { signIn, signOut } from "@/lib/auth-client";
 import { roleRoutes } from "@/lib/role-routes";
 
+import { Role } from "@/types/Role";
 import { User } from "@/types/UserType";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -36,12 +37,14 @@ interface LoginDialogProps {
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
+  allowRoles?: Role[];
 }
 
 export default function LoginDialog({
   isOpen,
   onOpenChange,
   showTrigger = true,
+  allowRoles,
 }: LoginDialogProps) {
   const router = useRouter();
   const { refreshUser } = useCurrentUser();
@@ -106,6 +109,15 @@ export default function LoginDialog({
 
       if (!user?.role) {
         toast.error("User role not found");
+        return;
+      }
+
+      // Restrict this portal to specific roles (e.g. students only).
+      if (allowRoles && !allowRoles.includes(user.role)) {
+        await signOut();
+        toast.error(
+          "This portal is for students only. Please sign in with a student account.",
+        );
         return;
       }
 

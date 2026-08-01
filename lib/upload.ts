@@ -2,12 +2,9 @@ import prisma from "@/lib/prisma";
 import { mkdir } from "fs/promises";
 import { join } from "path";
 import { NextResponse } from "next/server";
+import { FILE_LIMITS } from "@/lib/upload-limits";
 
-export const FILE_LIMITS = {
-  cover: 5 * 1024 * 1024,
-  ebook: 200 * 1024 * 1024,
-  zipImport: 200 * 1024 * 1024,
-} as const;
+export { FILE_LIMITS };
 
 export function validateContentLength(
   contentLength: number | null,

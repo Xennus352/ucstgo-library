@@ -7,6 +7,7 @@ import { Plus, FileUp } from "lucide-react";
 import { BookZipImport } from "@/components/books/BookZipImport";
 import { BookStats } from "@/components/books/BookStats";
 import { BookSearch } from "@/components/books/BookSearch";
+import { BookPagination } from "@/components/books/BookPagination";
 import { BookTable } from "@/components/books/BookTable";
 import { ImportModal } from "@/components/books/ImportModal";
 import { useBookSearch } from "@/features/catalog/hooks/use-book-catalog";
@@ -20,7 +21,7 @@ export default function BooksPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data, mutate, isLoading } = useBookSearch({
+  const { data, mutate, isLoading, error } = useBookSearch({
     page,
     limit: 20,
     q: searchQuery || undefined,
@@ -144,30 +145,25 @@ export default function BooksPage() {
           onDelete={handleDelete}
         />
 
+        {error && (
+          <div className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
+            Failed to load books (page {page}). Please try again.
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-6">
           <p className="text-sm text-muted-foreground">
             {pagination
               ? `Showing ${books.length} of ${pagination.total} results`
               : "Loading..."}
           </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(p - 1, 1))}
-              disabled={page === 1 || isLoading}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!pagination?.hasNextPage || isLoading}
-            >
-              Next
-            </Button>
-          </div>
+          <BookPagination
+            page={page}
+            totalPages={pagination?.totalPages ?? 0}
+            hasNextPage={pagination?.hasNextPage ?? false}
+            isLoading={isLoading}
+            onPageChange={(p) => setPage(p)}
+          />
         </div>
       </div>
       <AlertModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />

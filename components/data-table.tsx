@@ -91,14 +91,13 @@ import {
   Columns3Icon,
   ChevronDownIcon,
   PlusIcon,
-  ChevronsLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ChevronsRightIcon,
   TrendingUpIcon,
   AlertTriangleIcon,
   BookmarkIcon,
 } from "lucide-react";
+import { getPageNumbers } from "@/lib/pagination";
 import { returnBookAction } from "@/app/actions/return";
 import { banUserAction } from "@/app/actions/banUserAction";
 import { issueWarningAction } from "@/app/actions/issueWarningAction";
@@ -696,15 +695,6 @@ export function DataTable({
             <div className="ml-auto flex items-center gap-2 lg:ml-0">
               <Button
                 variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <span className="sr-only">Go to first page</span>
-                <ChevronsLeftIcon />
-              </Button>
-              <Button
-                variant="outline"
                 className="size-8"
                 size="icon"
                 onClick={() => table.previousPage()}
@@ -713,6 +703,33 @@ export function DataTable({
                 <span className="sr-only">Go to previous page</span>
                 <ChevronLeftIcon />
               </Button>
+              {getPageNumbers(
+                table.getState().pagination.pageIndex + 1,
+                table.getPageCount(),
+              ).map((page, i) =>
+                page === "…" ? (
+                  <span
+                    key={`ellipsis-${i}`}
+                    className="px-1 text-sm text-muted-foreground"
+                  >
+                    …
+                  </span>
+                ) : (
+                  <Button
+                    key={page}
+                    variant={
+                      page === table.getState().pagination.pageIndex + 1
+                        ? "default"
+                        : "outline"
+                    }
+                    size="icon"
+                    className="size-8 hover:cursor-pointer"
+                    onClick={() => table.setPageIndex(page - 1)}
+                  >
+                    {page}
+                  </Button>
+                ),
+              )}
               <Button
                 variant="outline"
                 className="size-8"
@@ -722,16 +739,6 @@ export function DataTable({
               >
                 <span className="sr-only">Go to next page</span>
                 <ChevronRightIcon />
-              </Button>
-              <Button
-                variant="outline"
-                className="hidden size-8 lg:flex"
-                size="icon"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <span className="sr-only">Go to last page</span>
-                <ChevronsRightIcon />
               </Button>
             </div>
           </div>

@@ -12,14 +12,13 @@ import {
   Trash2Icon,
   CheckIcon,
   Edit2Icon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   Loader2Icon,
   Ban,
   ShieldCheck,
   ShieldAlert,
   Download,
 } from "lucide-react";
+import { BookPagination } from "@/components/books/BookPagination";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
 import {
   AlertDialog,
@@ -639,25 +638,13 @@ export function LibrarianTableWrapper() {
           </span>{" "}
           of <span className="font-mono">{totalRecords}</span> values
         </span>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page === 1 || isLoading}
-            className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-md hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-          >
-            <ChevronLeftIcon className="size-3.5" />
-          </button>
-          <span className="px-2 font-mono">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-            disabled={page === totalPages || isLoading}
-            className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-md hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-          >
-            <ChevronRightIcon className="size-3.5" />
-          </button>
-        </div>
+                <BookPagination
+          page={page}
+          totalPages={totalPages}
+          hasNextPage={page < totalPages}
+          isLoading={isLoading}
+          onPageChange={setPage}
+        />
       </div>
 
       <AlertDialog

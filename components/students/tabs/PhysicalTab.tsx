@@ -47,16 +47,19 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
     ];
   }, [categoryResponse]);
 
-  // Extract authors from filtered books only
+  // Extract authors from books of the selected category only
   const authors = useMemo(() => {
+    const source = booksToDisplay.filter(
+      (b) => selectedCategory === "All" || b.category?.name === selectedCategory,
+    );
     const uniqueAuthors = new Set<string>();
-    booksToDisplay.forEach((book) => {
+    source.forEach((book) => {
       if (book.author?.name) {
         uniqueAuthors.add(book.author.name);
       }
     });
     return ["All", ...Array.from(uniqueAuthors)];
-  }, [booksToDisplay]);
+  }, [booksToDisplay, selectedCategory]);
 
   // Calculate physical category counts dynamically
   const categoryCounts = useMemo(() => {
@@ -74,13 +77,20 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
     return counts;
   }, [booksToDisplay]);
 
-  // Calculate physical author counts dynamically
+  // Calculate author counts within the selected category
   const authorCounts = useMemo(() => {
     const counts: Record<string, number> = {
-      All: booksToDisplay.length,
+      All: 0,
     };
 
     booksToDisplay.forEach((book) => {
+      if (
+        selectedCategory !== "All" &&
+        book.category?.name !== selectedCategory
+      ) {
+        return;
+      }
+      counts.All += 1;
       const authorName = book.author?.name;
       if (authorName) {
         counts[authorName] = (counts[authorName] || 0) + 1;
@@ -88,7 +98,7 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
     });
 
     return counts;
-  }, [booksToDisplay]);
+  }, [booksToDisplay, selectedCategory]);
 
   // Filter physical items down based on user selection tabs
   const filteredBooks = useMemo(() => {
@@ -192,7 +202,10 @@ export const PhysicalTab: React.FC<PhysicalTabProps> = ({
                   return (
                     <button
                       key={category}
-                      onClick={() => setSelectedCategory(category)}
+                      onClick={() => {
+                        setSelectedCategory(category);
+                        setSelectedAuthor("All");
+                      }}
                       className={`
                         w-auto lg:w-full flex items-center justify-between gap-3 px-3.5 py-2 text-xs font-medium rounded-xl 
                         transition-all duration-200 ease-out whitespace-nowrap cursor-pointer backdrop-blur-sm border

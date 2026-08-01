@@ -14,6 +14,23 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error("SYSTEM FAILURE:", error);
+    try {
+      fetch("/api/system/client-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `Page crashed: ${error?.message ?? "Unknown error"}${
+            error?.digest ? ` (${error.digest})` : ""
+          }`,
+          stack: error?.stack ?? null,
+          url: window.location.href,
+          fatal: true,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      // never break the error page
+    }
   }, [error]);
 
   return (

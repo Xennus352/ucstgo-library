@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { toAsciiDigits } from "@/lib/digits";
 import PdfCanvasView from "./PdfCanvasView";
 import {
   ChevronLeft,
@@ -199,7 +200,7 @@ export default function EbookReaderContainer({
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={pageInput}
-                  onChange={(e) => setPageInput(e.target.value)}
+                  onChange={(e) => setPageInput(toAsciiDigits(e.target.value))}
                   onBlur={() => setPageInput(pageNumber.toString())}
                   placeholder="Search..."
                   className="w-24 bg-slate-950 text-white pl-2 pr-1 font-semibold rounded-md border border-slate-800 py-0.5 focus:outline-hidden font-mono text-xs shadow-xs placeholder:text-slate-600 placeholder:font-sans"
@@ -305,7 +306,7 @@ export default function EbookReaderContainer({
               inputMode="numeric"
               pattern="[0-9]*"
               value={pageInput}
-              onChange={(e) => setPageInput(e.target.value)}
+              onChange={(e) => setPageInput(toAsciiDigits(e.target.value))}
               onBlur={() => setPageInput(pageNumber.toString())}
               className="w-10 bg-transparent text-white text-center font-bold focus:outline-hidden font-mono text-sm"
             />

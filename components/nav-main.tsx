@@ -59,7 +59,10 @@ export function NavMain({ items }: { items: NavItem[] }) {
                       ${item.className ?? ""}
                     `}
                   >
-                    <Link href={item.url}>
+                    <Link
+                      href={item.url}
+                      className="flex w-full items-center gap-3"
+                    >
                       {pathname === item.url && (
                         <span className="absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-white" />
                       )}
@@ -69,6 +72,8 @@ export function NavMain({ items }: { items: NavItem[] }) {
                       </span>
 
                       <span className="font-medium">{item.title}</span>
+
+                      {item.badge}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

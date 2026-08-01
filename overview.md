@@ -54,7 +54,9 @@ ucstgo-library/
 │   │   ├── get-brand.ts                  # Read dynamic brand config
 │   │   ├── issueWarningAction.ts
 │   │   ├── library.ts
+│   │   ├── library-rules.ts              # CRUD library rules
 │   │   ├── libraryStats.ts
+│   │   ├── notice.ts                     # CRUD notices
 │   │   ├── password-reset.ts             # forgotPassword, accept/reject, get requests
 │   │   ├── profile.ts
 │   │   ├── return.ts                     # Emits borrow:returned via socket
@@ -70,7 +72,12 @@ ucstgo-library/
 │   │   ├── admin/
 │   │   │   ├── brand/route.ts            # Brand config + logo/favicon upload
 │   │   │   ├── librarians/               # CRUD + bulk import/delete
+│   │   │   ├── monitoring/route.ts       # GET dashboard data (?range=24h/7d/14d/30d)
+│   │   │   ├── monitoring/active-users/  # GET paginated active users (search/role filters)
+│   │   │   ├── monitoring/events/        # GET live events stream
 │   │   │   ├── students/                 # CRUD + bulk import/delete
+│   │   │   ├── system-errors/            # GET error log (filters + pagination)
+│   │   │   ├── system-errors/[id]/       # PATCH issue status (investigate/resolve/reopen)
 │   │   │   └── teachers/                 # CRUD + bulk import/delete
 │   │   ├── ai/chat/route.ts              # AI chat completions
 │   │   ├── auth/[...auth]/route.ts       # Better-Auth handler
@@ -83,14 +90,22 @@ ucstgo-library/
 │   │   ├── cron/check-due-dates/route.ts # Scheduled overdue check
 │   │   ├── files/[...path]/route.ts      # Serve uploaded files securely
 │   │   ├── me/route.ts                   # Current user profile
-│   │   ├── notifications/                # CRUD + announcements
-│   │   └── reservations/                 # CRUD + cancel/fulfill
+│   │   ├── notifications/                # User notifications + announcements
+│   │   │   ├── route.ts                  # GET user's notifications
+│   │   │   ├── announcement/route.ts     # POST broadcast/targeted + GET history
+│   │   │   ├── read/route.ts             # Mark all as read
+│   │   │   └── [id]/route.ts             # DELETE notification (sender-gated)
+│   │   ├── reservations/                 # CRUD + cancel/fulfill
+│   │   └── system/
+│   │       ├── client-error/route.ts     # POST browser error reports (rate-limited)
+│   │       └── active-ping/route.ts      # POST active-user heartbeat (authenticated)
 │   │
 │   ├── admin/                            # Admin role pages
 │   │   ├── layout.tsx
 │   │   ├── dashboard/page.tsx
 │   │   ├── books/                        # Catalog management
 │   │   ├── librarians/page.tsx
+│   │   ├── monitoring/page.tsx           # Tabs: Overview / Security / Issues / Active Users
 │   │   ├── password-resets/page.tsx      # Password reset request management
 │   │   ├── students/page.tsx
 │   │   ├── teachers/page.tsx
@@ -112,7 +127,7 @@ ucstgo-library/
 │   │   ├── manage-ebooks/page.tsx
 │   │   └── profile/page.tsx
 │   │
-│   ├── student/dashboard/page.tsx       # Student portal (4 tabs + infinite scroll)
+│   ├── student/dashboard/page.tsx       # Student portal — URL-driven tabs (?tab=home|eresources|books|profile)
 │   │
 │   ├── portal/page.tsx                   # Login page
 │   ├── 403/page.tsx                      # Forbidden
@@ -121,6 +136,8 @@ ucstgo-library/
 ├── components/                           # React components
 │   ├── ui/                               # shadcn/ui primitives (~33 files)
 │   ├── admin/                            # Admin-specific components
+│   ├── admin/monitoring/                 # MonitoringOverview, SecurityEventsTable, SystemErrorsPanel, ActiveUsersPanel
+│   ├── system/                           # ClientErrorReporter, ActiveUserPing (mounted in root layout)
 │   ├── librarian/                        # Librarian-specific
 │   ├── lecturer/                         # Lecturer-specific
 │   ├── students/                         # Student portal components
@@ -236,10 +253,18 @@ ucstgo-library/
 ### Request Flow
 
 ```
-Browser → Next.js Proxy (proxy.ts) → Route Handler / Server Action → Prisma → PostgreSQL
+Browser → server.js (monitor.js: blocked-IP check → visit/security tracking)
+       → Next.js Proxy (proxy.ts) → Route Handler / Server Action → Prisma → PostgreSQL
                                    ↕                              ↕
                               Socket.IO (real-time)       Socket.IO emits (DAL)
 ```
+
+Every request passes through `lib/monitor.js` before reaching Next.js:
+- Blocked IPs are rejected with 403 (cached in-memory, refreshed periodically)
+- Visits are logged (page views only; `/_next`, `/__nextjs`, `/api`, and static assets are skipped)
+- Scanner UA / path-probe / rate-burst (40 req/15s per IP) are detected and logged as security events
+- Paths include the query string (`_rsc` noise param stripped) — e.g. `/student/dashboard?tab=eresources`
+- 5xx responses and responses slower than 8s are logged as system issues from `server.js`
 
 ### Real-Time Event Flow
 
@@ -330,9 +355,20 @@ Client (FormData with File)
 | **Semester** | id, name, slug | Academic period mapping |
 | **ReadingHistory** | userId, ebookId, lastPage, progress | Reading progress |
 | **Bookmark** | userId, ebookId, pageNumber, note | User bookmarks |
-| **Notification** | id, title, message, userId, senderId | Notifications |
+| **Notification** | id, title, message, userId, senderId | Notifications (userId null = broadcast; targetable per user) |
+| **NotificationRead** | notificationId, userId | Read receipts (cascade-deletes with notification) |
 | **PasswordResetRequest** | id, userId, token (unique), status (PENDING/COMPLETED/REJECTED/EXPIRED), requestedPasswordHash, expiresAt | Admin-mediated password resets (hash stored, never plaintext) |
 | **SystemSetting** | key (PK), value | System configuration |
+
+### Monitoring Models (added for observability)
+
+| Model | Key Fields | Purpose |
+|-------|-----------|---------|
+| **VisitLog** | id, path, ip, userAgent, referrer, visitedAt | Page view tracking (auto-deleted after 30 days) |
+| **SecurityEvent** | id, eventType, ip, path, count, createdAt | Scanner/path-probe/rate-burst detections (auto-deleted after 90 days) |
+| **BlockedIp** | id, ip, reason, createdAt | Manual block list (checked per request) |
+| **ErrorLog** | id, source (http/api/client/db/action), message, stack, endpoint, method, severity, status (open/investigating/resolved), count, lastSeen | Unified issue tracking with 10-min dedupe (auto-deleted after 90 days) |
+| **ActiveUser** | userId (unique), name, email, studentId, role, path, lastSeenAt | Signed-in users active in the last 5 minutes (auto-deleted after 24h) |
 
 ### Enums
 
@@ -380,6 +416,18 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 | POST | `/api/admin/teachers/bulk` | Bulk import teachers |
 | DELETE | `/api/admin/teachers/bulk-delete` | Bulk delete teachers |
 | POST | `/api/admin/brand` | Update brand config + logo/favicon uploads |
+| GET | `/api/admin/monitoring` | Dashboard data: totals, visits chart series, top pages/IPs, recent events/visits, active users (+`activeCount`) — `?range=24h/7d/14d/30d` |
+| GET | `/api/admin/monitoring/active-users` | Paginated active users (5-min window) — `?page&limit&search&role` |
+| GET | `/api/admin/monitoring/events` | Live security event stream |
+| GET | `/api/admin/system-errors` | Error log with status filter (open/investigating/resolved/all), pagination, counts incl. last 24h |
+| PATCH | `/api/admin/system-errors/[id]` | Update issue status (investigate / resolve / reopen) |
+
+### System (Observability)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/system/client-error` | Browser error reports (rate-limited 5/min per IP, production only) |
+| POST | `/api/system/active-ping` | Active-user heartbeat (authenticated; upserts ActiveUser with name/email/studentId/role/path) |
 
 ### Other
 
@@ -389,9 +437,10 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 | GET | `/api/me` | Current authenticated user profile |
 | GET | `/api/files/[...path]` | Serve protected uploaded files |
 | GET | `/api/notifications` | User's notifications (last 4) |
-| POST | `/api/notifications/announcement` | Create global announcement |
-| GET | `/api/notifications/announcement` | Announcement history |
+| POST | `/api/notifications/announcement` | Create broadcast (`userId` omitted) or targeted notification (`userId` set); emits `new-notification` |
+| GET | `/api/notifications/announcement` | History (last 50, staff) with sender + recipient info |
 | POST | `/api/notifications/read` | Mark all as read |
+| DELETE | `/api/notifications/[id]` | Delete notification (staff may delete own sends; reads cascade) |
 | GET | `/api/reservations` | Paginated reservations |
 | POST | `/api/reservations/create` | Create reservation (dynamic expiration) |
 | POST | `/api/reservations/[id]/cancel` | Cancel reservation |
@@ -419,6 +468,7 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 | `app/actions/return.ts` | `borrow:returned` |
 | `user.service.ts` | `user:changed`, `user:banned` |
 | `app/actions/password-reset.ts` | `password-reset:requested` (global), `password-reset:completed` (user room), `password-reset:rejected` (user room) |
+| `app/api/notifications/announcement` | `new-notification` (broadcast) or to recipient room (targeted) |
 
 ### Client-Side (`hooks/use-socket.ts`)
 - Singleton Socket.IO client connection (`io()` with WebSocket-only transport)
@@ -469,7 +519,7 @@ EbookAccessType: OPEN | STUDENT_ONLY | LECTURER_ONLY | ADMIN_ONLY
 - `components/students/tabs/ProfileTab.tsx`: Borrowing history, fines, bookmarks
 - `components/students/layout/TopNav.tsx`: Top navigation bar
 - `components/students/layout/BottomNav.tsx`: Mobile bottom navigation
-- `app/student/dashboard/page.tsx`: 4-tab portal with InfiniteScroll Lottie animation
+- `app/student/dashboard/page.tsx`: 4-tab portal (URL-driven via `?tab=`) with InfiniteScroll Lottie animation
 
 ### Ebook Reader
 - `components/EbookReader.tsx`: PDF.js-based reader with pagination
@@ -557,9 +607,12 @@ const nextConfig = {
 
 Custom Node.js HTTP server wrapping Next.js request handler with Socket.IO for real-time push notifications.
 - Port: 3000 (configurable via `PORT` env)
+- Loads `.env` via dotenv at startup (dev; production uses real env vars)
 - Socket.IO CORS: origin `*`
 - Socket events: `join` (user room), `disconnect`
 - `global.io = io` exposed for DAL socket emits
+- Logs 5xx responses and slow responses (>8s) as system issues via `lib/monitor.js`
+- Intercepts requests through `lib/monitor.js` (blocked-IP 403, visit/security-event tracking)
 
 ### Environment Variables
 
@@ -734,7 +787,11 @@ Each feature contains `components/`, `hooks/`, `services/`, and `types/` directo
 | `features/*/hooks/` | ✅ Adopted in pages | `use-book-catalog.ts` (augmented with pagination + socket sync), `use-circulation.ts` (+ socket sync), `use-user-management.ts` (+ socket sync) |
 | Proxy (`proxy.ts`) | ✅ Refactored | Uses `AuthService` |
 | Remaining routes | ✅ Refactored | `/api/notifications`, `/api/notifications/announcement`, `/api/notifications/read`, `/api/me` |
-| Route handlers | ✅ All refactored | All 33 API route files use service layer + `toNextResponse()` |
+| Route handlers | ✅ All refactored | 44 API route files; core routes use service layer + `toNextResponse()`, observability routes (monitoring/system) added later |
+| Observability | ✅ Complete | `lib/monitor.js` (visits, security events, blocked IPs, auto-cleanup), `lib/log-error.ts` (logSystemError/logActionIssue), `ErrorLog` + `ActiveUser` models, `server.js` 5xx/slow logging, monitoring + system error APIs, admin monitoring tabs, ClientErrorReporter + ActiveUserPing in root layout |
+| Notification CRUD | ✅ Complete | Targeted sends, history with recipient/sender joins, DELETE endpoint, AlertModal recipient picker + delete + SWR history |
+| Notice / library-rules CRUD | ✅ Complete | `updateNotice`, `updateLibraryRule` actions; inline edit modes in `NoticeBoardManager`, `LibraryRulesManager` |
+| Student portal URL tabs | ✅ Complete | `?tab=home/eresources/books/profile` with Suspense wrapper |
 | CVA wrapper components | ✅ Created | `StatusBadge`, `RoleBadge`, `MetricCard` |
 | Component CVA adoption | ✅ Partial | `data-table`, `section-cards`, `BookPreview`, `ReservationTable`, `PhysicalBookDetailsModal`, `ProfileTab` |
 | Feature hooks in pages | ✅ Partial | Admin/librarian books, reservations, students, teachers, librarians (9 pages) |
@@ -746,7 +803,7 @@ Each feature contains `components/`, `hooks/`, `services/`, and `types/` directo
 
 | Metric | Count |
 |--------|-------|
-| Total API route files | 33 ✅ all using service layer + `toNextResponse()` |
+| Total API route files | 44 (all using service layer + `toNextResponse()` where applicable) |
 | Service modules | 4 (`auth.service`, `book.service`, `borrow.service`, `user.service`) |
 | CVA wrapper components | 3 (`StatusBadge`, `RoleBadge`, `MetricCard`) |
 | Feature hooks | 3 (`use-book-catalog`, `use-circulation`, `use-user-management`) |
@@ -770,3 +827,91 @@ Each feature contains `components/`, `hooks/`, `services/`, and `types/` directo
 | `lib/upload.ts` | Ebook PDFs | 200 MB |
 | `lib/upload.ts` | ZIP imports | 200 MB |
 | `next.config.ts` | Server action bodies | 20 MB |
+
+---
+
+## 15. Monitoring & Observability
+
+### 15.1 Request Pipeline (`lib/monitor.js` + `server.js`)
+
+All traffic passes through `server.js` → `lib/monitor.js` before reaching Next.js:
+
+| Step | Behavior |
+|------|----------|
+| Blocked-IP check | In-memory cache (refreshed from DB), 403 on match |
+| Rate-burst detection | 40 requests / 15s per IP → `RATE_BURST` security event |
+| Threat detection | Scanner user-agents (`SCANNER_UA`) and suspicious paths (`PATH_PROBE`) |
+| Visit logging | GET page views only; skips `/_next`, `/__nextjs`, `/api`, static assets; path keeps query string (`_rsc` stripped) |
+| 5xx / slow response | `server.js` `res.on("finish")` → `logIssue` (HTTP source, >8s = slow) |
+| DB errors | `pool.on("error")` → `logIssue` (db source) |
+
+### 15.2 Error Logging (`ErrorLog` model)
+
+| Source | Written by |
+|--------|-----------|
+| `http` | `server.js` (5xx, slow responses) |
+| `api` | `toNextResponse()` in `lib/errors.ts` — unhandled errors as errors, 4xx `AppError`s as warnings (401/403/404/429 excluded) |
+| `client` | `/api/system/client-error` from `ClientErrorReporter` (window error / unhandledrejection, production only, 30s dedupe) |
+| `db` | monitor.js pool error hook |
+| `action` | `logActionIssue()` in `lib/log-error.ts` — used by ~19 server actions (borrow, return, ban, warnings, notices, rules, semesters, settings, analytics, profile, ...); skips `Unauthorized` messages |
+
+Status workflow: `open → investigating → resolved` (admin panel buttons). Identical rows within 10 minutes increment `count` (dedupe).
+
+### 15.3 Active Users
+
+- `ActiveUserPing` (client, mounted in root layout) posts a heartbeat every 60s with `pathname + search`
+- A 5s URL-change check posts immediately when the URL changes (e.g. tab switch), so monitoring reflects the exact page (`/student/dashboard?tab=eresources`)
+- `/api/system/active-ping` upserts by `userId` with server-side identity (name, email, studentId, role)
+- Window: `lastSeenAt` within 5 minutes
+
+### 15.4 Admin UI (`/admin/monitoring`)
+
+| Tab | Content |
+|-----|---------|
+| Overview | 6 metric cards (Active Now = distinct IPs in 5 min, Visits Last Hour, Unique Visitors, Visits Today, Security Events, Blocked IPs), visits bar chart with 24h/7d/14d/30d range toggle, live Page Views / Active Users feed, detected threats, top pages, top IPs — polls every 5s |
+| Security Events | Event table (Live · 5s), blocked IPs (Live · 10s) |
+| System Issues | Error log with status filter pills + counts, health chips, Investigate/Resolve/Reopen actions — polls every 10s |
+| Active Users | Search (name/roll/email, debounced), role filter pills, paginated table (15/page), Live · 5s |
+
+### 15.5 Data Retention (auto-cleanup in `monitor.js`)
+
+| Table | Retention |
+|-------|-----------|
+| `visit_log` | 30 days |
+| `security_event` | 90 days |
+| `error_log` | 90 days |
+| `active_user` | 24 hours |
+
+Cleanup runs every 30 minutes (24h throttle), interval is `.unref()`-ed so it never blocks shutdown.
+
+---
+
+## 16. Student Portal URL Tabs
+
+`/student/dashboard` is a single route whose tabs are driven by a `tab` search param (`lib`-free, client-side `router.replace`, no reload):
+
+| URL | Tab |
+|-----|-----|
+| `/student/dashboard` | Home (default) |
+| `/student/dashboard?tab=eresources` | EResources |
+| `/student/dashboard?tab=books` | Physical books |
+| `/student/dashboard?tab=profile` | Profile |
+
+Benefits: refresh persistence, browser back/forward, deep-linking. Unknown `tab` values fall back to Home. The page is wrapped in a `Suspense` boundary (required by `useSearchParams`). Monitoring records the full path including the tab query.
+
+---
+
+## 17. Production Readiness
+
+Verified: `pnpm build` passes (TypeScript + 67 routes), production mode boots via `NODE_ENV=production node server.js` (socket.io + monitoring verified), deploy script exists (`pnpm deploy`).
+
+**Required before go-live:**
+
+| Item | Status |
+|------|--------|
+| `BETTER_AUTH_URL` + `NEXT_PUBLIC_SITE_URL` set to real domain **before** build (NEXT_PUBLIC is inlined client-side) | ⚠️ currently `http://localhost:3000` |
+| `BETTER_AUTH_SECRET`, `DATABASE_URL`, SMTP, VAPID keys present in server env | ⚠️ confirm on server |
+| E-book / cover storage present on server (or S3 configured — `@aws-sdk/client-s3` is a dependency) | ⚠️ confirm |
+| Supabase pooler session-mode connection limits vs Prisma pool size | ⚠️ verify |
+| Registration is open to the public (anyone can sign up as STUDENT) | ⚠️ consider gating |
+| Lint debt: 16 errors in `student/dashboard/page.tsx` + ~7 elsewhere (`any` catches, unused vars) — not build blockers (Next 16 skips lint in build) | ⚠️ cleanup recommended |

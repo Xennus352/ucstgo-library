@@ -3,8 +3,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 const prismaClientSingleton = () => {
   // Initialize the driver adapter inside the singleton so it doesn't recreate pools on hot reload
+  // Cap the pool (default 10) so the app never exhausts the Supabase pooler (limit 15).
   const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL,
+    max: 8,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
   });
 
   return new PrismaClient({

@@ -20,6 +20,13 @@ export async function POST(req: Request) {
   const logo = formData.get("logo") as File | null;
   const faviconFile = formData.get("favicon") as File | null;
 
+  if (name && name.length > 22) {
+    return NextResponse.json(
+      { error: "Institution name must be 22 characters or fewer." },
+      { status: 400 },
+    );
+  }
+
   const configPath = path.join(process.cwd(), "config", "brand.ts");
 
   const configText = await fs.readFile(configPath, "utf8");
