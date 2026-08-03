@@ -281,7 +281,7 @@ export async function checkPasswordResetStatusAction(email: string) {
 
     return {
       success: true,
-      requests: requests.map((r) => ({
+      requests: requests.map((r: any) => ({
         id: r.id,
         status: r.status,
         createdAt: r.createdAt.toISOString(),

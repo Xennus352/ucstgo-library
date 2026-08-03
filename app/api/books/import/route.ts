@@ -278,7 +278,7 @@ export async function POST(req: Request) {
       if (!id) {
         const author = await getOrCreateAuthor(name);
         id = author.id;
-        authorIdCache.set(name, id);
+        authorIdCache.set(name, id!);
       }
       return id;
     };
@@ -287,7 +287,7 @@ export async function POST(req: Request) {
       if (!id) {
         const category = await getOrCreateCategory(name);
         id = category.id;
-        categoryIdCache.set(name, id);
+        categoryIdCache.set(name, id!);
       }
       return id;
     };
@@ -386,7 +386,7 @@ export async function POST(req: Request) {
         : null;
 
       const insertBook = async (finalIsbn: string) => {
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: any) => {
           const book = await tx.book.create({
             data: {
               title,

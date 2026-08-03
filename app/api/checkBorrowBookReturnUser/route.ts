@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
 
   
-    const formattedData = activeBorrows.map((record) => {
+    const formattedData = activeBorrows.map((record: any) => {
       const dueDate = new Date(record.dueDate);
 
      
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       totalUnreturned: formattedData.length,
-      totalOverdueCount: formattedData.filter((b) => b.isOverdue).length,
+      totalOverdueCount: formattedData.filter((b: any) => b.isOverdue).length,
       borrows: formattedData,
     });
   } catch (error: any) {

@@ -43,7 +43,7 @@ export async function getInteractiveChartStats() {
     }
 
     // 4. Group physical borrows counts by date string
-    physicalBorrows.forEach((record) => {
+    physicalBorrows.forEach((record: any) => {
       const dateStr = dayjs(record.borrowDate).format("YYYY-MM-DD");
       if (timelineMap[dateStr]) {
         timelineMap[dateStr].physical += 1;
@@ -51,7 +51,7 @@ export async function getInteractiveChartStats() {
     });
 
     // 5. Group physical returns counts by date string
-    physicalReturns.forEach((record) => {
+    physicalReturns.forEach((record: any) => {
       if (record.returnDate) {
         const dateStr = dayjs(record.returnDate).format("YYYY-MM-DD");
         if (timelineMap[dateStr]) {

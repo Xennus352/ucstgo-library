@@ -19,7 +19,7 @@ export async function getLatestBooks() {
     });
 
     // Map the database structure into the Book shape your frontend interface uses
-    const formattedBooks = books.map((book) => ({
+    const formattedBooks = books.map((book: any) => ({
       title: book.title,
       author: book.author.name,
       year: book.publicationYear ? String(book.publicationYear) : "N/A",

@@ -150,7 +150,7 @@ export async function cancelReservation(
 }
 
 export async function fulfillReservation(reservationId: string) {
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: any) => {
     const reservation = await tx.reservation.findUnique({
       where: { id: reservationId },
     });
@@ -242,7 +242,7 @@ export async function processOverdueNotifications() {
     const expectedMessage = `Your copy of "${bookTitle}" is due within the next 48 hours.`;
 
     const alreadyAlerted = notificationsSentToday.some(
-      (n) => n.userId === record.userId && n.message === expectedMessage,
+      (n: any) => n.userId === record.userId && n.message === expectedMessage,
     );
     if (!alreadyAlerted) {
       await prisma.notification.create({

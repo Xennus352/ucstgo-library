@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       take: 4,
     });
 
-    const formatted = notifications.map((n) => ({
+    const formatted = notifications.map((n: any) => ({
       id: n.id,
       title: n.title,
       message: n.message,

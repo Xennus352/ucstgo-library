@@ -22,7 +22,7 @@ export async function getLibrarySettings(): Promise<LibrarySettings> {
     const settingsArray = await prisma.systemSetting.findMany();
 
     // Map rows to an object
-    const settingsObj = settingsArray.reduce((acc, item) => {
+    const settingsObj = settingsArray.reduce((acc: any, item: any) => {
       acc[item.key] = item.value;
       return acc;
     }, {} as Record<string, string>);

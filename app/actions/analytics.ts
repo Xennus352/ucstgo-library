@@ -63,7 +63,7 @@ export async function getTopBorrowers() {
     });
 
     const topUsers = await Promise.all(
-      borrowerCounts.map(async (record) => {
+      borrowerCounts.map(async (record: any) => {
         const user = await prisma.user.findUnique({
           where: { id: record.userId },
           select: { id: true, name: true, email: true, role: true },

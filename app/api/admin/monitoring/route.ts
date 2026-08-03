@@ -113,7 +113,7 @@ export async function GET(req: Request) {
         blockedCount,
         series: seriesRows,
         topPaths,
-        topIps: topIps.filter((row) => row.ip),
+        topIps: topIps.filter((row: any) => row.ip),
         eventsByType,
         recentEvents,
         recentVisits,

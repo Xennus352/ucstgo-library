@@ -134,7 +134,7 @@ const SystemConfiguration = async () => {
                       No semesters added yet.
                     </p>
                   ) : (
-                    semesters?.map((sem) => (
+                    semesters?.map((sem: any) => (
                       <div
                         key={sem.id}
                         className="flex items-center justify-between p-3 bg-card border rounded-lg text-sm hover:bg-accent/50 transition-colors"
