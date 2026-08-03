@@ -1,6 +1,6 @@
 export const SAMPLE_BOOK_ZIP_PATH = "/sampleExcelFormat/bookImport.zip";
 export const SAMPLE_STUDENT_ZIP_PATH = "/sampleExcelFormat/studentImport.zip";
-export const SAMPLE_TEACHER_ZIP_PATH = "/sampleExcelFormat/studentImport.zip";
+export const SAMPLE_TEACHER_ZIP_PATH = "/sampleExcelFormat/sample_teachers.zip";
 export const SAMPLE_LIBRARIAN_ZIP_PATH =
   "/sampleExcelFormat/librariansImport.zip";
 

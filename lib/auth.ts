@@ -23,8 +23,7 @@ export const auth = betterAuth({
           return {
             data: {
               ...user,
-              role: "STUDENT",
-              emailVerified: true, // Forces every record to save as true instantly
+               emailVerified: true, // Forces every record to save as true instantly
             },
           };
         },

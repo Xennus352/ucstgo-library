@@ -10,12 +10,16 @@ export async function DELETE(req: Request) {
       return Response.json({ message: "Missing IDs" }, { status: 400 });
     }
 
-    const [, , deletedUsers] = await prisma.$transaction([
+    const [, , , deletedUsers] = await prisma.$transaction([
       prisma.session.deleteMany({ where: { userId: { in: ids } } }),
       prisma.account.deleteMany({ where: { userId: { in: ids } } }),
-      prisma.user.deleteMany({
-        where: { id: { in: ids }, role: "LIBRARIAN" },
+      prisma.notification.deleteMany({
+        where: { userId: { in: ids } },
       }),
+      prisma.notification.deleteMany({
+        where: { senderId: { in: ids } },
+      }),
+      prisma.user.deleteMany({ where: { id: { in: ids } } }),
     ]);
 
     return Response.json({

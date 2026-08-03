@@ -35,7 +35,7 @@ import { User } from "@/types/UserType";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import CreateLibrarianForm from "../library/librarian-create-librarian-form";
-import { SAMPLE_ZIP_STUDENT_PATH } from "@/constants/sampleData";
+import { SAMPLE_ZIP_LIBRARIAN_PATH } from "@/constants/sampleData";
 
 type EditableImportRow = {
   _localKey: string;
@@ -354,8 +354,8 @@ export function LibrarianTableWrapper() {
                 Need a template? Download our sample format structure.
               </div>
               <a
-                href={SAMPLE_ZIP_STUDENT_PATH}
-                download="sample_students.zip"
+                href={SAMPLE_ZIP_LIBRARIAN_PATH}
+                 download="sample_librarians.zip"
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-medium transition-colors shadow-sm"
               >
                 <Download className="w-3.5 h-3.5" />
