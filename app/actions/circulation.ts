@@ -30,7 +30,7 @@ export async function getLiveCirculationData() {
     });
 
     // Remap your DB relations into your flat DataTable UI structure
-    const formattedData = records.map((record) => ({
+    const formattedData = records.map((record: any) => ({
       id: record.id,
       bookId: record.copy.bookId,
       copyId: record.copyId,

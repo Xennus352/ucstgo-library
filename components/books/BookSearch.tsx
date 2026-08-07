@@ -2,7 +2,7 @@
 
 import { Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 
@@ -19,6 +19,14 @@ export function BookSearch({
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
 
+  // Keep the latest callbacks in a ref so the debounce effect below only
+  // re-runs when the search term changes (otherwise the parent re-rendering —
+  // e.g. pagination clicks — would reset the page back to 1).
+  const onSearchRef = useRef(onSearch);
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+  });
+
   // Fetch categories from database
   const { data: categoriesData, isLoading: categoriesLoading } = useSWR(
     "/api/books/categories",
@@ -28,10 +36,10 @@ export function BookSearch({
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
-      onSearch(searchTerm);
+      onSearchRef.current(searchTerm);
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchTerm, onSearch]);
+  }, [searchTerm]);
 
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);

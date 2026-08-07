@@ -7,6 +7,7 @@ import { signIn } from "@/lib/auth-client";
 import { roleRoutes } from "@/lib/role-routes";
 import { User } from "@/types/UserType";
 import { LoginFormValues, loginSchema } from "@/lib/validations/auth";
+import { toast } from "sonner";
 import Image from "next/image";
 import { useBrandConfig } from "@/components/brand-config-provider";
 import {
@@ -84,7 +85,9 @@ export default function SignInPage() {
       const res = await signIn.email({ email, password });
 
       if (res.error) {
-        setError(res.error.message || "Something went wrong.");
+        const message = res.error.message || "Something went wrong.";
+        setError(message);
+        toast.error(message);
         setIsLoading(false);
         return;
       }
@@ -93,14 +96,19 @@ export default function SignInPage() {
       const user: User = await userRes.json();
 
       if (!user?.role) {
-        setError("User role not found");
+        const message = "User role not found";
+        setError(message);
+        toast.error(message);
         setIsLoading(false);
         return;
       }
 
+      toast.success(`Welcome back, ${user.name}!`);
       router.push(roleRoutes[user.role]);
     } catch (err) {
-      setError("An unexpected network error occurred.");
+      const message = "An unexpected network error occurred.";
+      setError(message);
+      toast.error(message);
       setIsLoading(false);
     }
   }
@@ -111,7 +119,10 @@ export default function SignInPage() {
     try {
       const res = await forgotPasswordAction(forgotEmail, forgotPassword);
       if (res.success) {
+        toast.success(res.message || "Reset request submitted successfully!");
         setShowForgotPasswordInput(false);
+      } else {
+        toast.error(res.error || "Failed to submit reset request");
       }
     } finally {
       setForgotLoading(false);
@@ -124,6 +135,13 @@ export default function SignInPage() {
       const res = await checkPasswordResetStatusAction(forgotEmail);
       if (res.success) {
         setResetStatus(res.requests || []);
+        toast.success(
+          res.requests && res.requests.length > 0
+            ? `Found ${res.requests.length} reset request(s)`
+            : "No reset requests found for this email",
+        );
+      } else {
+        toast.error(res.error || "Failed to check status");
       }
     } finally {
       setStatusLoading(false);

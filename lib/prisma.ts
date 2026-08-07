@@ -1,25 +1,27 @@
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
-const prismaClientSingleton = () => {
-  // Initialize the driver adapter inside the singleton so it doesn't recreate pools on hot reload
-  const adapter = new PrismaPg({
-    connectionString: process.env.DATABASE_URL,
-  });
-
-  return new PrismaClient({
-    adapter,
-  });
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
 };
 
-declare const globalThis: {
-  prismaGlobal: ReturnType<typeof prismaClientSingleton>;
-} & typeof global;
+const prismaClientSingleton = () => {
+  // Create the underlying pg connection pool with connection limits
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 5, // Keep max low (e.g. 3 to 5) so multiple app instances don't exceed pool size 15
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+  });
 
-// Use the existing global instance or create a new one
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
+  const adapter = new PrismaPg(pool);
+
+  return new PrismaClient({ adapter });
+};
+
+const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
 
 export default prisma;
 
-// Cache the instance in development mode
-if (process.env.NODE_ENV !== "production") globalThis.prismaGlobal = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

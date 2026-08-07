@@ -88,7 +88,7 @@ export async function getStudentReadingStats() {
     ]);
 
     const sortedCounts = allCounts > 0
-      ? totalUnique.map((u) => u._count.id).sort((a, b) => b - a)
+      ? totalUnique.map((u: any) => u._count.id).sort((a: any, b: any) => b - a)
       : [];
 
     let rank = 1;

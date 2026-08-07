@@ -29,7 +29,7 @@ export async function recommendBooks(userId: string) {
       },
     });
 
-    const borrowedBookIds = history.map((h) => h.copy.book.id);
+    const borrowedBookIds = history.map((h: any) => h.copy.book.id);
 
     // 2. 🔥 ONLY PHYSICAL BOOKS = NO EBOOK ENTRY
     const candidates = await prisma.book.findMany({
@@ -56,7 +56,7 @@ export async function recommendBooks(userId: string) {
     if (candidates.length === 0) return [];
 
     // 3. AI input (clean physical dataset only)
-    const availableBooks = candidates.map((b) => ({
+    const availableBooks = candidates.map((b: any) => ({
       id: b.id,
       title: b.title,
       category: b.category.name,
@@ -64,7 +64,7 @@ export async function recommendBooks(userId: string) {
       year: b.publicationYear,
     }));
 
-    const userHistory = history.map((h) => ({
+    const userHistory = history.map((h: any) => ({
       title: h.copy.book.title,
       category: h.copy.book.category.name,
       author: h.copy.book.author.name,

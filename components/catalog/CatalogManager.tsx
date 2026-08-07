@@ -7,8 +7,6 @@ import {
   Edit2Icon,
   Trash2Icon,
   Loader2Icon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   X,
   ShieldAlert,
   CheckCircleIcon,
@@ -19,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
+import { BookPagination } from "@/components/books/BookPagination";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -413,27 +412,13 @@ export function CatalogManager({
           of <span className="font-mono">{total}</span> {plural.toLowerCase()}
         </span>
 
-        <div className="flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-end">
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page === 1 || isLoading}
-            className="p-1.5 border-slate-200 dark:border-slate-800 disabled:opacity-40 cursor-pointer"
-          >
-            <ChevronLeftIcon className="size-3.5" />
-          </Button>
-          <span className="px-2 font-mono whitespace-nowrap">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-            disabled={page === totalPages || isLoading}
-            className="p-1.5 border-slate-200 dark:border-slate-800 disabled:opacity-40 cursor-pointer"
-          >
-            <ChevronRightIcon className="size-3.5" />
-          </Button>
-        </div>
+        <BookPagination
+          page={page}
+          totalPages={totalPages}
+          hasNextPage={page < totalPages}
+          isLoading={isLoading}
+          onPageChange={setPage}
+        />
       </div>
 
       <AlertDialog

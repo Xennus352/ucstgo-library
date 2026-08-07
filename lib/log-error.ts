@@ -1,6 +1,33 @@
 import prisma from "@/lib/prisma";
+import { getIO } from "@/lib/socket";
 
 const DEDUPE_WINDOW_MS = 10 * 60 * 1000;
+
+function notifyIssue(row: {
+  id: string;
+  source: string;
+  endpoint?: string | null;
+  method?: string | null;
+  message: string;
+  severity?: string;
+  count: number;
+}) {
+  try {
+    getIO()?.emit("issue:new", {
+      id: row.id,
+      source: row.source,
+      endpoint: row.endpoint ?? null,
+      method: row.method ?? null,
+      message: row.message,
+      severity: row.severity ?? "error",
+      count: row.count,
+      status: "open",
+      at: new Date().toISOString(),
+    });
+  } catch {
+    // Socket emission must never break error logging
+  }
+}
 
 /** Convenience wrapper for server-action failures. */
 export function logActionIssue(
@@ -63,14 +90,24 @@ export async function logSystemError(input: {
       existing &&
       Date.now() - existing.lastSeen.getTime() < DEDUPE_WINDOW_MS
     ) {
-      await prisma.errorLog.update({
+      const updated = await prisma.errorLog.update({
         where: { id: existing.id },
         data: { count: { increment: 1 }, lastSeen: new Date() },
+        select: { id: true, count: true },
+      });
+      notifyIssue({
+        id: updated.id,
+        source: input.source,
+        endpoint: input.endpoint,
+        method: input.method,
+        message,
+        severity: input.severity,
+        count: updated.count,
       });
       return;
     }
 
-    await prisma.errorLog.create({
+    const created = await prisma.errorLog.create({
       data: {
         source: input.source,
         endpoint: input.endpoint ?? null,
@@ -80,6 +117,16 @@ export async function logSystemError(input: {
         severity: input.severity ?? "error",
         ip: input.ip ?? null,
       },
+      select: { id: true },
+    });
+    notifyIssue({
+      id: created.id,
+      source: input.source,
+      endpoint: input.endpoint,
+      method: input.method,
+      message,
+      severity: input.severity,
+      count: 1,
     });
   } catch {
     // Never let error logging break the request

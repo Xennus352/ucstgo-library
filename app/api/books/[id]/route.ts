@@ -174,7 +174,7 @@ export async function PATCH(
         );
       }
       await prisma.bookCopy.deleteMany({
-        where: { id: { in: copiesToDelete.map((c) => c.id) } },
+        where: { id: { in: copiesToDelete.map((c: any) => c.id) } },
       });
     }
 

@@ -136,18 +136,24 @@ export default function BrandForm({
                 <Label htmlFor="name" className="text-sm font-medium">
                   Institution Name
                 </Label>
-                <span className="text-xs text-muted-foreground">Required</span>
+                <span className="text-xs text-muted-foreground">
+                  {namePreview.length}/22
+                </span>
               </div>
               <Input
                 id="name"
                 name="name"
                 type="text"
                 required
+                maxLength={22}
                 value={namePreview}
                 onChange={(e) => setNamePreview(e.target.value)}
                 placeholder="UCSTGO Library"
                 className="w-full bg-card"
               />
+              <p className="text-xs text-muted-foreground">
+                Maximum 22 characters.
+              </p>
             </div>
 
             <div className="space-y-1.5">

@@ -7,10 +7,9 @@ import {
   UsersIcon,
   SearchIcon,
   Loader2Icon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   XIcon,
 } from "lucide-react";
+import { BookPagination } from "@/components/books/BookPagination";
 import { Button } from "@/components/ui/button";
 
 type ActiveUser = {
@@ -252,27 +251,13 @@ export function ActiveUsersPanel() {
           <span className="font-mono">{total}</span> active users
           <span className="text-slate-400"> · last 5 minutes</span>
         </span>
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page === 1 || isLoading}
-            className="p-1.5 cursor-pointer"
-          >
-            <ChevronLeftIcon className="size-3.5" />
-          </Button>
-          <span className="px-2 font-mono whitespace-nowrap">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-            disabled={page === totalPages || isLoading}
-            className="p-1.5 cursor-pointer"
-          >
-            <ChevronRightIcon className="size-3.5" />
-          </Button>
-        </div>
+                <BookPagination
+          page={page}
+          totalPages={totalPages}
+          hasNextPage={page < totalPages}
+          isLoading={isLoading}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

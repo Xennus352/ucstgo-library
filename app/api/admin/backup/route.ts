@@ -9,7 +9,7 @@ const cleanUrl = databaseUrl?.replace(/[&?]pgbouncer=true/, "");
 const pool = new Pool({
   connectionString: cleanUrl,
   ssl: { rejectUnauthorized: false },
-  max: 5,
+  max: 2,
   idleTimeoutMillis: 30000,
 });
 

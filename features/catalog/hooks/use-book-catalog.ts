@@ -43,7 +43,6 @@ export function useBookSearch(params: BookListParams = {}) {
     fallbackData: { data: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false } },
   });
 }
-
 export function useBookInfinite(params: BookFilterParams) {
   useCatalogSync();
   const getKey = (pageIndex: number, previousPage: any) => {

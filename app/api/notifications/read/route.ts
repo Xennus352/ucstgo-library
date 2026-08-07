@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     await prisma.notificationRead.createMany({
-      data: notifications.map((n) => ({
+      data: notifications.map((n: any) => ({
         notificationId: n.id,
         userId: user.id,
       })),

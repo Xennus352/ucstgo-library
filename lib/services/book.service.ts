@@ -117,7 +117,7 @@ export async function listBooks(params: BookQueryParams) {
     prisma.book.count({ where }),
   ]);
 
-  const bookIds = books.map((b) => b.id);
+  const bookIds = books.map((b: any) => b.id);
   const copyStats = await prisma.bookCopy.groupBy({
     by: ["bookId", "status"],
     where: { bookId: { in: bookIds } },
@@ -136,7 +136,7 @@ export async function listBooks(params: BookQueryParams) {
     availabilityMap.set(item.bookId, prev);
   }
 
-  const enriched = books.map((book) => {
+  const enriched = books.map((book: any) => {
     const stats = availabilityMap.get(book.id) ?? {
       AVAILABLE: 0,
       BORROWED: 0,
@@ -422,7 +422,7 @@ export async function getLecturerBooks(userId: string) {
     orderBy: { createdAt: "desc" },
   });
 
-  return books.map((book) => ({
+  return books.map((book: any) => ({
     ...book,
     coverImage: book.coverImage ? `/api/files/${book.coverImage}` : null,
     ebook: book.ebook

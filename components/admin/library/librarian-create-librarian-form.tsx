@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { User } from "@/types/UserType";
+import { toAsciiDigits } from "@/lib/digits";
 import {
   MailIcon,
   LockIcon,
@@ -91,7 +92,7 @@ export default function CreateLibrarianForm({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: toAsciiDigits(value) }));
 
     if (touched[name]) {
       const error = validateField(name, value);

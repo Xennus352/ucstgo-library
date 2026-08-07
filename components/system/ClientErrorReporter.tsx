@@ -5,7 +5,10 @@ import * as React from "react";
 const DEDUPE_MS = 30000;
 const recent = new Map<string, number>();
 
+const IGNORED = /ResizeObserver loop|Script error\.|Non-Error promise rejection captured with value/;
+
 function report(message: string, stack: string | null, fatal: boolean) {
+  if (IGNORED.test(message)) return;
   const key = message.slice(0, 200);
   const last = recent.get(key);
   const now = Date.now();
@@ -27,8 +30,6 @@ function report(message: string, stack: string | null, fatal: boolean) {
 
 export function ClientErrorReporter() {
   React.useEffect(() => {
-    if (process.env.NODE_ENV !== "production") return;
-
     const onError = (event: ErrorEvent) => {
       report(
         event.message || "Unknown script error",
