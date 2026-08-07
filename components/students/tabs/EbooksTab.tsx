@@ -69,7 +69,7 @@ const ACADEMIC_SUBS: SubCategoryItem[] = [
     section: "academic",
   },
   { key: "old_question", label: "Old Question", section: "academic" },
-  { key: "other_academic", label: "Others", section: "academic" },
+  { key: "other_academic", label: "Project Repostories", section: "academic" },
 ];
 
 const RESEARCH_SUBS: SubCategoryItem[] = [
@@ -287,19 +287,17 @@ function SidebarContent({
                 <button
                   key={sub.key}
                   onClick={() => onSubCategoryChange(isActive ? "all" : sub.key)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
-                    isActive
-                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
-                  }`}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                    }`}
                 >
                   <span className="truncate">{sub.label}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
-                      isActive
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                      }`}
                   >
                     {count}
                   </span>
@@ -325,19 +323,17 @@ function SidebarContent({
                 <button
                   key={sub.key}
                   onClick={() => onSubCategoryChange(isActive ? "all" : sub.key)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
-                    isActive
-                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
-                  }`}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                    }`}
                 >
                   <span className="truncate">{sub.label}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
-                      isActive
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                      }`}
                   >
                     {count}
                   </span>
@@ -363,19 +359,17 @@ function SidebarContent({
                 <button
                   key={sub.key}
                   onClick={() => onSubCategoryChange(isActive ? "all" : sub.key)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
-                    isActive
-                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
-                  }`}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                    }`}
                 >
                   <span className="truncate">{sub.label}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
-                      isActive
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                      }`}
                   >
                     {count}
                   </span>
@@ -560,19 +554,17 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                 <button
                   key={sub.key}
                   onClick={() => setActiveSubCategory(isActive ? "all" : sub.key)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
-                    isActive
-                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
-                  }`}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                    }`}
                 >
                   <span className="truncate">{sub.label}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
-                      isActive
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                      }`}
                   >
                     {count}
                   </span>
@@ -598,19 +590,17 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                 <button
                   key={sub.key}
                   onClick={() => setActiveSubCategory(isActive ? "all" : sub.key)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
-                    isActive
-                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
-                  }`}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                    }`}
                 >
                   <span className="truncate">{sub.label}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
-                      isActive
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                      }`}
                   >
                     {count}
                   </span>
@@ -636,19 +626,17 @@ export const EbooksTab: React.FC<EbooksTabProps> = ({
                 <button
                   key={sub.key}
                   onClick={() => setActiveSubCategory(isActive ? "all" : sub.key)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${
-                    isActive
-                      ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
-                  }`}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 flex items-center justify-between group ${isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent"
+                    }`}
                 >
                   <span className="truncate">{sub.label}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${
-                      isActive
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                      }`}
                   >
                     {count}
                   </span>

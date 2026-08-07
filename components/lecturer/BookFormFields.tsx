@@ -166,8 +166,8 @@ export function BookFormFields({
                     const categoriesArray = Array.isArray(categories)
                       ? categories
                       : (categories as any)?.data ||
-                        (categories as any)?.categories ||
-                        [];
+                      (categories as any)?.categories ||
+                      [];
 
                     if (!categoriesArray || categoriesArray.length === 0) {
                       return (
@@ -403,27 +403,27 @@ export function BookFormFields({
             </label>
 
             {/* Dynamic Target Semester Selection */}
-            
-              <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                  <GraduationCap className="w-3.5 h-3.5 text-blue-500" />
-                  Target Semester
-                </label>
-                <select
-                  value={semester}
-                  onChange={(e) => setSemester(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:focus-visible:ring-slate-300"
-                >
-                  <option value="">Select a semester...</option>
-                  {/* 3. Updated loop to match database schema attributes (id and name) */}
-                  {semesterOptions.map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            
+
+            <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <GraduationCap className="w-3.5 h-3.5 text-blue-500" />
+                Target Semester/Titles
+              </label>
+              <select
+                value={semester}
+                onChange={(e) => setSemester(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:focus-visible:ring-slate-300"
+              >
+                <option value="">Select a semester/title...</option>
+                {/* 3. Updated loop to match database schema attributes (id and name) */}
+                {semesterOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
           </div>
         </div>
       </Card>

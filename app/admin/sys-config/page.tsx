@@ -51,7 +51,7 @@ const SystemConfiguration = async () => {
     initialFavicon =
       configText.match(/favicon:\s*"([^"]+)"/)?.[1] ?? initialFavicon;
     initialTitle = configText.match(/title:\s*"([^"]+)"/)?.[1] ?? initialTitle;
-  } catch {}
+  } catch { }
 
   const semesters = semestersRes.success ? semestersRes.data : [];
   const notices = noticesRes.success && noticesRes.data ? noticesRes.data : [];
@@ -83,7 +83,7 @@ const SystemConfiguration = async () => {
           </TabsTrigger>
           <TabsTrigger value="semesters" className="gap-2">
             <GraduationCap className="size-4" />
-            Semesters
+            Semesters/Titles
           </TabsTrigger>
           <TabsTrigger value="notice-board" className="gap-2">
             <Bell className="size-4" />
@@ -97,7 +97,7 @@ const SystemConfiguration = async () => {
             <Database className="size-4" />
             Backup
           </TabsTrigger>
-       
+
         </TabsList>
 
         <TabsContent value="settings" className="mt-6">
@@ -116,9 +116,9 @@ const SystemConfiguration = async () => {
         <TabsContent value="semesters" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Academic Semesters</CardTitle>
+              <CardTitle>Academic Semesters/Titles</CardTitle>
               <CardDescription>
-                Add and manage semesters used for organizing catalog e-books.
+                Add and manage semesters/Titles used for organizing catalog e-books.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -126,7 +126,7 @@ const SystemConfiguration = async () => {
 
               <div className="space-y-3">
                 <h3 className="text-sm font-medium text-muted-foreground">
-                  Existing Semesters
+                  Existing Semesters/titles
                 </h3>
                 <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                   {semesters?.length === 0 ? (

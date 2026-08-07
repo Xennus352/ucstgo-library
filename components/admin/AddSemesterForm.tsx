@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react"; 
+import { Loader2 } from "lucide-react";
 
 export function AddSemesterForm() {
   const [name, setName] = useState("");
@@ -21,7 +21,7 @@ export function AddSemesterForm() {
 
     if (result.success) {
       setName("");
-      toast.success("Semester added successfully!");
+      toast.success("Semester/title added successfully!");
     } else {
       toast.error(result.error);
     }
@@ -54,7 +54,7 @@ export function AddSemesterForm() {
             Adding...
           </>
         ) : (
-          "Add Semester"
+          "Add Semester/title"
         )}
       </Button>
     </form>
