@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { notFound, validation, conflict } from "@/lib/errors";
 import { getIO } from "@/lib/socket";
+import { logger } from "@/lib/logger";
 
 export type BookQueryParams = {
   page?: number;
@@ -300,12 +301,12 @@ export async function createBook(input: BookCreateInput) {
     const io = getIO();
     if (io) {
       io.emit("catalog:created", book);
-      console.log("[socket] Emitted catalog:created", book.id);
+      logger.debug({ bookId: book.id }, "[socket] Emitted catalog:created");
     } else {
-      console.warn("[socket] getIO() returned undefined, cannot emit");
+      logger.warn("[socket] getIO() returned undefined, cannot emit");
     }
-  } catch {
-    console.error("[socket] Error emitting catalog:created");
+  } catch (err: unknown) {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting catalog:created");
   }
 
   return book;
@@ -376,7 +377,7 @@ export async function updateBook(
     });
   }
 
-  try { getIO()?.emit("catalog:updated", updated); } catch {}
+  try { getIO()?.emit("catalog:updated", updated); } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting catalog:updated"); }
 
   return updated;
 }
@@ -398,12 +399,12 @@ export async function deleteBook(id: string) {
     const io = getIO();
     if (io) {
       io.emit("catalog:deleted", { id });
-      console.log("[socket] Emitted catalog:deleted", id);
+      logger.debug({ bookId: id }, "[socket] Emitted catalog:deleted");
     } else {
-      console.warn("[socket] getIO() returned undefined, cannot emit catalog:deleted");
+      logger.warn("[socket] getIO() returned undefined, cannot emit catalog:deleted");
     }
-  } catch {
-    console.error("[socket] Error emitting catalog:deleted");
+  } catch (err: unknown) {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting catalog:deleted");
   }
 
   return { coverImage: book.coverImage, ebookPath: book.ebook?.filePath ?? null };

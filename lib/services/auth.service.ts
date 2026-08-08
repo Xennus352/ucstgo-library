@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { unauthorized, forbidden } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 
 export type SessionUser = {
   id: string;
@@ -26,12 +27,16 @@ const ROLE_DEFAULT_ROUTES: Record<string, string> = {
 
 export async function getSession(headers: Headers) {
   const session = await auth.api.getSession({ headers });
+  logger.debug({ userId: session?.user?.id, role: session?.user?.role }, "Session retrieved");
   return session;
 }
 
 export async function requireSession(headers: Headers) {
   const session = await getSession(headers);
-  if (!session?.user) throw unauthorized();
+  if (!session?.user) {
+    logger.warn("Unauthorized: No session");
+    throw unauthorized();
+  }
   return session as { user: SessionUser };
 }
 
@@ -41,6 +46,7 @@ export async function requireRole(
 ) {
   const { user } = await requireSession(headers);
   if (!allowedRoles.includes(user.role)) {
+    logger.warn({ userId: user.id, userRole: user.role, allowedRoles }, "Forbidden: Insufficient role");
     throw forbidden(
       `Requires one of: ${allowedRoles.join(", ")}`,
     );

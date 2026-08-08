@@ -3,6 +3,7 @@ import { notFound, validation } from "@/lib/errors";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { getIO } from "@/lib/socket";
+import { logger } from "@/lib/logger";
 
 export type UserCreateInput = {
   name: string;
@@ -118,7 +119,7 @@ export async function createUser(input: UserCreateInput) {
     select: userListSelect,
   });
 
-  try { getIO()?.emit("user:changed", user); } catch {}
+  try { getIO()?.emit("user:changed", user); } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting user:changed"); }
 
   return user!;
 }
@@ -141,7 +142,7 @@ export async function updateUser(id: string, input: UserUpdateInput) {
     data,
     select: userListSelect,
   });
-  try { getIO()?.emit("user:changed", updated); } catch {}
+  try { getIO()?.emit("user:changed", updated); } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting user:changed"); }
   return updated;
 }
 
@@ -150,7 +151,7 @@ export async function deleteUser(id: string) {
   if (!user) throw notFound("User");
 
   await prisma.user.delete({ where: { id } });
-  try { getIO()?.emit("user:changed", { id, deleted: true }); } catch {}
+  try { getIO()?.emit("user:changed", { id, deleted: true }); } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting user:changed"); }
 }
 
 export async function bulkCreateUsers(
@@ -180,6 +181,6 @@ export async function banUser(userId: string, banned: boolean) {
     data: { banned },
     select: userListSelect,
   });
-  try { getIO()?.emit(banned ? "user:banned" : "user:changed", result); } catch {}
+  try { getIO()?.emit(banned ? "user:banned" : "user:changed", result); } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting user event"); }
   return result;
 }

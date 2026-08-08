@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { notFound, validation } from "@/lib/errors";
 import { getIO } from "@/lib/socket";
+import { logger } from "@/lib/logger";
 
 export type ReservationQueryParams = {
   page?: number;
@@ -117,7 +118,7 @@ export async function createReservation(
     },
   });
 
-  try { getIO()?.emit("reservation:created", reservation); } catch {}
+  try { getIO()?.emit("reservation:created", reservation); } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting reservation:created"); }
 
   return { status: "RESERVED" as const, reservation };
 }
@@ -145,7 +146,7 @@ export async function cancelReservation(
     where: { id: reservationId },
     data: { status: "CANCELLED" },
   });
-  try { getIO()?.emit("reservation:status", cancelled); } catch {}
+  try { getIO()?.emit("reservation:status", cancelled); } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting reservation:status"); }
   return cancelled;
 }
 
@@ -186,8 +187,8 @@ export async function fulfillReservation(reservationId: string) {
       data: { status: "FULFILLED" },
     });
 
-    try { getIO()?.emit("reservation:status", { reservationId, status: "FULFILLED" }); } catch {}
-    try { getIO()?.emit("borrow:created", borrowRecord); } catch {}
+    try { getIO()?.emit("reservation:status", { reservationId, status: "FULFILLED" }); } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting reservation:status"); }
+    try { getIO()?.emit("borrow:created", borrowRecord); } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "[socket] Error emitting borrow:created"); }
 
     return { borrowRecord };
   });

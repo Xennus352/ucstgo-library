@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { getIO } from "@/lib/socket";
+import { logger } from "@/lib/logger";
 
 const DEDUPE_WINDOW_MS = 10 * 60 * 1000;
 
@@ -128,7 +129,8 @@ export async function logSystemError(input: {
       severity: input.severity,
       count: 1,
     });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined }, "Failed to log system error");
     // Never let error logging break the request
   }
 }

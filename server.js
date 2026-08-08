@@ -9,6 +9,7 @@ const { createServer } = require("http");
 const next = require("next");
 const { Server } = require("socket.io");
 const { trackRequest, isBlocked, logIssue } = require("./lib/monitor");
+const { logger, createRequestLogger } = require("./lib/logger");
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
@@ -29,9 +30,17 @@ app.prepare().then(() => {
     }
     trackRequest(req);
     const start = Date.now();
+    const requestId = req.headers["x-request-id"] || crypto.randomUUID();
+    const log = createRequestLogger(requestId, req.headers["x-forwarded-for"]?.split(",")[0]?.trim());
+    
+    log.info({ method: req.method, url: req.url }, "Request started");
+    
     handler(req, res);
     res.on("finish", () => {
       const duration = Date.now() - start;
+      const level = res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info";
+      log[level]({ statusCode: res.statusCode, durationMs: duration }, "Request completed");
+      
       if (res.statusCode >= 500) {
         logIssue({
           source: "http",
@@ -59,21 +68,24 @@ app.prepare().then(() => {
   });
 
   io.on("connection", (socket) => {
-    console.log("[socket] User connected:", socket.id);
+    logger.info({ socketId: socket.id }, "User connected");
 
     socket.on("join", (userId) => {
-      if (userId) socket.join(userId);
+      if (userId) {
+        socket.join(userId);
+        logger.debug({ socketId: socket.id, userId }, "Socket joined user room");
+      }
     });
 
     socket.on("disconnect", () => {
-      console.log("[socket] User disconnected:", socket.id);
+      logger.info({ socketId: socket.id }, "User disconnected");
     });
   });
 
   global.io = io;
-  console.log("[socket] Socket.IO server initialized and exposed globally");
+  logger.info("Socket.IO server initialized and exposed globally");
 
   httpServer.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    logger.info({ port: PORT }, `🚀 Server running on port ${PORT}`);
   });
 });
